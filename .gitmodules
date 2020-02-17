@@ -1,3 +1,0 @@
-[submodule "lib/sentinelsat"]
-	path = lib/sentinelsat
-	url = https://github.com/sentinelsat/sentinelsat.git
