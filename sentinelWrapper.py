@@ -2,7 +2,6 @@ import sys
 import config
 from geojson import Point
 
-# sys.path.append("./lib/sentinelsat")
 # from sentinelsat.sentinel import SentinelAPI, geojson_to_wkt, read_geojson
 from sentinelsat import SentinelAPI, geojson_to_wkt
 
@@ -18,5 +17,5 @@ class sentinelWrapper:
 		        platformname=platforms,
 		        cloudcoverpercentage=(0, maxCloudCoverage))
 
-	def downloadSentinelProducts(self, products, targetDir):
-		self.api.download_all(products, targetDir)
+	def downloadSentinelProducts(self, products):
+		self.api.download_all(products, config.bigTilesDir)
