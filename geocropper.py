@@ -24,7 +24,13 @@ class Geocropper:
 		print("maxCloudCoverage: " + str(maxCloudCoverage))
 		print("=========================================================\n")
 		products = self.sentinel.getSentinelProducts(self.lat, self.lon, fromDate, toDate, platforms, maxCloudCoverage)
-		self.sentinel.downloadSentinelProducts(products)
+		for key in products:
+			if not os.path.isdir(config.bigTilesDir + "/" + products[key]["title"] + ".SAFE") and \
+			  not os.path.isfile(config.bigTilesDir + "/" + products[key]["title"] + ".zip"):
+				print("Download " + products[key]["title"])
+				self.sentinel.downloadSentinelProduct(key)
+			else:
+				print(products[key]["title"] + " already exists.")
 		self.unpackBigTiles()
 
 	def unpackBigTiles(self):

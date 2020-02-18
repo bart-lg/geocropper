@@ -19,3 +19,7 @@ class sentinelWrapper:
 
 	def downloadSentinelProducts(self, products):
 		self.api.download_all(products, config.bigTilesDir)
+
+	def downloadSentinelProduct(self, productID):
+		self.api.download(productID, config.bigTilesDir)
+
