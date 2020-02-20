@@ -1,3 +1,4 @@
-config.py
+userconfig.py
 **/__pycache__
 data/bigTiles/* 
+geocropper.db

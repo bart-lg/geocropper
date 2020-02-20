@@ -1,5 +1,6 @@
 import geocropper
 
-geoc = geocropper.Geocropper(40.58497, -12.75013)
-geoc.downloadSentinelData("20190801", "20190831", "Sentinel-2", 10)
+geoc = geocropper.Geocropper(48.2, 16.3)
+#geoc.downloadAndCrop("20190701", "20190831", "Sentinel-2", 1000, 1000, tileLimit = 0,  producttype="S2MSI2A")
+geoc.downloadAndCrop("20190701", "20190831", "Sentinel-2", 1000, 1000, cloudcoverpercentage=10, producttype="S2MSI2A")
 

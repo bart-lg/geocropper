@@ -7,19 +7,24 @@ from sentinelsat import SentinelAPI, geojson_to_wkt
 
 class sentinelWrapper:
 
-	def __init__(self):
-		self.api = SentinelAPI(config.copernicusUser, config.copernicusPW, 'https://scihub.copernicus.eu/dhus')
+    def __init__(self):
+        self.api = SentinelAPI(config.copernicusUser, config.copernicusPW, config.copernicusURL)
 
-	def getSentinelProducts(self, lat, lon, fromDate, toDate, platforms, maxCloudCoverage):
-		footprint = geojson_to_wkt(Point((lat, lon)))
-		return self.api.query(footprint,
-		        date=(fromDate, toDate),
-		        platformname=platforms,
-		        cloudcoverpercentage=(0, maxCloudCoverage))
+    def getSentinelProducts(self, lat, lon, fromDate, toDate, platform, **kwargs):
+        
+        footprint = geojson_to_wkt(Point((lon, lat)))
+        
+        if "cloudcoverpercentage" in kwargs:
+            kwargs["cloudcoverpercentage"] = (0, kwargs["cloudcoverpercentage"])
 
-	def downloadSentinelProducts(self, products):
-		self.api.download_all(products, config.bigTilesDir)
+        return self.api.query(footprint,
+                date=(fromDate, toDate),
+                platformname=platform,
+                **kwargs)
 
-	def downloadSentinelProduct(self, productID):
-		self.api.download(productID, config.bigTilesDir)
+    def downloadSentinelProducts(self, products):
+        self.api.download_all(products, config.bigTilesDir)
+
+    def downloadSentinelProduct(self, productID):
+        self.api.download(productID, config.bigTilesDir)
 

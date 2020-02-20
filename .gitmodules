@@ -1,0 +1,3 @@
+[submodule "lib/countries"]
+	path = lib/countries
+	url = https://github.com/che0/countries
