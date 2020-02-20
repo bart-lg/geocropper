@@ -148,13 +148,75 @@ class Geocropper:
         logger.info("tile zip files extracted")
 
     def cropTiles(self, poiId):
-        pass
+        
+        poi = db.fetchFirstRowQuery("SELECT * FROM PointOfInterests WHERE rowid = %d" % poiId)
 
+        if not poi == None:
 
+            diag = math.sqrt((poi["width"]/2)**2 + (poi["height"]/2)**2)
+
+            topLeftLon, topLeftLat, backAzimuth = (pyproj.Geod(ellps="WGS84").fwd(poi["lon"],poi["lat"],315,diag))
+            bottomRightLon, bottomRightLat, backAzimuth = (pyproj.Geod(ellps="WGS84").fwd(poi["lon"],poi["lat"],135,diag))
+
+            topLeft = Point(topLeftLon, topLeftLat)
+            bottomRight = Point(bottomRightLon, bottomRightLat) 
+
+            if poi["platform"] == "Sentinel-2":
+
+                tileConnections = db.fetchAllRowsQuery("SELECT rowid, * FROM TilesForPOIs WHERE poiId = %d" % poiId)
+                
+                for tileConnection in tileConnections:
+                    if tileConnection["tileCropped"] == None:
+
+                        tile = db.fetchFirstRowQuery("SELECT * FROM Tiles WHERE rowid = %d" % tileConnection["tileId"])
+
+                        print("Cropping %s ..." % tile["folderName"])
+
+                        if not tile == None:
+
+                            pathGranule = "%s/%s/GRANULE" \
+                                % (config.bigTilesDir, tile["folderName"])
+                            for mainFolder in os.listdir(pathGranule):
+
+                                pathImgData = "%s/%s/IMG_DATA" % (pathGranule, mainFolder)
+                                for rasterFolder in os.listdir(pathImgData):
+
+                                    pathItems = "%s/%s" % (pathImgData, rasterFolder)
+                                    for item in os.listdir(pathItems):
+
+                                        img = rasterio.open("%s/%s" % (pathItems, item))
+
+                                        toTargetCRS = partial(pyproj.transform, \
+                                            pyproj.Proj('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs '), pyproj.Proj(img.crs))
+
+                                        topLeftTransformed = transform(toTargetCRS, topLeft)
+                                        bottomRightTransformed = transform(toTargetCRS, bottomRight)
+
+                                        ds = gdal.Open("%s/%s" % (pathItems, item))
+
+                                        # dirty...
+                                        tileFolderName = tile["folderName"]
+                                        tileName = tileFolderName[:-5]
+
+                                        targetDir = "%s/%s/lat%s_lon%s/w%s_h%s/%s" % \
+                                            (config.croppedTilesDir, poi["country"], poi["lat"], poi["lon"], \
+                                            poi["width"], poi["height"], tileName)
+                                        
+                                        if not os.path.isdir(targetDir):
+                                            os.makedirs(targetDir)
+
+                                        ds = gdal.Translate("%s/%s" % (targetDir, item), ds, format="JP2OpenJPEG", \
+                                            projWin = [topLeftTransformed.x, topLeftTransformed.y, \
+                                            bottomRightTransformed.x, bottomRightTransformed.y])
+
+                                        ds = None
+
+                        db.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % \
+                            (poiId, tileConnection["tileId"]))
+                        print("done.")
+                                    
 
     def downloadAndCrop(self, fromDate, toDate, platform, width, height, tileLimit = 0, **kwargs):
-
-        # TODO: first check for resumes
 
         qresult = self.getPoiFromDb(self.lat, self.lon, fromDate, toDate, platform, width, height, tileLimit=tileLimit, **kwargs)
 
@@ -181,6 +243,8 @@ class Geocropper:
         products = self.downloadSentinelData(fromDate, toDate, platform, poiId=poiId, tileLimit=tileLimit, **kwargs)
 
         self.cropTiles(poiId)
+
+        # TODO: check if there are any outstanding downloads or crops
 
     def getCountry(self):
         cc = countries.CountryChecker(config.worldBordersShapeFile)

@@ -8,6 +8,7 @@ copernicusURL = 'https://scihub.copernicus.eu/dhus'
 
 dataDir = "./data"
 bigTilesDir = dataDir + "/bigTiles"
+croppedTilesDir = dataDir + "/croppedTiles"
 
 dbFile = "geocropper.db"
 
