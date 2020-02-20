@@ -1,3 +1,8 @@
+import log
+import config
+
+logger = log.setupCustomLogger('main')
+
 import sys
 sys.path.append("./lib")
 
@@ -6,7 +11,6 @@ from database import database
 import zipfile
 import tqdm
 import os
-import config
 import pyproj
 from osgeo import gdal
 from functools import partial
@@ -17,6 +21,8 @@ from shapely.geometry import Point
 from shapely.ops import transform
 from countries import countries
 
+logger.info("modules loaded")
+
 db = database()
 
 class Geocropper:
@@ -25,6 +31,7 @@ class Geocropper:
         self.lat = lat
         self.lon = lon
         self.sentinel = sentinelWrapper.sentinelWrapper()
+        logger.info("new geocropper instance initialized")
 
     def printPosition(self):
         print("lat: " + str(self.lat))
@@ -59,13 +66,15 @@ class Geocropper:
             if not os.path.isdir(config.bigTilesDir + "/" + folderName) and \
               not os.path.isfile(config.bigTilesDir + "/" + products[key]["title"] + ".zip"):
                 
-                qresult = db.fetchQuery("SELECT * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, key))
-                if len(qresult) > 0:
-                    db.query("UPDATE Tiles SET lastDownloadRequest = datetime('now', 'localtime') \
-                        WHERE platform = ? AND folderName = ? AND productId = ?", (platform, folderName, key))
-                else:
+                qresult = db.fetchFirstRowQuery("SELECT * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, key))
+                if qresult == None:
                     db.query("INSERT INTO Tiles (platform, folderName, productId, firstDownloadRequest, lastDownloadRequest) \
                         VALUES (?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))", (platform, folderName, key))
+                    logger.info("new tile inserted into database")
+                else:
+                    db.query("UPDATE Tiles SET lastDownloadRequest = datetime('now', 'localtime') \
+                        WHERE platform = ? AND folderName = ? AND productId = ?", (platform, folderName, key))
+                    logger.info("tile updated in database (lastDownloadRequest)")
 
                 print("[" + str(i) + "/" + str(len(products)) + "]: Download " + products[key]["title"])
                 self.sentinel.downloadSentinelProduct(key)
@@ -73,44 +82,54 @@ class Geocropper:
                 if os.path.isfile(config.bigTilesDir + "/" + products[key]["title"] + ".zip"):
                     db.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') \
                         WHERE platform = ? AND folderName = ? AND productId = ?", (platform, folderName, key))
+                    logger.info("tile updated in database (downloadComplete)")
             
             else:
 
-                qresult = db.fetchQuery("SELECT * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, key))
-                if len(qresult) == 0:
+                qresult = db.fetchFirstRowQuery("SELECT * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, key))
+                if qresult == None:
                     db.query("INSERT INTO Tiles (platform, folderName, productId) \
                         VALUES (?, ?, ?)", (platform, folderName, key))
+                    logger.info("new tile inserted into database")
                 
                 print("[" + str(i) + "/" + str(len(products)) + "]: " + products[key]["title"] + " already exists.")
 
             if int(poiId) > 0:
                 
                 tileObj = self.getTileFromDb(platform, folderName, key)
-                tileId = tileObj[0][0]
+                tileId = tileObj["rowid"]
 
-                qresult = db.fetchQuery("SELECT * FROM TilesForPOIs WHERE poiId = ? AND tileId = ?", (poiId, tileId))
-                if len(qresult) == 0:
+                qresult = db.fetchFirstRowQuery("SELECT * FROM TilesForPOIs WHERE poiId = ? AND tileId = ?", (poiId, tileId))
+                if qresult == None:
                     db.query("INSERT INTO TilesForPOIs (poiId, tileId) VALUES ( ?, ?)", (poiId, tileId))
+                    logger.info("new tile-poi connection inserted into database")
 
             i += 1
         
         if int(poiId) > 0:
             db.query("UPDATE PointOfInterests SET tilesIdentified = datetime('now', 'localtime') WHERE rowid = " + str(poiId))
+            logger.info("PointOfInterest updated in database (tilesIdentified)")
 
         self.unpackBigTiles()
         
         return products
 
     def unpackBigTiles(self):
+
+        logger.info("start of unpacking tile zip files")
         
         print("\nUnpack big tiles:\n")
         
+        filesNum = len([f for f in os.listdir(config.bigTilesDir) 
+             if f.endswith('.zip') and os.path.isfile(os.path.join(config.bigTilesDir, f))])
+
+        i = 1
         for item in os.listdir(config.bigTilesDir):
             
             if item.endswith(".zip"):
                 
                 filePath = config.bigTilesDir + "/" + item
-                print(item + ":")
+                print("[%d/%d] %s:" % (i, filesNum, item))
                 
                 with zipfile.ZipFile(file=filePath) as zipRef:
                     
@@ -124,19 +143,22 @@ class Geocropper:
                 newFolderName = item[:-4] + ".SAFE"
                 db.query("UPDATE Tiles SET unzipped = datetime('now', 'localtime') WHERE folderName = '" + newFolderName + "'")
 
+                i += 1
+
+        logger.info("tile zip files extracted")
+
+    def cropTiles(self, poiId):
+        pass
+
+
+
     def downloadAndCrop(self, fromDate, toDate, platform, width, height, tileLimit = 0, **kwargs):
 
         # TODO: first check for resumes
 
-        query = "SELECT rowid FROM PointOfInterests WHERE lat = " + str(self.lat) + " AND lon = " + str(self.lon) + " "
-        for key, value in kwargs.items():
-            if key in config.optionalSentinelParameters:
-                query = query + "AND " + key + " = '" + str(value) + "' "
+        qresult = self.getPoiFromDb(self.lat, self.lon, fromDate, toDate, platform, width, height, tileLimit=tileLimit, **kwargs)
 
-        qresult = db.fetchQuery(query + "AND dateFrom = ? AND dateTo = ? AND platform = ? AND width = ? AND height = ? AND tileLimit = ?", \
-            (fromDate, toDate, platform, width, height, tileLimit))
-
-        if len(qresult) == 0:
+        if qresult == None:
 
             query = "INSERT INTO PointOfInterests (lat, lon"
             for key, value in kwargs.items():
@@ -151,10 +173,14 @@ class Geocropper:
                 + ", " + str(tileLimit) + ", " + "'', datetime('now', 'localtime'))"
             poiId = db.query(query)
 
+            logger.info("new PointOfInterest inserted into database")
+
         else:
-            poiId = qresult[0][0]
+            poiId = qresult["rowid"]
 
         products = self.downloadSentinelData(fromDate, toDate, platform, poiId=poiId, tileLimit=tileLimit, **kwargs)
+
+        self.cropTiles(poiId)
 
     def getCountry(self):
         cc = countries.CountryChecker(config.worldBordersShapeFile)
@@ -162,16 +188,17 @@ class Geocropper:
 
     def getTileFromDb(self, platform, folderName, productId):
 
-        qresult = db.fetchQuery("SELECT rowid, * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, productId))
+        qresult = db.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, productId))
         return qresult
 
-    def getPoiFromDb(self, lat, lon, fromDate, toDate, platform, width, height, **kwargs):
+    def getPoiFromDb(self, lat, lon, fromDate, toDate, platform, width, height, tileLimit = 0, **kwargs):
 
-        query = "SELECT rowid, * FROM PointOfInterests WHERE lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + fromDate \
-            + " AND dateTo = '" + toDate + "' AND platform = '" + platform + "' AND width = " + str(width) + " AND height = " + str(height)
+        query = "SELECT rowid, * FROM PointOfInterests WHERE lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + fromDate + "'" \
+            + " AND dateTo = '" + toDate + "' AND platform = '" + platform + "' AND width = " + str(width) + " AND height = " + str(height) \
+            + " AND tileLimit = " + str(tileLimit)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = query + " AND " + key + " = '" + str(value) + "'"
 
-        qresult = db.fetchQuery(query)
+        qresult = db.fetchFirstRowQuery(query)
         return qresult

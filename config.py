@@ -1,5 +1,7 @@
 import userconfig
 
+logFile = "geocropper.log"
+
 copernicusUser = userconfig.copernicusUser
 copernicusPW = userconfig.copernicusPW
 copernicusURL = 'https://scihub.copernicus.eu/dhus'

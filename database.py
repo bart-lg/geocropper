@@ -1,12 +1,21 @@
 import sqlite3
 import config
 
+import logging
+
+logger = logging.getLogger('root')
+
 class database:
 
     def __init__(self):
 
+        logger.info("start DB connection")
+
         self.connection = sqlite3.connect(config.dbFile)
+        self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
+
+        logger.info("DB connected")
 
         # if no tables there, create new tables...
 
@@ -23,6 +32,8 @@ class database:
 
         self.connection.commit()
 
+        logger.info("tables created if non existing")
+
     def query(self, query, values=None):
         if not values is None:
             self.cursor.execute(query, values)
@@ -31,9 +42,16 @@ class database:
         self.connection.commit()
         return self.cursor.lastrowid
 
-    def fetchQuery(self, query, values=None):
+    def fetchAllRowsQuery(self, query, values=None):
         if not values is None:
             self.cursor.execute(query, values)
         else:
             self.cursor.execute(query)
         return self.cursor.fetchall()
+
+    def fetchFirstRowQuery(self, query, values=None):
+        if not values is None:
+            self.cursor.execute(query, values)
+        else:
+            self.cursor.execute(query)
+        return self.cursor.fetchone()
