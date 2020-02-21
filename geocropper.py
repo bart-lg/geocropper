@@ -19,7 +19,6 @@ import rasterio
 import math 
 from shapely.geometry import Point
 from shapely.ops import transform
-from countries import countries
 
 logger.info("modules loaded")
 
@@ -44,6 +43,8 @@ class Geocropper:
         print("From: " + fromDate)
         print("To: " + toDate)
         print("Platform: " + platform)
+        if tileLimit > 0:
+            print("Tile-limit: %d" % tileLimit)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 print("%s: %s" %(key, str(value)))
@@ -62,53 +63,40 @@ class Geocropper:
         for key in products:
             
             folderName = products[key]["title"] + ".SAFE"
-
-            if not os.path.isdir(config.bigTilesDir + "/" + folderName) and \
-              not os.path.isfile(config.bigTilesDir + "/" + products[key]["title"] + ".zip"):
+            tile = db.getTile(platform, folderName, key)
+            
+            if not os.path.isdir("%s/%s" % (config.bigTilesDir, folderName)) and \
+              not os.path.isfile("%s/%s.zip" % (config.bigTilesDir, products[key]["title"])):
                 
-                qresult = db.fetchFirstRowQuery("SELECT * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, key))
-                if qresult == None:
-                    db.query("INSERT INTO Tiles (platform, folderName, productId, firstDownloadRequest, lastDownloadRequest) \
-                        VALUES (?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))", (platform, folderName, key))
-                    logger.info("new tile inserted into database")
+                if tile == None:
+                    db.addTile(platform, folderName, key)
                 else:
-                    db.query("UPDATE Tiles SET lastDownloadRequest = datetime('now', 'localtime') \
-                        WHERE platform = ? AND folderName = ? AND productId = ?", (platform, folderName, key))
-                    logger.info("tile updated in database (lastDownloadRequest)")
+                    db.setDownloadRequestForTile(platform, folderName, key)
 
-                print("[" + str(i) + "/" + str(len(products)) + "]: Download " + products[key]["title"])
+                print("[%d/%d]: Download %s" % (i, len(products), products[key]["title"]))
                 self.sentinel.downloadSentinelProduct(key)
 
-                if os.path.isfile(config.bigTilesDir + "/" + products[key]["title"] + ".zip"):
-                    db.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') \
-                        WHERE platform = ? AND folderName = ? AND productId = ?", (platform, folderName, key))
-                    logger.info("tile updated in database (downloadComplete)")
+                if os.path.isfile("%s/%s.zip" % (config.bigTilesDir, products[key]["title"])):
+                    db.setDownloadCompleteForTile(platform, folderName, key)
             
             else:
 
-                qresult = db.fetchFirstRowQuery("SELECT * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, key))
-                if qresult == None:
-                    db.query("INSERT INTO Tiles (platform, folderName, productId) \
-                        VALUES (?, ?, ?)", (platform, folderName, key))
-                    logger.info("new tile inserted into database")
+                if tile == None:
+                    db.addTile(platform, folderName, key)
                 
-                print("[" + str(i) + "/" + str(len(products)) + "]: " + products[key]["title"] + " already exists.")
+                print("[%d/%d]: %s already exists." % (i, len(products), products[key]["title"]))
 
             if int(poiId) > 0:
                 
-                tileObj = self.getTileFromDb(platform, folderName, key)
-                tileId = tileObj["rowid"]
-
-                qresult = db.fetchFirstRowQuery("SELECT * FROM TilesForPOIs WHERE poiId = ? AND tileId = ?", (poiId, tileId))
-                if qresult == None:
-                    db.query("INSERT INTO TilesForPOIs (poiId, tileId) VALUES ( ?, ?)", (poiId, tileId))
-                    logger.info("new tile-poi connection inserted into database")
+                tile = db.getTile(platform, folderName, key)
+                tilePoi = db.getTileForPoi(poiId, tile["rowid"])
+                if tilePoi == None:
+                    db.addTileForPoi(poiId, tile["rowid"])
 
             i += 1
         
         if int(poiId) > 0:
-            db.query("UPDATE PointOfInterests SET tilesIdentified = datetime('now', 'localtime') WHERE rowid = " + str(poiId))
-            logger.info("PointOfInterest updated in database (tilesIdentified)")
+            db.setTilesIdentifiedForPoi(poiId)
 
         self.unpackBigTiles()
         
@@ -141,7 +129,7 @@ class Geocropper:
 
                 # dirty...
                 newFolderName = item[:-4] + ".SAFE"
-                db.query("UPDATE Tiles SET unzipped = datetime('now', 'localtime') WHERE folderName = '" + newFolderName + "'")
+                db.setUnzippedForTile(newFolderName)
 
                 i += 1
 
@@ -149,7 +137,9 @@ class Geocropper:
 
     def cropTiles(self, poiId):
         
-        poi = db.fetchFirstRowQuery("SELECT * FROM PointOfInterests WHERE rowid = %d" % poiId)
+        print("\nCrop tiles:\n")
+        
+        poi = db.getPoiFromId(poiId)
 
         if not poi == None:
 
@@ -163,82 +153,68 @@ class Geocropper:
 
             if poi["platform"] == "Sentinel-2":
 
-                tileConnections = db.fetchAllRowsQuery("SELECT rowid, * FROM TilesForPOIs WHERE poiId = %d" % poiId)
+                tiles = db.getTilesForPoi(poiId)
                 
-                for tileConnection in tileConnections:
-                    if tileConnection["tileCropped"] == None:
-
-                        tile = db.fetchFirstRowQuery("SELECT * FROM Tiles WHERE rowid = %d" % tileConnection["tileId"])
+                for tile in tiles:
+				
+                    if tile["tileCropped"] == None:
 
                         print("Cropping %s ..." % tile["folderName"])
 
-                        if not tile == None:
+                        pathGranule = "%s/%s/GRANULE" \
+                            % (config.bigTilesDir, tile["folderName"])
+                        for mainFolder in os.listdir(pathGranule):
 
-                            pathGranule = "%s/%s/GRANULE" \
-                                % (config.bigTilesDir, tile["folderName"])
-                            for mainFolder in os.listdir(pathGranule):
+                            pathImgData = "%s/%s/IMG_DATA" % (pathGranule, mainFolder)
+                            for rasterFolder in os.listdir(pathImgData):
 
-                                pathImgData = "%s/%s/IMG_DATA" % (pathGranule, mainFolder)
-                                for rasterFolder in os.listdir(pathImgData):
+                                pathItems = "%s/%s" % (pathImgData, rasterFolder)
+                                for item in os.listdir(pathItems):
 
-                                    pathItems = "%s/%s" % (pathImgData, rasterFolder)
-                                    for item in os.listdir(pathItems):
+                                    # function??
+                                    # what do we need...
+                                    
+                                    # pathItems, item, topLeft, bottomRight, targetDir, format
+                                
+                                    img = rasterio.open("%s/%s" % (pathItems, item))
 
-                                        img = rasterio.open("%s/%s" % (pathItems, item))
+                                    toTargetCRS = partial(pyproj.transform, \
+                                        pyproj.Proj('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs '), pyproj.Proj(img.crs))
 
-                                        toTargetCRS = partial(pyproj.transform, \
-                                            pyproj.Proj('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs '), pyproj.Proj(img.crs))
+                                    topLeftTransformed = transform(toTargetCRS, topLeft)
+                                    bottomRightTransformed = transform(toTargetCRS, bottomRight)
 
-                                        topLeftTransformed = transform(toTargetCRS, topLeft)
-                                        bottomRightTransformed = transform(toTargetCRS, bottomRight)
+                                    ds = gdal.Open("%s/%s" % (pathItems, item))
 
-                                        ds = gdal.Open("%s/%s" % (pathItems, item))
+                                    # dirty...
+                                    tileFolderName = tile["folderName"]
+                                    tileName = tileFolderName[:-5]
 
-                                        # dirty...
-                                        tileFolderName = tile["folderName"]
-                                        tileName = tileFolderName[:-5]
+                                    targetDir = "%s/%s/lat%s_lon%s/w%s_h%s/%s" % \
+                                        (config.croppedTilesDir, poi["country"], poi["lat"], poi["lon"], \
+                                        poi["width"], poi["height"], tileName)
+                                    
+                                    if not os.path.isdir(targetDir):
+                                        os.makedirs(targetDir)
 
-                                        targetDir = "%s/%s/lat%s_lon%s/w%s_h%s/%s" % \
-                                            (config.croppedTilesDir, poi["country"], poi["lat"], poi["lon"], \
-                                            poi["width"], poi["height"], tileName)
-                                        
-                                        if not os.path.isdir(targetDir):
-                                            os.makedirs(targetDir)
+                                    ds = gdal.Translate("%s/%s" % (targetDir, item), ds, format="JP2OpenJPEG", \
+                                        projWin = [topLeftTransformed.x, topLeftTransformed.y, \
+                                        bottomRightTransformed.x, bottomRightTransformed.y])
 
-                                        ds = gdal.Translate("%s/%s" % (targetDir, item), ds, format="JP2OpenJPEG", \
-                                            projWin = [topLeftTransformed.x, topLeftTransformed.y, \
-                                            bottomRightTransformed.x, bottomRightTransformed.y])
+                                    ds = None
 
-                                        ds = None
-
-                        db.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % \
-                            (poiId, tileConnection["tileId"]))
+                        db.setTileCropped(poiId, tile["rowid"])
                         print("done.")
                                     
 
     def downloadAndCrop(self, fromDate, toDate, platform, width, height, tileLimit = 0, **kwargs):
 
-        qresult = self.getPoiFromDb(self.lat, self.lon, fromDate, toDate, platform, width, height, tileLimit=tileLimit, **kwargs)
+        poi = db.getPoi(self.lat, self.lon, fromDate, toDate, platform, width, height, tileLimit=tileLimit, **kwargs)
 
-        if qresult == None:
-
-            query = "INSERT INTO PointOfInterests (lat, lon"
-            for key, value in kwargs.items():
-                if key in config.optionalSentinelParameters:
-                    query = query + ", " + key
-            query = query + ", country, dateFrom, dateTo, platform, width, height, tileLimit, description, poicreated) "
-            query = query + " VALUES (" + str(self.lat) + ", " + str(self.lon)
-            for key, value in kwargs.items():
-                if key in config.optionalSentinelParameters:
-                    query = query + ", '" + str(value) + "'"
-            query = query + ", '" + self.getCountry() + "', '" + fromDate + "', '" + toDate + "', '" + platform + "', " + str(width) + ", " + str(height) \
-                + ", " + str(tileLimit) + ", " + "'', datetime('now', 'localtime'))"
-            poiId = db.query(query)
-
-            logger.info("new PointOfInterest inserted into database")
-
+        if poi == None:     
+            poiId = db.addPoi(self.lat, self.lon, fromDate, toDate, platform, width, height, tileLimit, **kwargs)
         else:
-            poiId = qresult["rowid"]
+            poiId = poi["rowid"]
 
         products = self.downloadSentinelData(fromDate, toDate, platform, poiId=poiId, tileLimit=tileLimit, **kwargs)
 
@@ -246,23 +222,4 @@ class Geocropper:
 
         # TODO: check if there are any outstanding downloads or crops
 
-    def getCountry(self):
-        cc = countries.CountryChecker(config.worldBordersShapeFile)
-        return cc.getCountry(countries.Point(self.lat, self.lon)).iso
 
-    def getTileFromDb(self, platform, folderName, productId):
-
-        qresult = db.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, productId))
-        return qresult
-
-    def getPoiFromDb(self, lat, lon, fromDate, toDate, platform, width, height, tileLimit = 0, **kwargs):
-
-        query = "SELECT rowid, * FROM PointOfInterests WHERE lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + fromDate + "'" \
-            + " AND dateTo = '" + toDate + "' AND platform = '" + platform + "' AND width = " + str(width) + " AND height = " + str(height) \
-            + " AND tileLimit = " + str(tileLimit)
-        for key, value in kwargs.items():
-            if key in config.optionalSentinelParameters:
-                query = query + " AND " + key + " = '" + str(value) + "'"
-
-        qresult = db.fetchFirstRowQuery(query)
-        return qresult
