@@ -66,28 +66,33 @@ class database:
         
     ### TILES ###
         
-    def getTile(self, platform, folderName, productId):
-        qresult = self.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE platform = ? AND folderName = ? AND productId = ? ", (platform, folderName, productId))
+    def getTile(self, productId = None, folderName = None):
+        if not productId == None and not folderName == None:
+            qresult = self.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE productId = '?' AND folderName = '?'", \
+                (productId, folderName))
+        else:
+            if not productId == None:
+                qresult = self.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE productId = '%s'" % productId)
+            if not folderName == None:
+                qresult = self.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE folderName = '%s'" % folderName)            
         return qresult
         
-    def addTile(self, platform, folderName, productId):
+    def addTile(self, platform, productId, folderName = ""):
         newId = self.query("INSERT INTO Tiles (platform, folderName, productId, firstDownloadRequest, lastDownloadRequest) \
             VALUES (?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))", (platform, folderName, productId))
         logger.info("new tile inserted into database")
         return newId
         
-    def setUnzippedForTile(self, folderName):
-        self.query("UPDATE Tiles SET unzipped = datetime('now', 'localtime') WHERE folderName = '%s'" % folderName)
+    def setUnzippedForTile(self, rowid):
+        self.query("UPDATE Tiles SET unzipped = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (unzipped)")
      
-    def setDownloadRequestForTile(self, platform, folderName, productId):
-        self.query("UPDATE Tiles SET lastDownloadRequest = datetime('now', 'localtime') \
-            WHERE platform = ? AND folderName = ? AND productId = ?", (platform, folderName, productId))
+    def setDownloadRequestForTile(self, rowid):
+        self.query("UPDATE Tiles SET lastDownloadRequest = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (lastDownloadRequest)")
         
-    def setDownloadCompleteForTile(self, platform, folderName, productId):
-        self.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') \
-            WHERE platform = ? AND folderName = ? AND productId = ?", (platform, folderName, productId))
+    def setDownloadCompleteForTile(self, rowid):
+        self.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (downloadComplete)")
         
     ### POIS ###

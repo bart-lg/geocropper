@@ -1,4 +1,4 @@
-import sys
+#import sys
 import config
 from geojson import Point
 
