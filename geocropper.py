@@ -23,11 +23,20 @@ import math
 from shapely.geometry import Point
 from shapely.ops import transform
 
+import csvImport
+
 logger.info("modules loaded")
 
 db = database()
 
+# TODO: convert date format of dateFrom and dateTo
+
 # TODO: addTile folderName not required anymore - improve code!
+
+# TODO: rename fromDate and toDate to dateFrom and dateTo (like in DB...)
+
+def importAllCSVs():
+    csvImport.importAllCSVs()
 
 def init(lat, lon):
     return Geocropper(lat, lon)
@@ -284,6 +293,24 @@ class Geocropper:
 
                     print("Cropping %s ..." % tile["folderName"])
 
+                    if poi["platform"] == "Sentinel-1":
+
+                        fileFormat="GTiff"
+
+                        pathItems = "%s/%s/measurement" % (config.bigTilesDir, tile["folderName"])
+
+                        for item in os.listdir(pathItems):
+
+                            if item.lower().endswith(".tiff"):
+
+                                path = "%s/%s" % (pathItems, item)
+
+                                targetDir = "%s/%s/lat%s_lon%s/w%s_h%s/%s" % \
+                                    (config.croppedTilesDir, poi["country"], poi["lat"], poi["lon"], \
+                                    poi["width"], poi["height"], tile["folderName"])
+
+                                self.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)                        
+
                     if poi["platform"] == "Sentinel-2":
 
                         fileFormat="JP2OpenJPEG"
@@ -293,12 +320,30 @@ class Geocropper:
                         for mainFolder in os.listdir(pathGranule):
 
                             pathImgData = "%s/%s/IMG_DATA" % (pathGranule, mainFolder)
-                            for rasterFolder in os.listdir(pathImgData):
+                            for imgDataItem in os.listdir(pathImgData):
 
-                                pathItems = "%s/%s" % (pathImgData, rasterFolder)
-                                for item in os.listdir(pathItems):
+                                pathImgDataItem = "%s/%s" % (pathImgData, imgDataItem)
 
-                                    path = "%s/%s" % (pathItems, item)
+                                # TODO: combine these two cases somehow...
+                                if os.path.isdir(pathImgDataItem):
+                                
+                                    for item in os.listdir(pathImgDataItem):
+
+                                        path = "%s/%s" % (pathImgDataItem, item)
+
+                                        # dirty... (removes ".SAFE" from folderName)
+                                        tileFolderName = tile["folderName"]
+                                        tileName = tileFolderName[:-5]
+
+                                        targetDir = "%s/%s/lat%s_lon%s/w%s_h%s/%s/%s" % \
+                                            (config.croppedTilesDir, poi["country"], poi["lat"], poi["lon"], \
+                                            poi["width"], poi["height"], tileName, imgDataItem)
+
+                                        self.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
+                                
+                                else:
+
+                                    path = pathImgDataItem
 
                                     # dirty... (removes ".SAFE" from folderName)
                                     tileFolderName = tile["folderName"]
@@ -309,7 +354,8 @@ class Geocropper:
                                         (config.croppedTilesDir, poi["country"], poi["lat"], poi["lon"], \
                                         poi["width"], poi["height"], tileName)
 
-                                    self.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
+                                    self.cropImg(path, imgDataItem, topLeft, bottomRight, targetDir, fileFormat)
+
 
                     if poi["platform"].startswith("LANDSAT"):
                     
@@ -378,5 +424,3 @@ class Geocropper:
         self.cropTiles(poiId)
 
         # TODO: check if there are any outstanding downloads or crops
-
-

@@ -29,11 +29,26 @@ class database:
         for item in config.optionalSentinelParameters:
             query = "%s, %s" % (query, item)
         query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, tilesIdentified TEXT, poicreated TEXT)"
-
         self.cursor.execute(query)
+
         self.cursor.execute("CREATE TABLE IF NOT EXISTS Tiles \
             (platform TEXT, folderName TEXT, productId TEXT, firstDownloadRequest TEXT, lastDownloadRequest TEXT, downloadComplete TEXT, unzipped TEXT)")
+
         self.cursor.execute("CREATE TABLE IF NOT EXISTS TilesForPOIs (poiId INTEGER, tileId INTEGER, tileCropped TEXT)")
+
+        query = "CREATE TABLE IF NOT EXISTS CSVInput \
+            (fileName TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
+        for item in config.optionalSentinelParameters:
+            query = "%s, %s" % (query, item)
+        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT)"
+        self.cursor.execute(query)
+
+        query = "CREATE TABLE IF NOT EXISTS CSVLoaded \
+            (fileName TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
+        for item in config.optionalSentinelParameters:
+            query = "%s, %s" % (query, item)
+        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, csvLoaded TEXT)"
+        self.cursor.execute(query)
 
         self.connection.commit()
 
@@ -42,12 +57,12 @@ class database:
     ### QUERIES ###
         
     def query(self, query, values=None):
+        logger.info("DB query: [%s] [values: %s]" % (query, values))
         if values == None:
             self.cursor.execute(query)
         else:
             self.cursor.execute(query, values)
         self.connection.commit()
-        logger.info("DB query commited: [%s] [values: %s]" % (query, values))
         return self.cursor.lastrowid
 
     def fetchAllRowsQuery(self, query, values=None):
@@ -156,4 +171,31 @@ class database:
         self.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poiId, tileId))
         logger.info("tile-poi updated in database (tileCropped)")
         
-     
+    ### CSV ###
+
+    def importCsvRow(self, fileName, row):
+        if not row == None:
+            optionalFields = ["width", "height", "tileLimit", "description"]
+            numFields = ["width", "height", "tileLimit"]
+            keys = "fileName, lat, lon, dateFrom, dateTo, platform"
+            values = "'%s', %s, %s, '%s', '%s', '%s'" % (fileName, row["lat"], row["lon"], row["dateFrom"], row["dateTo"], row["platform"])
+            for key, value in row.items():
+                if key in config.optionalSentinelParameters or key in optionalFields:
+                    keys = "%s, %s" % (keys, key)
+                    if key in numFields:
+                        values = "%s, %s" % (values, value)
+                    else:
+                        values = "%s, '%s'" % (values, value)
+            keys = keys + ", csvImported"
+            values = values + ", datetime('now', 'localtime')"
+            query = "INSERT INTO CSVInput (%s) VALUES (%s)" % (keys, values)
+            csvImportRowId = self.query(query)
+            return csvImportRowId
+
+    def getImportedCSVdata(self):
+        return self.fetchAllRowsQuery("SELECT rowid, * FROM CSVInput")
+
+    def moveCSVItemToArchive(self, rowid):
+        newId = self.query("INSERT INTO CSVLoaded SELECT *, datetime('now', 'localtime') as csvLoaded FROM CSVInput WHERE CSVInput.rowid = %d" % rowid)
+        self.query("DELETE FROM CSVInput WHERE rowid = %d" % rowid)
+        return newId

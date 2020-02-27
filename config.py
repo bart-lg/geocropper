@@ -12,6 +12,8 @@ usgsPW = userconfig.usgsPW
 dataDir = "./data"
 bigTilesDir = dataDir + "/bigTiles"
 croppedTilesDir = dataDir + "/croppedTiles"
+csvInputDir = dataDir + "/csvInput"
+csvArchiveDir = dataDir + "/csvArchive"
 
 dbFile = "geocropper.db"
 
