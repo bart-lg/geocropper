@@ -1,5 +1,6 @@
 import sqlite3
 import config
+
 from countries import countries
 
 import logging
@@ -28,26 +29,27 @@ class database:
             (country TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
         for item in config.optionalSentinelParameters:
             query = "%s, %s" % (query, item)
-        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, tilesIdentified TEXT, poicreated TEXT)"
+        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, tilesIdentified TEXT, poicreated TEXT, cancelled TEXT)"
         self.cursor.execute(query)
 
         self.cursor.execute("CREATE TABLE IF NOT EXISTS Tiles \
-            (platform TEXT, folderName TEXT, productId TEXT, firstDownloadRequest TEXT, lastDownloadRequest TEXT, downloadComplete TEXT, unzipped TEXT)")
+            (platform TEXT, folderName TEXT, productId TEXT, firstDownloadRequest TEXT, lastDownloadRequest TEXT, \
+            downloadComplete TEXT, unzipped TEXT, cancelled TEXT)")
 
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS TilesForPOIs (poiId INTEGER, tileId INTEGER, tileCropped TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS TilesForPOIs (poiId INTEGER, tileId INTEGER, tileCropped TEXT, cancelled TEXT)")
 
         query = "CREATE TABLE IF NOT EXISTS CSVInput \
             (fileName TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
         for item in config.optionalSentinelParameters:
             query = "%s, %s" % (query, item)
-        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT)"
+        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, cancelled TEXT)"
         self.cursor.execute(query)
 
         query = "CREATE TABLE IF NOT EXISTS CSVLoaded \
             (fileName TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
         for item in config.optionalSentinelParameters:
             query = "%s, %s" % (query, item)
-        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, csvLoaded TEXT)"
+        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, cancelled TEXT, csvLoaded TEXT)"
         self.cursor.execute(query)
 
         self.connection.commit()
@@ -109,6 +111,10 @@ class database:
     def setDownloadCompleteForTile(self, rowid):
         self.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (downloadComplete)")
+
+    def setCancelledTile(self, rowid):
+        self.query("UPDATE Tiles SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
+        logger.info("tile updated in database (cancelled)")     
         
     ### POIS ###
     
@@ -151,6 +157,10 @@ class database:
     def setTilesIdentifiedForPoi(self, poiId):
         self.query("UPDATE PointOfInterests SET tilesIdentified = datetime('now', 'localtime') WHERE rowid = %d" % poiId)
         logger.info("PointOfInterest updated in database (tilesIdentified)")
+
+    def setCancelledPoi(self, rowid):
+        self.query("UPDATE PointOfInterests SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
+        logger.info("PointOfInterest updated in database (cancelled)")        
         
     ### TILE-POI-CONNECTION ###
         
@@ -170,6 +180,10 @@ class database:
     def setTileCropped(self, poiId, tileId):
         self.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poiId, tileId))
         logger.info("tile-poi updated in database (tileCropped)")
+
+    def setCancelledTileForPoi(self, poiId, tileId):
+        self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poiId, tileId))
+        logger.info("tile-poi updated in database (cancelled)")          
         
     ### CSV ###
 
@@ -199,3 +213,8 @@ class database:
         newId = self.query("INSERT INTO CSVLoaded SELECT *, datetime('now', 'localtime') as csvLoaded FROM CSVInput WHERE CSVInput.rowid = %d" % rowid)
         self.query("DELETE FROM CSVInput WHERE rowid = %d" % rowid)
         return newId
+
+    def setCancelledImport(self, rowid):
+        self.query("UPDATE CSVInput SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
+        logger.info("import updated in database (cancelled)")
+        self.moveCSVItemToArchive(rowid)

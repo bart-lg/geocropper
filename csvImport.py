@@ -62,8 +62,11 @@ def importCSV(filePath, delimiter=',', quotechar='"', autoLoad = True):
 
 def loadImportedCSVdata():
     data = db.getImportedCSVdata()
+    i = 1
     for item in data:
         if len(item) > 0:
+            print("\n############################################################")
+            print("\n[ Load imported data... %d/%d ]" % (i, len(data)))
             geoc = geocropper.init(item["lat"], item["lon"])
             kwargs = {}
             for key in item.keys():
@@ -73,3 +76,4 @@ def loadImportedCSVdata():
                 width = item["width"], height = item["height"], tileLimit = item["tileLimit"], **kwargs)
             del geoc
             db.moveCSVItemToArchive(item["rowid"])
+        i += 1

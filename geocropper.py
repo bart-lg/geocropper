@@ -1,19 +1,9 @@
 import log
-import config
-
-logger = log.setupCustomLogger('main')
-
-import sys
-sys.path.append("./lib")
-
-import sentinelWrapper
-import landsatWrapper
-
-from database import database
 import zipfile
 import tarfile
 from tqdm import tqdm
 import os
+from dateutil.parser import *
 import pyproj
 from osgeo import gdal
 from functools import partial
@@ -23,10 +13,16 @@ import math
 from shapely.geometry import Point
 from shapely.ops import transform
 
+import sys
+sys.path.append("./lib")
+
+from database import database
+import config
+import sentinelWrapper
+import landsatWrapper
 import csvImport
 
-logger.info("modules loaded")
-
+logger = log.setupCustomLogger('main')
 db = database()
 
 # TODO: convert date format of dateFrom and dateTo
@@ -43,75 +39,115 @@ def init(lat, lon):
 
 class Geocropper:
 
+
     def __init__(self, lat , lon):
         self.lat = lat
         self.lon = lon
         print("\nGeocropper initialized.")
+        print("=========================\n")
+        logger.info("new geocropper instance initialized") 
+
 
     def printPosition(self):
         print("lat: " + str(self.lat))
         print("lon: " + str(self.lon))
-        logger.info("new geocropper instance initialized") 
+
 
     def downloadSentinelData(self, fromDate, toDate, platform, poiId = 0, tileLimit = 0, **kwargs):
 
+        # load sentinel wrapper
+
         self.sentinel = sentinelWrapper.sentinelWrapper()
-    
-        print("\nSearch for Sentinel data:")
+        
+        # convert date to required format
+        fromDate = self.convertDate(fromDate, "%Y%m%d")
+        toDate = self.convertDate(toDate, "%Y%m%d")
+        
+
+        # print search info
+
+        print("Search for Sentinel data:")
         self.printPosition()
-        print("From: " + fromDate)
-        print("To: " + toDate)
+        print("From: " + self.convertDate(fromDate, "%d.%m.%Y"))
+        print("To: " + self.convertDate(toDate, "%d.%m.%Y"))
         print("Platform: " + platform)
         if tileLimit > 0:
             print("Tile-limit: %d" % tileLimit)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 print("%s: %s" %(key, str(value)))
-
-        print("=========================================================\n")
+        print("----------------------------\n")
+        
+        
+        # search for sentinel data
         
         if int(tileLimit) > 0:
             products = self.sentinel.getSentinelProducts(self.lat, self.lon, fromDate, toDate, platform, limit=tileLimit, **kwargs)
         else:   
             products = self.sentinel.getSentinelProducts(self.lat, self.lon, fromDate, toDate, platform, **kwargs)
-        
+
         print("Found tiles: %d\n" % len(products))
+
+        
+        # TODO: What if no tiles could be found??
+
+
+        # start download
 
         print("Download")
         print("-----------------\n")
-
-        # TODO: What if no tiles could be found??
         
+        # index i serves as a counter
         i = 1
+
+        # key of products is product id
         for key in products:
             
+            # folder name after unzip is < SENTINEL TILE TITLE >.SAFE
             folderName = products[key]["title"] + ".SAFE"
+
             tileId = None
             tile = db.getTile(productId = key)
             
+            # check for previous downloads
             if not os.path.isdir("%s/%s" % (config.bigTilesDir, folderName)) and \
               not os.path.isfile("%s/%s.zip" % (config.bigTilesDir, products[key]["title"])):
                 
+                # no previous download detected...
+
+                # only add new tile to database if not existing
+                # this leads automatically to a resume functionality
                 if tile == None:
                     tileId = db.addTile(platform, key, folderName)
                 else:
                     tileId = tile["rowid"]
+                    # update download request date for existing tile in database
                     db.setDownloadRequestForTile(tileId)
 
+                # download sentinel product
+                # sentinel wrapper has a resume function for incomplete downloads
                 print("[%d/%d]: Download %s" % (i, len(products), products[key]["title"]))
                 self.sentinel.downloadSentinelProduct(key)
 
+                # if downloaded zip-file could be detected set download complete date in database
                 if os.path.isfile("%s/%s.zip" % (config.bigTilesDir, products[key]["title"])):
                     db.setDownloadCompleteForTile(tileId)
             
             else:
 
+                # zip file or folder from previous download detected...
+
                 if tile == None:
+                    # if tile not yet in database add to database
+                    # this could happen if database gets reset
                     tileId = db.addTile(platform, key, folderName)
                 else:
                     tileId = tile["rowid"]
                 
                 print("[%d/%d]: %s already exists." % (i, len(products), products[key]["title"]))
+
+
+            # if there is a point of interest (POI) then create connection between tile and POI in database
 
             if int(poiId) > 0:
                 
@@ -121,32 +157,49 @@ class Geocropper:
 
             i += 1
             
+
+        # disconnect sentinel wrapper
         del self.sentinel
         
+
+        # if there is a point of interest (POI) => set date for tiles identified
+        # this means that all tiles for the requested POI have been identified and downloaded
         if int(poiId) > 0:
             db.setTilesIdentifiedForPoi(poiId)
         
         return products
+
         
     def downloadLandsatData(self, fromDate, toDate, platform, poiId = 0, tileLimit = 0, **kwargs):
     
+        # load landsat wrapper
+
         self.landsat = landsatWrapper.landsatWrapper()
-        
-        print("\nSearch for Landsat data:")
+
+        # default max cloud coverage is set to 100
+        maxCloudCoverage = 100
+
+        # convert date to required format
+        fromDate = self.convertDate(fromDate)
+        toDate = self.convertDate(toDate)
+
+
+        # print search info
+
+        print("Search for Landsat data:")
         self.printPosition()
-        print("From: " + fromDate)
-        print("To: " + toDate)
+        print("From: " + self.convertDate(fromDate, "%d.%m.%Y"))
+        print("To: " + self.convertDate(toDate, "%d.%m.%Y"))
         print("Platform: " + platform)
         if tileLimit > 0:
             print("Tile-limit: %d" % tileLimit)
-        # dirty...
-        maxCloudCoverage = 100
         for key, value in kwargs.items():
             if key == "cloudcoverpercentage":
                 maxCloudCoverage = value
                 print("%s: %s" %(key, str(value)))
+        print("----------------------------\n")
 
-        print("=========================================================\n")        
+
         
         products = self.landsat.getLandsatProducts(self.lat, self.lon, fromDate, toDate, platform, maxCloudCoverage, tileLimit)
 
@@ -162,7 +215,7 @@ class Geocropper:
             tileId = None
             tile = db.getTile(productId = product["entityId"])
 
-            # TODO: check if existing tar file is complete
+            # TODO: check if existing tar file is complete => needs to be deleted and re-downloaded
 
             if not os.path.isdir("%s/%s" % (config.bigTilesDir, folderName)) and \
               not os.path.isfile("%s/%s.tar.gz" % (config.bigTilesDir, product["displayId"])):
@@ -404,6 +457,9 @@ class Geocropper:
 
     def downloadAndCrop(self, fromDate, toDate, platform, width, height, tileLimit = 0, **kwargs):
 
+        fromDate = self.convertDate(fromDate)
+        toDate = self.convertDate(toDate)
+
         poi = db.getPoi(self.lat, self.lon, fromDate, toDate, platform, width, height, tileLimit=tileLimit, **kwargs)
 
         if poi == None:     
@@ -424,3 +480,8 @@ class Geocropper:
         self.cropTiles(poiId)
 
         # TODO: check if there are any outstanding downloads or crops
+
+
+    def convertDate(self, date, newFormat="%Y-%m-%d"):
+        temp = parse(date)
+        return temp.strftime(newFormat)
