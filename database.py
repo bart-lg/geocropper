@@ -5,11 +5,13 @@ from countries import countries
 
 import logging
 
-logger = logging.getLogger('root')
-
-# NEVER USE DELETE!
+# NEVER USE DELETE IN TABLES WITH RELATIONS!
 # SQLITE REUSES IDs!
 # THIS COULD BE BAD FOR RELATIONS!
+
+
+# get logger object
+logger = logging.getLogger('root')
 
 class database:
 
@@ -17,14 +19,22 @@ class database:
 
         logger.info("start DB connection")
 
+        # open or create sqlite database file
         self.connection = sqlite3.connect(config.dbFile)
+
+        # provide index-based and case-insensitive name-based access to columns
         self.connection.row_factory = sqlite3.Row
+
+        # create sqlite cursor object to execute SQL commands
         self.cursor = self.connection.cursor()
 
         logger.info("DB connected")
 
-        # if no tables there, create new tables...
 
+        # create new tables if not existing
+
+        # table PointOfInterest
+        # holds the information for a geocropper call - one record for every point/parameter combination
         query = "CREATE TABLE IF NOT EXISTS PointOfInterests \
             (country TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
         for item in config.optionalSentinelParameters:
@@ -32,12 +42,19 @@ class database:
         query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, tilesIdentified TEXT, poicreated TEXT, cancelled TEXT)"
         self.cursor.execute(query)
 
+        # table Tiles
+        # information about downloaded big tiles
         self.cursor.execute("CREATE TABLE IF NOT EXISTS Tiles \
             (platform TEXT, folderName TEXT, productId TEXT, firstDownloadRequest TEXT, lastDownloadRequest TEXT, \
             downloadComplete TEXT, unzipped TEXT, cancelled TEXT)")
 
+        # table TilesForPOIs
+        # n:m relation between tables PointOfInterest and Tiles
+        # additional information: date of image cropping based on parameters of POI
         self.cursor.execute("CREATE TABLE IF NOT EXISTS TilesForPOIs (poiId INTEGER, tileId INTEGER, tileCropped TEXT, cancelled TEXT)")
 
+        # table CSVInput
+        # holds imported records which have not yet been processed (loaded)
         query = "CREATE TABLE IF NOT EXISTS CSVInput \
             (fileName TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
         for item in config.optionalSentinelParameters:
@@ -45,6 +62,8 @@ class database:
         query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, cancelled TEXT)"
         self.cursor.execute(query)
 
+        # table CSVLoaded
+        # holds imported and processed/loaded records
         query = "CREATE TABLE IF NOT EXISTS CSVLoaded \
             (fileName TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
         for item in config.optionalSentinelParameters:
@@ -52,21 +71,26 @@ class database:
         query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, cancelled TEXT, csvLoaded TEXT)"
         self.cursor.execute(query)
 
+        # save changes to database
         self.connection.commit()
 
         logger.info("tables created if non existing")
 
+
     ### QUERIES ###
         
+    # query function used for inserts and updates
     def query(self, query, values=None):
         logger.info("DB query: [%s] [values: %s]" % (query, values))
         if values == None:
             self.cursor.execute(query)
         else:
             self.cursor.execute(query, values)
+        # save changes
         self.connection.commit()
         return self.cursor.lastrowid
 
+    # query function used for selects returning all rows of result
     def fetchAllRowsQuery(self, query, values=None):
         if values == None:
             self.cursor.execute(query)
@@ -74,6 +98,7 @@ class database:
             self.cursor.execute(query, values)
         return self.cursor.fetchall()
 
+    # query function used for selects returning only first row of result
     def fetchFirstRowQuery(self, query, values=None):
         if values == None:
             self.cursor.execute(query)
@@ -81,6 +106,7 @@ class database:
             self.cursor.execute(query, values)
         return self.cursor.fetchone()
         
+
     ### TILES ###
         
     def getTile(self, productId = None, folderName = None):
@@ -116,12 +142,13 @@ class database:
         self.query("UPDATE Tiles SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (cancelled)")     
         
+
     ### POIS ###
     
-    def getPoi(self, lat, lon, fromDate, toDate, platform, width, height, tileLimit = 0, **kwargs):
+    def getPoi(self, lat, lon, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
 
-        query = "SELECT rowid, * FROM PointOfInterests WHERE lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + fromDate + "'" \
-            + " AND dateTo = '" + toDate + "' AND platform = '" + platform + "' AND width = " + str(width) + " AND height = " + str(height) \
+        query = "SELECT rowid, * FROM PointOfInterests WHERE lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + dateFrom + "'" \
+            + " AND dateTo = '" + dateTo + "' AND platform = '" + platform + "' AND width = " + str(width) + " AND height = " + str(height) \
             + " AND tileLimit = " + str(tileLimit)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
@@ -130,7 +157,7 @@ class database:
         qresult = self.fetchFirstRowQuery(query)
         return qresult
         
-    def addPoi(self, lat, lon, fromDate, toDate, platform, width, height, tileLimit = 0, **kwargs):
+    def addPoi(self, lat, lon, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
         query = "INSERT INTO PointOfInterests (lat, lon"
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
@@ -140,7 +167,7 @@ class database:
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = query + ", '" + str(value) + "'"
-        query = query + ", '" + self.getCountry(lat, lon) + "', '" + fromDate + "', '" + toDate + "', '" + platform + "', " + str(width) + ", " + str(height) \
+        query = query + ", '" + self.getCountry(lat, lon) + "', '" + dateFrom + "', '" + dateTo + "', '" + platform + "', " + str(width) + ", " + str(height) \
             + ", " + str(tileLimit) + ", " + "'', datetime('now', 'localtime'))"
         poiId = self.query(query)
 
@@ -162,6 +189,7 @@ class database:
         self.query("UPDATE PointOfInterests SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("PointOfInterest updated in database (cancelled)")        
         
+
     ### TILE-POI-CONNECTION ###
         
     def getTileForPoi(self, poiId, tileId):
@@ -185,6 +213,7 @@ class database:
         self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poiId, tileId))
         logger.info("tile-poi updated in database (cancelled)")          
         
+
     ### CSV ###
 
     def importCsvRow(self, fileName, row):

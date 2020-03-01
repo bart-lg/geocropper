@@ -1,5 +1,6 @@
 import userconfig
 
+# path and filename of log file
 logFile = "geocropper.log"
 
 # used for download of Sentinel data
@@ -11,14 +12,17 @@ copernicusURL = 'https://scihub.copernicus.eu/dhus'
 usgsUser = userconfig.usgsUser
 usgsPW = userconfig.usgsPW
 
+# various data paths
 dataDir = "./data"
 bigTilesDir = dataDir + "/bigTiles"
 croppedTilesDir = dataDir + "/croppedTiles"
 csvInputDir = dataDir + "/csvInput"
 csvArchiveDir = dataDir + "/csvArchive"
 
+# shape file used to determine country for geolocation
 worldBordersShapeFile = dataDir + "/worldBorders/TM_WORLD_BORDERS-0.3.shp"
 
+# path and filename of sqlite database file
 dbFile = "geocropper.db"
 
 # ATTENTION: Changes in optionalSentinelParameters requires manual removal of existing database before starting script!!!
