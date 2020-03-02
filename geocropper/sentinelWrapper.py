@@ -1,4 +1,4 @@
-import config
+import geocropper.config as config
 import logging
 from geojson import Point
 # from sentinelsat.sentinel import SentinelAPI, geojson_to_wkt, read_geojson

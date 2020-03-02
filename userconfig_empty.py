@@ -1,0 +1,5 @@
+copernicusUser = ""
+copernicusPW = ""
+
+usgsUser = ""
+usgsPW = ""

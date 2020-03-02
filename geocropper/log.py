@@ -1,6 +1,6 @@
 import logging
 import logging.handlers
-import config
+import geocropper.config as config
 
 def setupCustomLogger(name):
 

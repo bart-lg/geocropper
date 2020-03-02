@@ -1,8 +1,9 @@
-import log
+import geocropper.log as log
 import zipfile
 import tarfile
 from tqdm import tqdm
 import os
+import pathlib
 from dateutil.parser import *
 import pyproj
 from osgeo import gdal
@@ -13,19 +14,18 @@ import math
 from shapely.geometry import Point
 from shapely.ops import transform
 
-import sys
-sys.path.append("./lib")
-
-from database import database
-import config
-import sentinelWrapper
-import landsatWrapper
-import csvImport
+from geocropper.database import database
+import geocropper.config as config
+import geocropper.sentinelWrapper as sentinelWrapper
+import geocropper.landsatWrapper as landsatWrapper
+import geocropper.csvImport as csvImport
 
 logger = log.setupCustomLogger('main')
 db = database()
 
 # TODO: addTile folderName not required anymore - improve code!
+
+# TODO: use pathlib for all paths!
 
 def importAllCSVs():
     csvImport.importAllCSVs()
@@ -105,8 +105,8 @@ class Geocropper:
                 tile = db.getTile(productId = key)
                 
                 # check for previous downloads
-                if not os.path.isdir("%s/%s" % (config.bigTilesDir, folderName)) and \
-                  not os.path.isfile("%s/%s.zip" % (config.bigTilesDir, products[key]["title"])):
+                if not pathlib.Path(config.bigTilesDir / folderName).is_dir() and \
+                  not pathlib.Path(config.bigTilesDir / (products[key]["title"] + ".zip") ).is_file():
                     
                     # no previous download detected...
 
@@ -125,7 +125,7 @@ class Geocropper:
                     self.sentinel.downloadSentinelProduct(key)
 
                     # if downloaded zip-file could be detected set download complete date in database
-                    if os.path.isfile("%s/%s.zip" % (config.bigTilesDir, products[key]["title"])):
+                    if pathlib.Path(config.bigTilesDir / (products[key]["title"] + ".zip") ).is_file():
                         db.setDownloadCompleteForTile(tileId)
                 
                 else:
@@ -221,8 +221,8 @@ class Geocropper:
                 # TODO: check if existing tar file is complete => needs to be deleted and re-downloaded
 
                 # check for previous downloads
-                if not os.path.isdir("%s/%s" % (config.bigTilesDir, folderName)) and \
-                  not os.path.isfile("%s/%s.tar.gz" % (config.bigTilesDir, product["displayId"])):
+                if not pathlib.Path(config.bigTilesDir / folderName).is_dir() and \
+                  not pathlib.Path(config.bigTilesDir / (product["displayId"] + ".tar.gz") ).is_file():                
 
                     # no previous download detected...
 
@@ -241,7 +241,7 @@ class Geocropper:
                     self.landsat.downloadLandsatProduct(product["entityId"])
 
                     # if downloaded tar-file could be detected set download complete date in database
-                    if os.path.isfile("%s/%s.tar.gz" % (config.bigTilesDir, product["displayId"])):
+                    if pathlib.Path(config.bigTilesDir / (product["displayId"] + ".tar.gz") ).is_file():
                         db.setDownloadCompleteForTile(tileId)
 
                 else:
@@ -311,7 +311,7 @@ class Geocropper:
                 print("[%d/%d] %s:" % (i, filesNum, item))
 
                 # get path of the packed file
-                filePath = config.bigTilesDir + "/" + item
+                filePath = config.bigTilesDir / item
 
                 # unpack zip file if zip
                 if item.endswith(".zip"):
@@ -338,7 +338,7 @@ class Geocropper:
                     tile = db.getTile(folderName = item[:-7])
 
                     # create target directory, since there is no root dir in tar package
-                    targetDir = "%s/%s" % (config.bigTilesDir, tile["folderName"])
+                    targetDir = config.bigTilesDir / tile["folderName"]
                     if not os.path.isdir(targetDir):
                         os.makedirs(targetDir)                    
 
@@ -422,14 +422,13 @@ class Geocropper:
 
                         # go through "SAFE"-directory structure of Sentinel-2
 
-                        pathGranule = "%s/%s/GRANULE" \
-                            % (config.bigTilesDir, tile["folderName"])
+                        pathGranule = config.bigTilesDir / tile["folderName"] / "GRANULE"
                         for mainFolder in os.listdir(pathGranule):
 
-                            pathImgData = "%s/%s/IMG_DATA" % (pathGranule, mainFolder)
+                            pathImgData = pathGranule / mainFolder / "IMG_DATA"
                             for imgDataItem in os.listdir(pathImgData):
 
-                                pathImgDataItem = "%s/%s" % (pathImgData, imgDataItem)
+                                pathImgDataItem = pathImgData / imgDataItem
 
                                 # if Level-1 data pathImgDataItem is already an image file
                                 # if Level-2 data pathImgDataItem is a directory with image files
@@ -443,16 +442,17 @@ class Geocropper:
                                     for item in os.listdir(pathImgDataItem):
 
                                         # set path of img file
-                                        path = "%s/%s" % (pathImgDataItem, item)
+                                        path = pathImgDataItem / item
 
                                         # TODO: dirty... (removes ".SAFE" from folderName)
                                         tileFolderName = tile["folderName"]
                                         tileName = tileFolderName[:-5]
 
                                         # target directory for cropped image
-                                        targetDir = "%s/%s/lat%s_lon%s/w%s_h%s/%s/%s" % \
-                                            (config.croppedTilesDir, poi["country"], poi["lat"], poi["lon"], \
-                                            poi["width"], poi["height"], tileName, imgDataItem)
+                                        targetDir = config.croppedTilesDir / poi["country"] / \
+                                            ("lat%s_lon%s" % (poi["lat"], poi["lon"])) / \
+                                            ("w%s_h%s" % (poi["width"], poi["height"])) / \
+                                            tileName / imgDataItem
 
                                         # CROP IMAGE
                                         self.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
@@ -469,9 +469,9 @@ class Geocropper:
                                     tileName = tileFolderName[:-5]
 
                                     # target directory for cropped image
-                                    targetDir = "%s/%s/lat%s_lon%s/w%s_h%s/%s" % \
-                                        (config.croppedTilesDir, poi["country"], poi["lat"], poi["lon"], \
-                                        poi["width"], poi["height"], tileName)
+                                    targetDir = config.croppedTilesDir / poi["country"] / \
+                                        ("lat%s_lon%s" % (poi["lat"], poi["lon"])) / \
+                                        ("w%s_h%s" % (poi["width"], poi["height"])) / tileName                                        
 
                                     # CROP IMAGE
                                     self.cropImg(path, imgDataItem, topLeft, bottomRight, targetDir, fileFormat)
@@ -494,7 +494,7 @@ class Geocropper:
                         # all images are in root dir of tile
 
                         # set path of root dir of tile
-                        pathImgData = "%s/%s" % (config.bigTilesDir, tile["folderName"])
+                        pathImgData = config.bigTilesDir / tile["folderName"]
 
                         # go through all files in root dir of tile
                         for item in os.listdir(pathImgData):
@@ -503,12 +503,12 @@ class Geocropper:
                             if item.lower().endswith(".tif"):
 
                                 # set path of image file
-                                path = "%s/%s" % (pathImgData, item)
+                                path = pathImgData / item
 
                                 # target directory for cropped image
-                                targetDir = "%s/%s/lat%s_lon%s/w%s_h%s/%s" % \
-                                    (config.croppedTilesDir, poi["country"], poi["lat"], poi["lon"], \
-                                    poi["width"], poi["height"], tile["folderName"])
+                                targetDir = config.croppedTilesDir / poi["country"] / \
+                                        ("lat%s_lon%s" % (poi["lat"], poi["lon"])) / \
+                                        ("w%s_h%s" % (poi["width"], poi["height"])) / tile["folderName"]
 
                                 # CROP IMAGE
                                 self.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
@@ -523,7 +523,7 @@ class Geocropper:
     def cropImg(self, path, item, topLeft, bottomRight, targetDir, fileFormat):
     
         # open raster image file
-        img = rasterio.open(path)
+        img = rasterio.open(str(path))
 
         # prepare parameters for coordinate system transform function 
         toTargetCRS = partial(pyproj.transform, \
@@ -534,14 +534,14 @@ class Geocropper:
         bottomRightTransformed = transform(toTargetCRS, bottomRight)
 
         # open image with GDAL
-        ds = gdal.Open(path)
+        ds = gdal.Open(str(path))
 
         # make sure that target directory exists
-        if not os.path.isdir(targetDir):
-            os.makedirs(targetDir)
+        if not os.path.isdir(str(targetDir)):
+            os.makedirs(str(targetDir))
 
         # CROP IMAGE
-        ds = gdal.Translate("%s/%s" % (targetDir, item), ds, format=fileFormat, \
+        ds = gdal.Translate(str(targetDir / item), ds, format=fileFormat, \
             projWin = [topLeftTransformed.x, topLeftTransformed.y, \
             bottomRightTransformed.x, bottomRightTransformed.y])
 

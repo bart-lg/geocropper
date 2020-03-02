@@ -1,11 +1,14 @@
 import csv
 import shutil
 import os
-import geocropper
-import database
-import config
+import pathlib
 
 import logging
+
+import geocropper.geocropper as geocropper
+import geocropper.database as database
+import geocropper.config as config
+
 
 # NEEDED COLUMNS:
 # lat, lon, dateFrom, dateTo, platform
@@ -31,7 +34,7 @@ def importAllCSVs(delimiter=',', quotechar='"'):
 
         # if file is csv file then import content to database
         if item.endswith(".csv"):
-            filePath = "%s/%s" % (config.csvInputDir, item)
+            filePath = config.csvInputDir / item
             importCSV(filePath = filePath, delimiter = delimiter, quotechar = quotechar, autoLoad = False)
     
     # load imported csv data: call geocropper for individual records
@@ -57,14 +60,14 @@ def importCSV(filePath, delimiter=',', quotechar='"', autoLoad = True):
             db.importCsvRow(fileName, row)
             counter += 1
 
-        logger.info("CSV import: " + filePath)
+        logger.info("CSV import: " + str(filePath))
         logger.info("%d rows imported into database." % counter)
 
     csvfile.close()
     
 
     # check for unique csv filename in csv archive directory
-    if os.path.exists("%s/%s" % (config.csvArchiveDir, fileName)):
+    if pathlib.Path(config.csvArchiveDir / fileName).is_file():
         
         # if file exists try other variations
 
@@ -74,7 +77,7 @@ def importCSV(filePath, delimiter=',', quotechar='"', autoLoad = True):
         filePrefix = os.path.splitext(fileName)[0]
 
         # loop through possible variations
-        while os.path.exists("%s/%s(%s).csv" % (config.csvArchiveDir, filePrefix, i)) and i < 1000:
+        while pathlib.Path(config.csvArchiveDir / ("%s(%s).csv" % (filePrefix, i)) ).is_file() and i < 1000:
             i += 1
 
         # set new filename 
@@ -87,7 +90,7 @@ def importCSV(filePath, delimiter=',', quotechar='"', autoLoad = True):
 
 
     # set new path/filename
-    newPath = "%s/%s" % (config.csvArchiveDir, fileName)
+    newPath = config.csvArchiveDir / fileName
 
     # move csv file to archive
     if os.path.exists(newPath):

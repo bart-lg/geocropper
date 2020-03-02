@@ -1,9 +1,14 @@
 import sqlite3
-import config
+import geocropper.config as config
+
+import sys
+import os
+sys.path.append(os.path.join(os.path.realpath('.'), "lib"))
 
 from countries import countries
 
 import logging
+
 
 # NEVER USE DELETE IN TABLES WITH RELATIONS!
 # SQLITE REUSES IDs!
@@ -176,7 +181,11 @@ class database:
         
     def getCountry(self, lat, lon):
         cc = countries.CountryChecker(config.worldBordersShapeFile)
-        return cc.getCountry(countries.Point(lat, lon)).iso    
+        country = cc.getCountry(countries.Point(lat, lon))
+        if country == None:
+            return "None"
+        else:
+            return country.iso
         
     def getPoiFromId(self, poiId):
         return self.fetchFirstRowQuery("SELECT rowid, * FROM PointOfInterests WHERE rowid = %d" % poiId)

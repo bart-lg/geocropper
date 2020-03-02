@@ -1,4 +1,4 @@
-import config
+import geocropper.config as config
 import logging
 import landsatxplore.api
 from landsatxplore.earthexplorer import EarthExplorer
