@@ -27,11 +27,36 @@ db = database()
 
 # TODO: use pathlib for all paths!
 
+
 def importAllCSVs():
+    """Import of all CSVs
+
+    Place your CSV files in the inputCSV directory defined in the config file.
+    With this function all CSVs get imported and loaded.
+    This means that for all geolocations the appropriate tiles get downloaded and cropped according to the request.
+
+    """
     csvImport.importAllCSVs()
 
+
 def init(lat, lon):
+    """Initialization of a Geocropper instance.
+
+    Parameters
+    ----------
+    lat : float
+        Latitude of the geolocation
+    lon : float
+        Longitude of the geolocation
+
+    Returns
+    -------
+    Geocropper
+        New instance of Geocropper class with attributes lat and lon
+
+    """
     return Geocropper(lat, lon)
+
 
 class Geocropper:
 
@@ -39,17 +64,69 @@ class Geocropper:
     def __init__(self, lat , lon):
         self.lat = lat
         self.lon = lon
-        print("\nGeocropper initialized.")
-        print("=========================\n")
+        # print("\nGeocropper initialized.")
+        # print("=========================\n")
         logger.info("new geocropper instance initialized") 
 
 
     def printPosition(self):
+        """Prints current location attributes of Geocropper object to console."""
         print("lat: " + str(self.lat))
         print("lon: " + str(self.lon))
 
 
     def downloadSentinelData(self, dateFrom, dateTo, platform, poiId = 0, tileLimit = 0, **kwargs):
+        """Download Sentinel tiles to directory specified in the config file.
+
+        Parameters
+        ----------
+        dateFrom : str
+            Start date for search request in a chosen format.
+            The format must be recognizable by the dateutil lib.
+            In case of doubt use the format 'YYYY-MM-DD'.
+        dateTo : str
+            End date for search request in a chosen format.
+            The format must be recognizable by the dateutil lib.
+            In case of doubt use the format 'YYYY-MM-DD'.
+        platform : str
+            Choose between 'Sentinel-1' and 'Sentinel-2'
+        poiId : int, optional
+            ID of PointOfInterest record in sqlite database.
+            This is primarly used by other functions to create a connection between the database records.
+        tileLimit : int, optional
+            Maximum number of tiles to be downloaded.
+        cloudcoverpercentage : int, optional
+            Value between 0 and 100 for maximum cloud cover percentage.
+        producttype : str, optional
+            Sentinel-1 products: RAW, SLC, GRD, OCN
+                SLC: Single Look Complex
+                GRD: Ground Range Detected
+                OCN: Ocean
+            Sentinel-2 products: S2MSI1C, S2MSI2A, S2MSI2Ap
+        polarisationmode : str, optional
+            Used for Sentinel-1 products:
+            Accepted entries are: HH, VV, HV, VH, HH+HV, VV+VH
+        sensoroperationalmode : str, optional
+            Used for Sentinel-1 products:
+            Accepted entries are: SM, IW, EW, WV
+                SM: Stripmap
+                IW: Interferometric Wide Swath 
+                EW: Extra Wide Swath
+                WV: Wave
+        swathidentifier : str, optional
+            Used for Sentinel-1 products:
+            Accepted entries are: S1, S2, S3, S4, S5, S6, IW, IW1, IW2, IW3, EW, EW1, EW2, EW3, EW4, EW5
+        timeliness : str, optional
+            Used for Sentinel-1 products:
+                NRT: NRT-3h (Near Real Time)
+                NTC: Fast-24h
+
+        Returns
+        -------
+        list
+            list of found products (tiles)
+
+        """
 
         # load sentinel wrapper
 
@@ -166,7 +243,35 @@ class Geocropper:
 
         
     def downloadLandsatData(self, dateFrom, dateTo, platform, poiId = 0, tileLimit = 0, **kwargs):
-    
+        """Download Landsat tiles to directory specified in the config file.
+
+        Parameters
+        ----------
+        dateFrom : str
+            Start date for search request in a chosen format.
+            The format must be recognizable by the dateutil lib.
+            In case of doubt use the format 'YYYY-MM-DD'.
+        dateTo : str
+            End date for search request in a chosen format.
+            The format must be recognizable by the dateutil lib.
+            In case of doubt use the format 'YYYY-MM-DD'.
+        platform : str
+            Choose between 'LANDSAT_TM_C1', 'LANDSAT_ETM_C1' and 'LANDSAT_8_C1'
+        poiId : int, optional
+            ID of PointOfInterest record in sqlite database.
+            This is primarly used by other functions to create a connection between the database records.
+        tileLimit : int, optional
+            Maximum number of tiles to be downloaded.
+        cloudcoverpercentage : int, optional
+            Value between 0 and 100 for maximum cloud cover percentage.
+
+        Returns
+        -------
+        list
+            list of found products (tiles)
+
+        """
+
         # load landsat wrapper
 
         self.landsat = landsatWrapper.landsatWrapper()
@@ -549,6 +654,50 @@ class Geocropper:
 
 
     def downloadAndCrop(self, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
+        """Download and crop/clip Sentinel or Landsat tiles to directories specified in the config file.
+
+        Parameters
+        ----------
+        dateFrom : str
+            Start date for search request in a chosen format.
+            The format must be recognizable by the dateutil lib.
+            In case of doubt use the format 'YYYY-MM-DD'.
+        dateTo : str
+            End date for search request in a chosen format.
+            The format must be recognizable by the dateutil lib.
+            In case of doubt use the format 'YYYY-MM-DD'.
+        platform : str
+            Choose between 'Sentinel-1', 'Sentinel-2', 'LANDSAT_TM_C1', 'LANDSAT_ETM_C1' and 'LANDSAT_8_C1'
+        tileLimit : int, optional
+            Maximum number of tiles to be downloaded.
+        cloudcoverpercentage : int, optional
+            Value between 0 and 100 for maximum cloud cover percentage.
+        producttype : str, optional
+            Sentinel-1 products: RAW, SLC, GRD, OCN
+                SLC: Single Look Complex
+                GRD: Ground Range Detected
+                OCN: Ocean
+            Sentinel-2 products: S2MSI1C, S2MSI2A, S2MSI2Ap
+        polarisationmode : str, optional
+            Used for Sentinel-1 products:
+            Accepted entries are: HH, VV, HV, VH, HH+HV, VV+VH
+        sensoroperationalmode : str, optional
+            Used for Sentinel-1 products:
+            Accepted entries are: SM, IW, EW, WV
+                SM: Stripmap
+                IW: Interferometric Wide Swath 
+                EW: Extra Wide Swath
+                WV: Wave
+        swathidentifier : str, optional
+            Used for Sentinel-1 products:
+            Accepted entries are: S1, S2, S3, S4, S5, S6, IW, IW1, IW2, IW3, EW, EW1, EW2, EW3, EW4, EW5
+        timeliness : str, optional
+            Used for Sentinel-1 products:
+                NRT: NRT-3h (Near Real Time)
+                NTC: Fast-24h
+
+        """
+
 
         # convert date formats
         dateFrom = self.convertDate(dateFrom)
