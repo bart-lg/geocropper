@@ -20,7 +20,7 @@ make importall
 
 #### CSV Structure
 
-default csv delimiter: ,
+default csv delimiter: ,  
 default csv quotechar: "
 
 ##### Mandatory fields
