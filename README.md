@@ -6,11 +6,45 @@ The **geocropper** Python package provides download and crop/clip functionality 
 
 ## Usage
 
-Downloading and cropping of tiles based on csv files with geolocations located in directory data/csvInput.
+### CSV
+
+Downloading and cropping tiles based on csv files with geolocations located in directory data/csvInput.
+
+Tiles will be downloaded to data/bigTiles
+Cropped tiles will be saved in data/croppedTiles
+Loaded csv files will be moved to data/csvArchive
 
 ```
 make importall
 ```
+
+#### CSV Structure
+
+default csv delimiter: ,
+default csv quotechar: "
+
+##### Mandatory fields
+
+* lat
+* lon
+* dateFrom
+* dateTo
+* platform
+
+##### Optional fields
+
+* width
+* height
+* tileLimit
+* description
+* cloudcoverpercentage
+* producttype
+* polarisationmode
+* sensoroperationalmode
+* swathidentifier
+* timeliness
+
+The package omits all other field names.
 
 ## Country determination
 
