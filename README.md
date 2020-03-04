@@ -12,6 +12,12 @@ To install all dependencies using conda:
 conda env update -f env.yml
 ```
 
+## Configuration
+
+Copy the file userconfig_empty.py to userconfig.py and add your user credentials for the following platforms:
+- Copernicus Open Access Hub: https://scihub.copernicus.eu/dhus/
+- USGS Earth Resources Observation and Science (EROS) System: https://ers.cr.usgs.gov/register/
+
 ## Python
 
 Activate the conda environment:
