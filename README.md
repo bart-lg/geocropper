@@ -180,8 +180,7 @@ timeliness | Used for Sentinel-1 products:<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n
 
 The package omits all other field names.
 
-# Used libs and packages
-
 # Country determination
 
+For automatic country determination the following tool is used: [countries](https://github.com/che0/countries)
 Data for country borders obtained from: http://thematicmapping.org/downloads/world_borders.php
