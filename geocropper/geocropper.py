@@ -28,15 +28,22 @@ db = database()
 # TODO: use pathlib for all paths!
 
 
-def importAllCSVs():
+def importAllCSVs(delimiter=',', quotechar='"'):
     """Import of all CSVs
 
     Place your CSV files in the inputCSV directory defined in the config file.
     With this function all CSVs get imported and loaded.
     This means that for all geolocations the appropriate tiles get downloaded and cropped according to the request.
 
+    Parameters
+    ----------
+    delimiter : str, optional
+        Used delimiter in CSV file. Default is ','
+    quotechar : str, optional
+        Used quote character in CSV file. Default is '"'
+
     """
-    csvImport.importAllCSVs()
+    csvImport.importAllCSVs(delimiter, quotechar)
 
 
 def init(lat, lon):
@@ -668,6 +675,10 @@ class Geocropper:
             In case of doubt use the format 'YYYY-MM-DD'.
         platform : str
             Choose between 'Sentinel-1', 'Sentinel-2', 'LANDSAT_TM_C1', 'LANDSAT_ETM_C1' and 'LANDSAT_8_C1'
+        width : int
+            Width of cropped rectangle. The rectangle surrounds the given geolocation (center point).
+        height : int
+            Heigth of cropped rectangle. The rectangle surrounds the given geolocation (center point).
         tileLimit : int, optional
             Maximum number of tiles to be downloaded.
         cloudcoverpercentage : int, optional
