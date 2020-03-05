@@ -2,6 +2,15 @@
 
 The **geocropper** Python package provides download and crop/clip functionality for Sentinel-1 (currently download only), Sentinel-2, Landsat-TM, Landsat-ETM and Landsat-8 products/tiles.
 
+# Clone
+
+**Important:**
+Use the option --recurse-submodules when cloning this repository. This includes the submodule lib/countries automatically.
+
+```
+git clone --recurse-submodules https://github.com/bart-lg/geocropper
+```
+
 # Usage
 
 ## Dependencies
