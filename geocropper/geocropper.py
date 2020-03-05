@@ -52,9 +52,9 @@ def init(lat, lon):
     Parameters
     ----------
     lat : float
-        Latitude of the geolocation
+        Latitude of the geolocation (WGS84 decimal)
     lon : float
-        Longitude of the geolocation
+        Longitude of the geolocation (WGS84 decimal)
 
     Returns
     -------
@@ -707,6 +707,11 @@ class Geocropper:
                 NRT: NRT-3h (Near Real Time)
                 NTC: Fast-24h
 
+        Returns
+        -------
+        int
+        	number of found and downloaded tiles
+
         """
 
 
@@ -731,6 +736,8 @@ class Geocropper:
 
         # search and download tiles
 
+        products = None
+
         if platform.startswith("Sentinel"):
             products = self.downloadSentinelData(dateFrom, dateTo, platform, poiId=poiId, tileLimit=tileLimit, **kwargs)
         
@@ -746,8 +753,9 @@ class Geocropper:
             
             self.cropTiles(poiId)
 
-
         # TODO: check if there are any outstanding downloads or crops
+
+        return len(products)
 
 
     def convertDate(self, date, newFormat="%Y-%m-%d"):

@@ -54,8 +54,8 @@ Initialization of a Geocropper instance.
 
 Parameter | type | description
 ---|---|---
-lat | float | Latitude of the geolocation.
-lon | float | Longitude of the geolocation.
+lat | float | Latitude of the geolocation (WGS84 decimal).
+lon | float | Longitude of the geolocation (WGS84 decimal).
 
 ```python
 geoc = geocropper.init(16, 48)
@@ -113,6 +113,10 @@ timeliness | str | (optional) Used for Sentinel-1 products:<br />&nbsp;&nbsp;&nb
 ```python
 geoc.downloadSentinelData(dateFrom = "20190701", dateTo = "20190731", platform = "Sentinel-2", tileLimit = 2, cloudcoverpercentage = 30)
 ```
+
+Return value: number of found and downloaded tiles (int)
+
+
 <br /><br />
 **downloadLandsatData(dateFrom, dateTo, platform, poiId = 0, tileLimit = 0, \*\*kwargs)**
 
@@ -163,8 +167,8 @@ default csv quotechar: "
 
 Fields | Description
 ---|---
-lat | Latitude of geolocation.
-lon | Longitude of geolocation.
+lat | Latitude of geolocation (WGS84 decimal).
+lon | Longitude of geolocation (WGS84 decimal).
 dateFrom | Start date for search request in a chosen format.<br />The format must be recognizable by the [dateutil](https://dateutil.readthedocs.io/) lib.<br />In case of doubt use the format 'YYYY-MM-DD'.
 dateTo | End date for search request in a chosen format.<br />The format must be recognizable by the [dateutil](https://dateutil.readthedocs.io/) lib.<br />In case of doubt use the format 'YYYY-MM-DD'.
 platform | Choose between 'Sentinel-1', 'Sentinel-2', <br />'LANDSAT_TM_C1', 'LANDSAT_ETM_C1' and 'LANDSAT_8_C1'.
