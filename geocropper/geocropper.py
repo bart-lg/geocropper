@@ -745,17 +745,23 @@ class Geocropper:
             products = self.downloadLandsatData(dateFrom, dateTo, platform, poiId=poiId, tileLimit=tileLimit, **kwargs)
 
 
+        # TODO: check if there are any outstanding downloads or crops
+
+
         # if tiles found, unpack and crop them
 
-        if len(products) > 0:
+        if not products == None and len(products) > 0:
 
             self.unpackBigTiles()
             
             self.cropTiles(poiId)
 
-        # TODO: check if there are any outstanding downloads or crops
+        
+        if products == None:
+            return 0
+        else:
+            return len(products)
 
-        return len(products)
 
 
     def convertDate(self, date, newFormat="%Y-%m-%d"):

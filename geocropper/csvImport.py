@@ -49,7 +49,7 @@ def importCSV(filePath, delimiter=',', quotechar='"', autoLoad = True):
 
 
     # open csv file
-    with open(filePath, newline='') as csvfile:
+    with open(filePath, newline='', encoding = 'utf-8-sig') as csvfile:
 
         # read content in dictionary
         content = csv.DictReader(csvfile, delimiter = delimiter, quotechar = quotechar)
