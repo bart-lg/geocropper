@@ -333,8 +333,7 @@ class Geocropper:
                 # TODO: check if existing tar file is complete => needs to be deleted and re-downloaded
 
                 # check for previous downloads
-                if not pathlib.Path(config.bigTilesDir / folderName).is_dir() and \
-                  not pathlib.Path(config.bigTilesDir / (product["displayId"] + ".tar.gz") ).is_file():                
+                if not pathlib.Path(config.bigTilesDir / folderName).is_dir():             
 
                     # no previous download detected...
 
