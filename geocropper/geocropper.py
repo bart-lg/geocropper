@@ -23,10 +23,6 @@ import geocropper.csvImport as csvImport
 logger = log.setupCustomLogger('main')
 db = database()
 
-# TODO: addTile folderName not required anymore - improve code!
-
-# TODO: use pathlib for all paths!
-
 
 def importAllCSVs(delimiter=',', quotechar='"'):
     """Import of all CSVs
@@ -659,11 +655,13 @@ class Geocropper:
         ds = None
 
 
-    def downloadAndCrop(self, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
+    def downloadAndCrop(self, groupname, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
         """Download and crop/clip Sentinel or Landsat tiles to directories specified in the config file.
 
         Parameters
         ----------
+        groupname : str
+            Short name to group datasets (groupname is used for folder structure in cropped tiles)
         dateFrom : str
             Start date for search request in a chosen format.
             The format must be recognizable by the dateutil lib.
@@ -722,15 +720,12 @@ class Geocropper:
         # check if point of interest (POI) exists in database
         # if not, create new POI record
 
-        poi = db.getPoi(self.lat, self.lon, dateFrom, dateTo, platform, width, height, tileLimit=tileLimit, **kwargs)
+        poi = db.getPoi(groupname, self.lat, self.lon, dateFrom, dateTo, platform, width, height, tileLimit=tileLimit, **kwargs)
 
         if poi == None:     
-            poiId = db.addPoi(self.lat, self.lon, dateFrom, dateTo, platform, width, height, tileLimit, **kwargs)
+            poiId = db.addPoi(groupname, self.lat, self.lon, dateFrom, dateTo, platform, width, height, tileLimit, **kwargs)
         else:
             poiId = poi["rowid"]
-
-
-        # TODO: save metadata from search response?
 
 
         # search and download tiles
@@ -742,9 +737,6 @@ class Geocropper:
         
         if platform.startswith("LANDSAT"):
             products = self.downloadLandsatData(dateFrom, dateTo, platform, poiId=poiId, tileLimit=tileLimit, **kwargs)
-
-
-        # TODO: check if there are any outstanding downloads or crops
 
 
         # if tiles found, unpack and crop them

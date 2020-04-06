@@ -67,7 +67,7 @@ lat | float | Latitude of the geolocation (WGS84 decimal).
 lon | float | Longitude of the geolocation (WGS84 decimal).
 
 ```python
-geoc = geocropper.init(16, 48)
+geoc = geocropper.init(48, 16)
 ```
 <br /><br />
 **printPosition()**
@@ -75,12 +75,13 @@ geoc = geocropper.init(16, 48)
 Prints current location attributes of Geocropper object to console.
 
 <br /><br />
-**downloadAndCrop(dateFrom, dateTo, platform, width, height, tileLimit = 0, \*\*kwargs)**
+**downloadAndCrop(groupname, dateFrom, dateTo, platform, width, height, tileLimit = 0, \*\*kwargs)**
 
 Download and crop/clip Sentinel or Landsat tiles to directories specified in the config file (default: 'data/bigTiles' and 'data/croppedTiles').
 
 Parameter | type | description
 ---|---|---
+groupname | str | Short name to group datasets (groupname is used for folder structure in cropped tiles)
 dateFrom | str | Start date for search request in a chosen format.<br />The format must be recognizable by the [dateutil](https://dateutil.readthedocs.io/) lib.<br />In case of doubt use the format 'YYYY-MM-DD'.
 dateTo | str | End date for search request in a chosen format.<br />The format must be recognizable by the [dateutil](https://dateutil.readthedocs.io/) lib.<br />In case of doubt use the format 'YYYY-MM-DD'.
 platform | str | Choose between 'Sentinel-1', 'Sentinel-2', 'LANDSAT_TM_C1', 'LANDSAT_ETM_C1' and 'LANDSAT_8_C1'

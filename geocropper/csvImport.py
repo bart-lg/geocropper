@@ -11,7 +11,7 @@ import geocropper.config as config
 
 
 # NEEDED COLUMNS:
-# lat, lon, dateFrom, dateTo, platform
+# groupname, lat, lon, dateFrom, dateTo, platform
 
 # OPTIONAL COLUMNS:
 # width, height (both mandatory for cropping)
@@ -132,7 +132,7 @@ def loadImportedCSVdata():
                     kwargs[key] = item[key]
 
             # download and crop with geocropper module
-            geoc.downloadAndCrop(dateFrom = item["dateFrom"], dateTo = item["dateTo"], platform = item["platform"], \
+            geoc.downloadAndCrop(groupname = item["groupname"], dateFrom = item["dateFrom"], dateTo = item["dateTo"], platform = item["platform"], \
                 width = item["width"], height = item["height"], tileLimit = item["tileLimit"], **kwargs)
 
             # cleanup

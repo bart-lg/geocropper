@@ -41,7 +41,7 @@ class database:
         # table PointOfInterest
         # holds the information for a geocropper call - one record for every point/parameter combination
         query = "CREATE TABLE IF NOT EXISTS PointOfInterests \
-            (country TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
+            (groupname TEXT, country TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
         for item in config.optionalSentinelParameters:
             query = "%s, %s" % (query, item)
         query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, tilesIdentified TEXT, poicreated TEXT, cancelled TEXT)"
@@ -61,7 +61,7 @@ class database:
         # table CSVInput
         # holds imported records which have not yet been processed (loaded)
         query = "CREATE TABLE IF NOT EXISTS CSVInput \
-            (fileName TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
+            (fileName TEXT, groupname TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
         for item in config.optionalSentinelParameters:
             query = "%s, %s" % (query, item)
         query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, cancelled TEXT)"
@@ -70,7 +70,7 @@ class database:
         # table CSVLoaded
         # holds imported and processed/loaded records
         query = "CREATE TABLE IF NOT EXISTS CSVLoaded \
-            (fileName TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
+            (fileName TEXT, groupname TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
         for item in config.optionalSentinelParameters:
             query = "%s, %s" % (query, item)
         query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, cancelled TEXT, csvLoaded TEXT)"
@@ -150,25 +150,35 @@ class database:
 
     ### POIS ###
     
-    def getPoi(self, lat, lon, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
+    def getPoi(self, groupname, lat, lon, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
 
-        query = "SELECT rowid, * FROM PointOfInterests WHERE lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + dateFrom + "'" \
+        query = "SELECT rowid, * FROM PointOfInterests WHERE groupname = '" + str(groupname)  + "' AND lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + dateFrom + "'" \
             + " AND dateTo = '" + dateTo + "' AND platform = '" + platform + "' AND width = " + str(width) + " AND height = " + str(height) \
             + " AND tileLimit = " + str(tileLimit)
+
+        usedKeys = []
+
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = "%s AND %s = '%s'" % (query, key, value)
+                usedKeys.append(key)
+
+        # check for unused keys
+        # this is important to prevent fetching of different POIs with further arguments 
+        for item in config.optionalSentinelParameters:
+            if not ( item in usedKeys ):
+                query = "%s AND %s IS NULL" % (query, item)
 
         qresult = self.fetchFirstRowQuery(query)
         return qresult
         
-    def addPoi(self, lat, lon, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
-        query = "INSERT INTO PointOfInterests (lat, lon"
+    def addPoi(self, groupname, lat, lon, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
+        query = "INSERT INTO PointOfInterests (groupname, lat, lon"
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = query + ", " + key
         query = query + ", country, dateFrom, dateTo, platform, width, height, tileLimit, description, poicreated) "
-        query = query + " VALUES (" + str(lat) + ", " + str(lon)
+        query = query + " VALUES ('" + str(groupname) + "'," + str(lat) + ", " + str(lon)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = query + ", '" + str(value) + "'"
@@ -229,15 +239,16 @@ class database:
         if not row == None:
             optionalFields = ["width", "height", "tileLimit", "description"]
             numFields = ["width", "height", "tileLimit"]
-            keys = "fileName, lat, lon, dateFrom, dateTo, platform"
-            values = "'%s', %s, %s, '%s', '%s', '%s'" % (fileName, row["lat"], row["lon"], row["dateFrom"], row["dateTo"], row["platform"])
+            keys = "fileName, groupname, lat, lon, dateFrom, dateTo, platform"
+            values = "'%s', '%s', %s, %s, '%s', '%s', '%s'" % (fileName, row["groupname"], row["lat"], row["lon"], row["dateFrom"], row["dateTo"], row["platform"])
             for key, value in row.items():
                 if key in config.optionalSentinelParameters or key in optionalFields:
-                    keys = "%s, %s" % (keys, key)
-                    if key in numFields:
-                        values = "%s, %s" % (values, value)
-                    else:
-                        values = "%s, '%s'" % (values, value)
+                    if len(str(value)) > 0:
+                        keys = "%s, %s" % (keys, key)
+                        if key in numFields:
+                            values = "%s, %s" % (values, value)
+                        else:
+                            values = "%s, '%s'" % (values, value)
             keys = keys + ", csvImported"
             values = values + ", datetime('now', 'localtime')"
             query = "INSERT INTO CSVInput (%s) VALUES (%s)" % (keys, values)
