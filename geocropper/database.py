@@ -50,13 +50,13 @@ class database:
         # table Tiles
         # information about downloaded big tiles
         self.cursor.execute("CREATE TABLE IF NOT EXISTS Tiles \
-            (platform TEXT, folderName TEXT, productId TEXT, firstDownloadRequest TEXT, lastDownloadRequest TEXT, \
-            downloadComplete TEXT, unzipped TEXT, cancelled TEXT)")
+            (platform TEXT, folderName TEXT, productId TEXT, beginposition TEXT, endposition TEXT, firstDownloadRequest TEXT, \
+            lastDownloadRequest TEXT, downloadComplete TEXT, unzipped TEXT, cancelled TEXT)")
 
         # table TilesForPOIs
         # n:m relation between tables PointOfInterest and Tiles
         # additional information: date of image cropping based on parameters of POI
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS TilesForPOIs (poiId INTEGER, tileId INTEGER, tileCropped TEXT, cancelled TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS TilesForPOIs (poiId INTEGER, tileId INTEGER, path TEXT, tileCropped TEXT, cancelled TEXT)")
 
         # table CSVInput
         # holds imported records which have not yet been processed (loaded)
@@ -125,9 +125,11 @@ class database:
                 qresult = self.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE folderName = '%s'" % folderName)            
         return qresult
         
-    def addTile(self, platform, productId, folderName = ""):
-        newId = self.query("INSERT INTO Tiles (platform, folderName, productId, firstDownloadRequest, lastDownloadRequest) \
-            VALUES (?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))", (platform, folderName, productId))
+    def addTile(self, platform, productId, beginposition, endposition, folderName = ""):
+        newId = self.query("INSERT INTO Tiles (platform, folderName, productId, beginposition, endposition, \
+            firstDownloadRequest, lastDownloadRequest) \
+            VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))", 
+            (platform, folderName, productId, beginposition, endposition))
         logger.info("new tile inserted into database")
         return newId
         
@@ -218,14 +220,21 @@ class database:
     def getTilesForPoi(self, poiId):
         return self.fetchAllRowsQuery("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
             WHERE TilesForPOIs.poiId = %d" % poiId)
+
+    def getTilePoiConnectionId(self, poiId, tileId):
+        data = self.fetchFirstRowQuery("SELECT rowid FROM TilesForPOIs WHERE poiId = %d AND tileId = %d" % (poiId, tileId))
+        if data == None:
+            return 0
+        else:
+            return data["rowid"]   
         
     def addTileForPoi(self, poiId, tileId):
         newId = self.query("INSERT INTO TilesForPOIs (poiId, tileId) VALUES ( %d, %d)" % (poiId, tileId))
         logger.info("new tile-poi connection inserted into database")
         return newId
 
-    def setTileCropped(self, poiId, tileId):
-        self.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poiId, tileId))
+    def setTileCropped(self, poiId, tileId, path):
+        self.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime'), path = '%s' WHERE poiId = %d AND tileId = %d" % (path, poiId, tileId))
         logger.info("tile-poi updated in database (tileCropped)")
 
     def setCancelledTileForPoi(self, poiId, tileId):

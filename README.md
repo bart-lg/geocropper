@@ -2,6 +2,13 @@
 
 The **geocropper** Python package provides download and crop/clip functionality for Sentinel-1 (currently download only), Sentinel-2, Landsat-TM, Landsat-ETM and Landsat-8 products/tiles.
 
+# Requirements
+
+- Python 3.6
+- Anaconda
+- Copernicus Open Access Hub Account (see Usage/Configuration)
+- USGS Earth Resources Observation and Science (EROS) System Account (see Usage/Configuration)
+
 # Clone
 
 **Important:**
@@ -177,6 +184,7 @@ default csv quotechar: "
 
 Fields | Description
 ---|---
+groupname | Short name to group datasets.<br />(groupname is used for folder structure in cropped tiles)
 lat | Latitude of geolocation (WGS84 decimal).
 lon | Longitude of geolocation (WGS84 decimal).
 dateFrom | Start date for search request in a chosen format.<br />The format must be recognizable by the [dateutil](https://dateutil.readthedocs.io/) lib.<br />In case of doubt use the format 'YYYY-MM-DD'.

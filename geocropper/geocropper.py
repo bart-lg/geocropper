@@ -4,6 +4,7 @@ import tarfile
 from tqdm import tqdm
 import os
 import pathlib
+import shutil
 from dateutil.parser import *
 import pyproj
 from osgeo import gdal
@@ -177,6 +178,10 @@ class Geocropper:
 
             # key of products is product id
             for key in products:
+
+                # start- and endtime of sensoring
+                beginposition = products[key]["beginposition"]
+                endposition = products[key]["beginposition"]
                 
                 # folder name after unzip is < SENTINEL TILE TITLE >.SAFE
                 folderName = products[key]["title"] + ".SAFE"
@@ -193,7 +198,7 @@ class Geocropper:
                     # only add new tile to database if not existing
                     # this leads automatically to a resume functionality
                     if tile == None:
-                        tileId = db.addTile(platform, key, folderName)
+                        tileId = db.addTile(platform, key, beginposition, endposition, folderName)
                     else:
                         tileId = tile["rowid"]
                         # update download request date for existing tile in database
@@ -215,7 +220,7 @@ class Geocropper:
                     if tile == None:
                         # if tile not yet in database add to database
                         # this could happen if database gets reset
-                        tileId = db.addTile(platform, key, folderName)
+                        tileId = db.addTile(platform, key, beginposition, endposition, folderName)
                     else:
                         tileId = tile["rowid"]
                     
@@ -323,6 +328,10 @@ class Geocropper:
                 
                 folderName = product["displayId"]
 
+                # start- and endtime of sensoring
+                beginposition = product["startTime"]
+                endposition = product["endTime"]
+
                 tileId = None
                 tile = db.getTile(productId = product["entityId"])
 
@@ -336,7 +345,7 @@ class Geocropper:
                     # only add new tile to database if not existing
                     # this leads automatically to a resume functionality
                     if tile == None:
-                        tileId = db.addTile(platform, product["entityId"], folderName)
+                        tileId = db.addTile(platform, product["entityId"], beginposition, endposition, folderName)
                     else:
                         tileId = tile["rowid"]
                         # update download request date for existing tile in database
@@ -358,7 +367,7 @@ class Geocropper:
                     if tile == None:
                         # if tile not yet in database add to database
                         # this could happen if database gets reset
-                        tileId = db.addTile(platform, product["entityId"], folderName)
+                        tileId = db.addTile(platform, product["entityId"], beginposition, endposition, folderName)
                     else:
                         tileId = tile["rowid"]
                     
@@ -507,6 +516,22 @@ class Geocropper:
 
                     print("Cropping %s ..." % tile["folderName"])
 
+                    if poi["platform"] == "Sentinel-1" or poi["platform"] == "Sentinel-2":
+                        beginposition = self.convertDate(tile["beginposition"], newFormat="%Y%m%d-%H%M")
+                    else:
+                        beginposition = self.convertDate(tile["beginposition"], newFormat="%Y%m%d")
+
+                    poiParameters = self.getPoiParametersForOutputFolder(poi)
+                    connectionId = db.getTilePoiConnectionId(poiId, tile["rowid"])
+                    mainTargetFolder = config.croppedTilesDir / poi["groupname"] / poiParameters / ( "%s_%s_%s_%s" % (connectionId, poi["lon"], poi["lat"], beginposition) )
+
+                    # target directory for cropped image
+                    targetDir = mainTargetFolder / "sensordata"
+                    targetDir.mkdir(parents = True)               
+
+                    # target directory for meta information
+                    metaDir = mainTargetFolder / "original-metadata"
+                    metaDir.mkdir(parents = True)
 
                     # SENTINEL 1 CROPPING
                     
@@ -540,8 +565,6 @@ class Geocropper:
                                 # if Level-1 data pathImgDataItem is already an image file
                                 # if Level-2 data pathImgDataItem is a directory with image files
 
-                                # TODO: combine these two cases somehow...
-
                                 if os.path.isdir(pathImgDataItem):
 
                                     # Level-2 data
@@ -551,18 +574,10 @@ class Geocropper:
                                         # set path of img file
                                         path = pathImgDataItem / item
 
-                                        # TODO: dirty... (removes ".SAFE" from folderName)
-                                        tileFolderName = tile["folderName"]
-                                        tileName = tileFolderName[:-5]
-
-                                        # target directory for cropped image
-                                        targetDir = config.croppedTilesDir / poi["country"] / \
-                                            ("lat%s_lon%s" % (poi["lat"], poi["lon"])) / \
-                                            ("w%s_h%s" % (poi["width"], poi["height"])) / \
-                                            tileName / imgDataItem
+                                        targetSubDir = targetDir / imgDataItem
 
                                         # CROP IMAGE
-                                        self.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
+                                        self.cropImg(path, item, topLeft, bottomRight, targetSubDir, fileFormat)
                                 
                                 else:
 
@@ -571,23 +586,24 @@ class Geocropper:
                                     # set path of image file
                                     path = pathImgDataItem
 
-                                    # TODO: dirty... (removes ".SAFE" from folderName)
-                                    tileFolderName = tile["folderName"]
-                                    tileName = tileFolderName[:-5]
-
-                                    # target directory for cropped image
-                                    targetDir = config.croppedTilesDir / poi["country"] / \
-                                        ("lat%s_lon%s" % (poi["lat"], poi["lon"])) / \
-                                        ("w%s_h%s" % (poi["width"], poi["height"])) / tileName                                        
-
                                     # CROP IMAGE
                                     self.cropImg(path, imgDataItem, topLeft, bottomRight, targetDir, fileFormat)
 
 
-                        # set date for tile cropped 
-                        db.setTileCropped(poiId, tile["rowid"])
-
                         print("done.\n")                                    
+
+                        print("Copy metadata...")
+                        tileDir = config.bigTilesDir / tile["folderName"]
+                        for item in tileDir.rglob('*'):
+                            if item.is_file() and item.suffix.lower() != ".jp2":
+                                targetDir = metaDir / item.parent.relative_to(tileDir)
+                                if not targetDir.exists():
+                                    targetDir.mkdir(parents = True)
+                                shutil.copy(item, targetDir)
+                        print("done.\n")
+
+                        # set date for tile cropped 
+                        db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
 
 
                     # LANDSAT CROPPING
@@ -603,6 +619,7 @@ class Geocropper:
                         # set path of root dir of tile
                         pathImgData = config.bigTilesDir / tile["folderName"]
 
+                        # TODO: switch to pathlib (for item in pathImgData)
                         # go through all files in root dir of tile
                         for item in os.listdir(pathImgData):
 
@@ -612,19 +629,105 @@ class Geocropper:
                                 # set path of image file
                                 path = pathImgData / item
 
-                                # target directory for cropped image
-                                targetDir = config.croppedTilesDir / poi["country"] / \
-                                        ("lat%s_lon%s" % (poi["lat"], poi["lon"])) / \
-                                        ("w%s_h%s" % (poi["width"], poi["height"])) / tile["folderName"]
-
                                 # CROP IMAGE
                                 self.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
 
+                        print("done.")
+
+                        print("Copy metadata...")
+                        for item in pathImgData.glob('*'):
+                            if item.is_file():
+                                if item.suffix.lower() != ".tif":
+                                    shutil.copy(item, metaDir)
+                            if item.is_dir():
+                                shutil.copytree(item, (metaDir / item.name))
+                        print("done.\n")
 
                         # set date for tile cropped 
-                        db.setTileCropped(poiId, tile["rowid"])
+                        db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)                        
 
-                        print("done.\n")
+
+    def getPoiParametersForOutputFolder(self, poi):
+        
+        folderElements = []
+        folderName = ""
+
+        try:
+            folderElements.append("df" + self.convertDate(poi["dateFrom"], "%Y%m%d"))
+        except:
+            pass
+
+        try:
+            folderElements.append("dt" + self.convertDate(poi["dateTo"], "%Y%m%d"))
+        except:
+            pass
+            
+        try:
+            if poi["platform"] == "Sentinel-1":
+                folderElements.append("pfS1")
+            if poi["platform"] == "Sentinel-2":
+                folderElements.append("pfS2")
+            if poi["platform"] == "LANDSAT_TM_C1":
+                folderElements.append("pfLTM")
+            if poi["platform"] == "LANDSAT_ETM_C1":
+                folderElements.append("pfLETM")
+            if poi["platform"] == "LANDSAT_8_C1":
+                folderElements.append("pfL8")
+        except:
+            pass
+            
+        try:
+            folderElements.append("tl" + poi["tileLimit"])
+        except:
+            pass
+            
+        try:
+            folderElements.append("cc" + poi["cloudcoverpercentage"])
+        except:
+            pass
+            
+        try:
+            folderElements.append("pm" + poi["polarisatiomode"])
+        except:
+            pass
+            
+        try:
+            folderElements.append("pt" + poi["producttype"])
+        except:
+            pass
+            
+        try:
+            folderElements.append("som" + poi["sensoroperationalmode"])
+        except:
+            pass
+            
+        try:
+            folderElements.append("si" + poi["swathidentifier"])
+        except:
+            pass
+            
+        try:
+            folderElements.append("tls" + poi["timeliness"])
+        except:
+            pass
+            
+        try:
+            folderElements.append("w" + poi["width"])
+        except:
+            pass
+            
+        try:
+            folderElements.append("h" + poi["height"])
+        except:
+            pass
+
+        for item in folderElements:
+            if len(folderName) > 0:
+                folderName = folderName + "_"
+            folderName = folderName + item
+
+        return folderName
+            
 
 
     def cropImg(self, path, item, topLeft, bottomRight, targetDir, fileFormat):
