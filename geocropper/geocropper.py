@@ -3,11 +3,11 @@ import zipfile
 import tarfile
 from tqdm import tqdm
 import os
+import subprocess
 import pathlib
 import shutil
 from dateutil.parser import *
 import pyproj
-from osgeo import gdal
 from functools import partial
 from pprint import pprint
 import rasterio
@@ -20,6 +20,12 @@ import geocropper.config as config
 import geocropper.sentinelWrapper as sentinelWrapper
 import geocropper.landsatWrapper as landsatWrapper
 import geocropper.csvImport as csvImport
+
+from osgeo import gdal
+# gdal library distributed by conda destroys PATH environment variable
+# see -> https://github.com/OSGeo/gdal/issues/1231
+# workaround: remove first entry...
+os.environ["PATH"] = os.environ["PATH"].split(';')[1]
 
 logger = log.setupCustomLogger('main')
 db = database()
@@ -533,6 +539,10 @@ class Geocropper:
                     metaDir = mainTargetFolder / "original-metadata"
                     metaDir.mkdir(parents = True)
 
+                    # target directory for preview image
+                    previewDir = mainTargetFolder / "preview"
+                    previewDir.mkdir(parents = True)               
+
                     # SENTINEL 1 CROPPING
                     
                     if poi["platform"] == "Sentinel-1":
@@ -554,6 +564,8 @@ class Geocropper:
 
                         # go through "SAFE"-directory structure of Sentinel-2
 
+                        is_S2L1 = True
+
                         pathGranule = config.bigTilesDir / tile["folderName"] / "GRANULE"
                         for mainFolder in os.listdir(pathGranule):
 
@@ -568,16 +580,20 @@ class Geocropper:
                                 if os.path.isdir(pathImgDataItem):
 
                                     # Level-2 data
+
+                                    is_S2L1 = False
+
+                                    targetSubDir = targetDir / imgDataItem
                                 
                                     for item in os.listdir(pathImgDataItem):
 
                                         # set path of img file
                                         path = pathImgDataItem / item
 
-                                        targetSubDir = targetDir / imgDataItem
-
                                         # CROP IMAGE
                                         self.cropImg(path, item, topLeft, bottomRight, targetSubDir, fileFormat)
+
+                                    self.createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", targetSubDir, previewDir)
                                 
                                 else:
 
@@ -589,6 +605,8 @@ class Geocropper:
                                     # CROP IMAGE
                                     self.cropImg(path, imgDataItem, topLeft, bottomRight, targetDir, fileFormat)
 
+                            if is_S2L1:
+                                self.createPreviewRGBImage("*B04.jp2", "*B03.jp2", "*B02.jp2", targetDir, previewDir)                                
 
                         print("done.\n")                                    
 
@@ -631,6 +649,16 @@ class Geocropper:
 
                                 # CROP IMAGE
                                 self.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
+
+                        if poi["platform"] == "LANDSAT_8_C1":
+                            r_band_search_pattern = "*B4.TIF"
+                            g_band_search_pattern = "*B3.TIF"
+                            b_band_search_pattern = "*B2.TIF"
+                        else:
+                            r_band_search_pattern = "*B3.TIF"
+                            g_band_search_pattern = "*B2.TIF"
+                            b_band_search_pattern = "*B1.TIF"                           
+                        self.createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, targetDir, previewDir)                         
 
                         print("done.")
 
@@ -861,3 +889,59 @@ class Geocropper:
     def convertDate(self, date, newFormat="%Y-%m-%d"):
         temp = parse(date)
         return temp.strftime(newFormat)
+
+
+    def createPreviewRGBImage(self, r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir, \
+        target_dir, max_scale = 4096, exponential_scale = 0.5):
+
+        print("Create preview image...")
+
+        search_result = list(source_dir.glob(r_band_search_pattern))
+        if len(search_result) == 0:
+            return
+        r_band = search_result[0]
+        
+        search_result = list(source_dir.glob(g_band_search_pattern))
+        if len(search_result) == 0:
+            return
+        g_band = search_result[0]
+
+        search_result = list(source_dir.glob(b_band_search_pattern))
+        if len(search_result) == 0:
+            return
+        b_band = search_result[0]
+
+        preview_file = "preview.tif"
+        if ( target_dir / preview_file ).exists():
+            i = 2
+            preview_file = "preview(" + i + ").tif"
+            while i < 100 and ( target_dir / preview_file ).exists():
+                i = i + 1
+                preview_file = "preview(" + i + ").tif"
+            # TODO: throw exception if i > 99
+
+        # rescale red band
+        command = ["gdal_translate", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
+                   str(exponential_scale), str( r_band ), str( target_dir / "r-scaled.tif")]
+        subprocess.call(command)
+
+        # rescale green band
+        command = ["gdal_translate", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
+                   str(exponential_scale), str( g_band ), str( target_dir / "g-scaled.tif")]
+        subprocess.call(command)
+
+        # rescale blue band
+        command = ["gdal_translate", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
+                   str(exponential_scale), str( b_band ), str( target_dir / "b-scaled.tif")]
+        subprocess.call(command)
+
+        # create preview image
+        command = ["gdal_merge.py", "-v", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB", \
+                   "-o", str( target_dir / preview_file ), str( target_dir / "r-scaled.tif" ), str( target_dir / "g-scaled.tif" ), \
+                   str( target_dir / "b-scaled.tif" )]
+        subprocess.call(command)                   
+
+        # remove scaled bands
+        ( target_dir / "r-scaled.tif" ).unlink()
+        ( target_dir / "g-scaled.tif" ).unlink()
+        ( target_dir / "b-scaled.tif" ).unlink()
