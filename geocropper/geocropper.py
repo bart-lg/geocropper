@@ -159,7 +159,7 @@ class Geocropper:
             print("Tile-limit: %d" % tileLimit)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
-                print("%s: %s" %(key, str(value)))
+                print("%s: %s" % (key, str(value)))
         print("----------------------------\n")
 
         logger.info("Search for Sentinel data:")
@@ -170,7 +170,7 @@ class Geocropper:
             logger.info("Tile-limit: %d" % tileLimit)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
-                logger.info("%s: %s" %(key, str(value)))        
+                logger.info("%s: %s" % (key, str(value)))        
         
         
         # search for sentinel data
@@ -852,7 +852,7 @@ class Geocropper:
         Returns
         -------
         int
-        	number of found and downloaded tiles
+            number of found and downloaded tiles
 
         """
 
