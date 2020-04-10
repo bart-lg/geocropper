@@ -20,6 +20,7 @@ import geocropper.config as config
 import geocropper.sentinelWrapper as sentinelWrapper
 import geocropper.landsatWrapper as landsatWrapper
 import geocropper.csvImport as csvImport
+import geocropper.utils as utils
 
 from osgeo import gdal
 # gdal library distributed by conda destroys PATH environment variable
@@ -540,8 +541,8 @@ class Geocropper:
                     metaDir.mkdir(parents = True)
 
                     # target directory for preview image
-                    previewDir = mainTargetFolder / "preview"
-                    previewDir.mkdir(parents = True)               
+                    previewDir = mainTargetFolder 
+                    # previewDir.mkdir(parents = True, exist_ok = True)               
 
                     # SENTINEL 1 CROPPING
                     
@@ -672,7 +673,7 @@ class Geocropper:
                         print("done.\n")
 
                         # set date for tile cropped 
-                        db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)                        
+                        db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)                                              
 
 
     def getPoiParametersForOutputFolder(self, poi):
@@ -705,54 +706,55 @@ class Geocropper:
             pass
             
         try:
-            folderElements.append("tl" + poi["tileLimit"])
+            folderElements.append("tl" + str(poi["tileLimit"]))
         except:
             pass
             
         try:
-            folderElements.append("cc" + poi["cloudcoverpercentage"])
+            folderElements.append("cc" + str(poi["cloudcoverpercentage"]))
         except:
             pass
             
         try:
-            folderElements.append("pm" + poi["polarisatiomode"])
+            folderElements.append("pm" + str(poi["polarisatiomode"]))
         except:
             pass
             
         try:
-            folderElements.append("pt" + poi["producttype"])
+            folderElements.append("pt" + str(poi["producttype"]))
         except:
             pass
             
         try:
-            folderElements.append("som" + poi["sensoroperationalmode"])
+            folderElements.append("som" + str(poi["sensoroperationalmode"]))
         except:
             pass
             
         try:
-            folderElements.append("si" + poi["swathidentifier"])
+            folderElements.append("si" + str(poi["swathidentifier"]))
         except:
             pass
             
         try:
-            folderElements.append("tls" + poi["timeliness"])
+            folderElements.append("tls" + str(poi["timeliness"]))
         except:
             pass
             
         try:
-            folderElements.append("w" + poi["width"])
+            folderElements.append("w" + str(poi["width"]))
         except:
             pass
             
         try:
-            folderElements.append("h" + poi["height"])
+            folderElements.append("h" + str(poi["height"]))
         except:
             pass
 
         for item in folderElements:
-            if len(folderName) > 0:
-                folderName = folderName + "_"
-            folderName = folderName + item
+            if not item.endswith("None"):            
+                if len(folderName) > 0:
+                    folderName = folderName + "_"
+                folderName = folderName + item
 
         return folderName
             
@@ -894,7 +896,7 @@ class Geocropper:
     def createPreviewRGBImage(self, r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir, \
         target_dir, max_scale = 4096, exponential_scale = 0.5):
 
-        print("Create preview image...")
+        # TODO: one command still generates some output to the console
 
         search_result = list(source_dir.glob(r_band_search_pattern))
         if len(search_result) == 0:
@@ -921,22 +923,22 @@ class Geocropper:
             # TODO: throw exception if i > 99
 
         # rescale red band
-        command = ["gdal_translate", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
+        command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
                    str(exponential_scale), str( r_band ), str( target_dir / "r-scaled.tif")]
         subprocess.call(command)
 
         # rescale green band
-        command = ["gdal_translate", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
+        command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
                    str(exponential_scale), str( g_band ), str( target_dir / "g-scaled.tif")]
         subprocess.call(command)
 
         # rescale blue band
-        command = ["gdal_translate", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
+        command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
                    str(exponential_scale), str( b_band ), str( target_dir / "b-scaled.tif")]
         subprocess.call(command)
 
         # create preview image
-        command = ["gdal_merge.py", "-v", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB", \
+        command = ["gdal_merge.py", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB", \
                    "-o", str( target_dir / preview_file ), str( target_dir / "r-scaled.tif" ), str( target_dir / "g-scaled.tif" ), \
                    str( target_dir / "b-scaled.tif" )]
         subprocess.call(command)                   

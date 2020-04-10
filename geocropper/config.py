@@ -29,3 +29,12 @@ dbFile = dataDir / "geocropper.db"
 # ATTENTION: Changes in optionalSentinelParameters requires manual removal of existing database before starting script!!!
 # optional landsat parameters => max_cloud_cover (value in db stored as cloudcoverpercentage)
 optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", "swathidentifier", "cloudcoverpercentage", "timeliness"]
+
+# logging modes: DEBUG, INFO, WARNING, ERROR, CRITICAL
+loggingMode = "WARNING"
+
+# combined preview images
+previewBorder = 5
+previewBackground = (100,0,0)
+previewTextOnImage = True
+previewImagesCombined = 25

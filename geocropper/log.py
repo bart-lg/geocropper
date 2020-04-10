@@ -11,7 +11,18 @@ def setupCustomLogger(name):
     logFilemode = "a" # w: overwrite; a: append
 
     # setup logger
-    logging.basicConfig(filename=config.logFile, format=logFormat, filemode=logFilemode ,level=logging.DEBUG)
+    if config.loggingMode == "DEBUG":
+        level = logging.DEBUG
+    if config.loggingMode == "INFO":
+        level = logging.INFO
+    if config.loggingMode == "WARNING":
+        level = logging.WARNING
+    if config.loggingMode == "ERROR":
+        level = logging.ERROR
+    if config.loggingMode == "CRITICAL":
+        level = logging.CRITICAL
+
+    logging.basicConfig(filename=config.logFile, format=logFormat, filemode=logFilemode ,level=level)
     rotateFile = logging.handlers.RotatingFileHandler(
         config.logFile, maxBytes=logFileMaxSize, backupCount=logNumBackups
     )

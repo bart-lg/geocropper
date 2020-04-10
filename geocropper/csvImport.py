@@ -8,6 +8,7 @@ import logging
 import geocropper.geocropper as geocropper
 import geocropper.database as database
 import geocropper.config as config
+import geocropper.utils as utils
 
 
 # NEEDED COLUMNS:
@@ -142,3 +143,7 @@ def loadImportedCSVdata():
             db.moveCSVItemToArchive(item["rowid"])
             
         i += 1
+
+    print("#### Create combined preview images...")
+    utils.createCombinedImages()
+    print("done.\n")
