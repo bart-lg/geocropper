@@ -107,7 +107,7 @@ def concat_images(image_path_list, output_file, gap = 3, bcolor = (0,0,0), paths
     # write paths on image
     if write_image_text:
         font = ImageFont.truetype(str( \
-            pathlib.Path(os.environ["CONDA_PREFIX"]) / "fonts" / "open-fonts" / "IBMPlexMono-Regular.otf"), 12)
+            pathlib.Path(os.environ["CONDA_PREFIX"]) / "fonts" / "open-fonts" / "IBMPlexMono-Regular.otf"), config.previewImageFontSize)
         draw = ImageDraw.Draw(image)
         if upper_label_list == None:
             upper_label_list = image_path_list
