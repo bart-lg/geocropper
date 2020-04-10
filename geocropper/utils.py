@@ -156,7 +156,7 @@ def createCombinedImages():
                 if preview_file.exists():
 
                     image_path_list.append(preview_file)
-                    upper_label_list.append(item.name)
+                    upper_label_list.append(item.name.split("_")[0])
                     # lower_label_list.append(item.parent.name)
 
                     if i % config.previewImagesCombined == 0 or i == len(item_list):

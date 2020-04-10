@@ -37,5 +37,5 @@ loggingMode = "INFO"
 previewBorder = 5
 previewBackground = (100,0,0)
 previewTextOnImage = True
-previewImageFontSize = 8
+previewImageFontSize = 11
 previewImagesCombined = 25
