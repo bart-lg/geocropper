@@ -31,7 +31,7 @@ dbFile = dataDir / "geocropper.db"
 optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", "swathidentifier", "cloudcoverpercentage", "timeliness"]
 
 # logging modes: DEBUG, INFO, WARNING, ERROR, CRITICAL
-loggingMode = "WARNING"
+loggingMode = "INFO"
 
 # combined preview images
 previewBorder = 5

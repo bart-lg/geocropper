@@ -161,6 +161,16 @@ class Geocropper:
             if key in config.optionalSentinelParameters:
                 print("%s: %s" %(key, str(value)))
         print("----------------------------\n")
+
+        logger.info("Search for Sentinel data:")
+        logger.info("From: " + self.convertDate(dateFrom, "%d.%m.%Y"))
+        logger.info("To: " + self.convertDate(dateTo, "%d.%m.%Y"))
+        logger.info("Platform: " + platform)
+        if tileLimit > 0:
+            logger.info("Tile-limit: %d" % tileLimit)
+        for key, value in kwargs.items():
+            if key in config.optionalSentinelParameters:
+                logger.info("%s: %s" %(key, str(value)))        
         
         
         # search for sentinel data
@@ -171,6 +181,7 @@ class Geocropper:
             products = self.sentinel.getSentinelProducts(self.lat, self.lon, dateFrom, dateTo, platform, **kwargs)
 
         print("Found tiles: %d\n" % len(products))
+        logger.info("Found tiles: %d\n" % len(products))
 
 
         # start download
@@ -179,6 +190,7 @@ class Geocropper:
 
             print("Download")
             print("-----------------\n")
+            logger.info("Download started.")
             
             # index i serves as a counter
             i = 1
@@ -877,8 +889,10 @@ class Geocropper:
         if not products == None and len(products) > 0:
 
             self.unpackBigTiles()
+            logger.info("Big tiles unpacked.")
             
             self.cropTiles(poiId)
+            logger.info("Tiles cropped.")
 
         
         if products == None:
@@ -897,6 +911,8 @@ class Geocropper:
         target_dir, max_scale = 4096, exponential_scale = 0.5):
 
         # TODO: one command still generates some output to the console
+
+        logger.info("Create preview images.")
 
         search_result = list(source_dir.glob(r_band_search_pattern))
         if len(search_result) == 0:
