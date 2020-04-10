@@ -9,7 +9,7 @@ import geocropper.config as config
 
 
 def concat_images(image_path_list, output_file, gap = 3, bcolor = (0,0,0), paths_to_file = None, \
-    upper_label_list = None, lower_label_list = None, write_image_text = True):
+    upper_label_list = None, lower_label_list = None, write_image_text = True, center_point = False):
     """Combine images to one image
 
     Parameters
@@ -37,6 +37,9 @@ def concat_images(image_path_list, output_file, gap = 3, bcolor = (0,0,0), paths
     write_image_text : boolean, optional
         write paths or labels on image
         default is True
+    center_point : boolean, optional
+        marks the center of the individual preview images with a red dot
+        default is False
 
     """
 
@@ -93,6 +96,11 @@ def concat_images(image_path_list, output_file, gap = 3, bcolor = (0,0,0), paths
         # paste image
         combined_image[positions[i][2]:(positions[i][2]+height), positions[i][3]:(positions[i][3]+width)] = image
 
+        # center point
+        if center_point:
+            combined_image[positions[i][2] + round(height / 2), positions[i][3] + round(width / 2)] = (255,0,0)
+
+
     # write file
     image = Image.fromarray(numpy.uint8(combined_image))
 
@@ -138,9 +146,13 @@ def createCombinedImages():
 
             item_list = list(request.glob("*"))
 
+            combined_preview_folder = request / "combined-preview"
+            combined_preview_folder.mkdir(exist_ok = True)            
+
             for i, item in enumerate(request.glob("*"), 1):
 
                 preview_file = item / "preview.tif"
+
                 if preview_file.exists():
 
                     image_path_list.append(preview_file)
@@ -151,12 +163,12 @@ def createCombinedImages():
 
                         counter = counter + 1 
 
-                        output_file = request / ("combined-preview-" + str(counter) + ".tif")
-                        summary_file = request / ("combined-preview-" + str(counter) + "-paths.txt")
+                        output_file = combined_preview_folder / ("combined-preview-" + str(counter) + ".tif")
+                        summary_file = combined_preview_folder / ("combined-preview-" + str(counter) + "-paths.txt")
 
                         concat_images(image_path_list, output_file, gap = config.previewBorder, \
                             bcolor = config.previewBackground, paths_to_file = summary_file, \
-                            upper_label_list = upper_label_list)
+                            upper_label_list = upper_label_list, center_point = True)
 
                         image_path_list = []
                         upper_label_list = []
