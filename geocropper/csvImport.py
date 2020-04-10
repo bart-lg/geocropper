@@ -122,7 +122,7 @@ def loadImportedCSVdata():
 
             print("\n############################################################")
             print("\n[ Load imported data... %d/%d ]" % (i, len(data)))
-            logger.info("[ Load imported data... %d/%d ]")
+            logger.info("[ Load imported data... %d/%d ]" % (i, len(data)))
 
             # initialize geocropper instance
             geoc = geocropper.init(item["lat"], item["lon"])
@@ -148,4 +148,4 @@ def loadImportedCSVdata():
     print("#### Create combined preview images...")
     utils.createCombinedImages()
     print("done.\n")
-    logger.info("[ Load imported data... %d/%d ...done! ]")
+    logger.info("[ Load imported data... %d/%d ...done! ]" % (i, len(data)))
