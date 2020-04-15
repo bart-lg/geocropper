@@ -20,6 +20,12 @@ csvInputDir = dataDir / "csvInput"
 csvArchiveDir = dataDir / "csvArchive"
 logFile = dataDir / "geocropper.log"
 
+# copy metadata from bigTiles to croppedTiles
+copyMetadata = False
+
+# creates symlink within croppedTiles to bigTiles
+createSymlink = True
+
 # shape file used to determine country for geolocation
 worldBordersShapeFile = str(dataDir / "worldBorders" / "TM_WORLD_BORDERS-0.3.shp")
 

@@ -546,11 +546,10 @@ class Geocropper:
 
                     # target directory for cropped image
                     targetDir = mainTargetFolder / "sensordata"
-                    targetDir.mkdir(parents = True)               
+                    targetDir.mkdir(parents = True, exist_ok = True)               
 
                     # target directory for meta information
                     metaDir = mainTargetFolder / "original-metadata"
-                    metaDir.mkdir(parents = True)
 
                     # target directory for preview image
                     previewDir = mainTargetFolder 
@@ -621,17 +620,24 @@ class Geocropper:
                             if is_S2L1:
                                 self.createPreviewRGBImage("*B04.jp2", "*B03.jp2", "*B02.jp2", targetDir, previewDir)                                
 
-                        print("done.\n")                                    
+                        print("done.\n")        
 
-                        print("Copy metadata...")
-                        tileDir = config.bigTilesDir / tile["folderName"]
-                        for item in tileDir.rglob('*'):
-                            if item.is_file() and item.suffix.lower() != ".jp2":
-                                targetDir = metaDir / item.parent.relative_to(tileDir)
-                                if not targetDir.exists():
-                                    targetDir.mkdir(parents = True)
-                                shutil.copy(item, targetDir)
-                        print("done.\n")
+                        if config.copyMetadata:                            
+                            print("Copy metadata...")
+                            metaDir.mkdir(parents = True)
+                            tileDir = config.bigTilesDir / tile["folderName"]
+                            for item in tileDir.rglob('*'):
+                                if item.is_file() and item.suffix.lower() != ".jp2":
+                                    targetDir = metaDir / item.parent.relative_to(tileDir)
+                                    if not targetDir.exists():
+                                        targetDir.mkdir(parents = True)
+                                    shutil.copy(item, targetDir)
+                            print("done.\n")
+
+                        if config.createSymlink:
+                            tileDir = config.bigTilesDir / tile["folderName"]
+                            metaDir.symlink_to(os.path.relpath(str(tileDir.resolve()), str(metaDir.parent.resolve())))
+                            print("Symlink created.")
 
                         # set date for tile cropped 
                         db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
@@ -675,14 +681,21 @@ class Geocropper:
 
                         print("done.")
 
-                        print("Copy metadata...")
-                        for item in pathImgData.glob('*'):
-                            if item.is_file():
-                                if item.suffix.lower() != ".tif":
-                                    shutil.copy(item, metaDir)
-                            if item.is_dir():
-                                shutil.copytree(item, (metaDir / item.name))
-                        print("done.\n")
+                        if config.copyMetadata:
+                            print("Copy metadata...")
+                            metaDir.mkdir(parents = True)
+                            for item in pathImgData.glob('*'):
+                                if item.is_file():
+                                    if item.suffix.lower() != ".tif":
+                                        shutil.copy(item, metaDir)
+                                if item.is_dir():
+                                    shutil.copytree(item, (metaDir / item.name))
+                            print("done.\n")
+
+                        if config.createSymlink:
+                            tileDir = pathImgData
+                            metaDir.symlink_to(os.path.relpath(str(tileDir.resolve()), str(metaDir.parent.resolve())))
+                            print("Symlink created.")                            
 
                         # set date for tile cropped 
                         db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)                                              
@@ -932,10 +945,10 @@ class Geocropper:
         preview_file = "preview.tif"
         if ( target_dir / preview_file ).exists():
             i = 2
-            preview_file = "preview(" + i + ").tif"
+            preview_file = "preview(" + str(i) + ").tif"
             while i < 100 and ( target_dir / preview_file ).exists():
                 i = i + 1
-                preview_file = "preview(" + i + ").tif"
+                preview_file = "preview(" + str(i) + ").tif"
             # TODO: throw exception if i > 99
 
         # rescale red band
