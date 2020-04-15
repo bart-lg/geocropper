@@ -146,7 +146,7 @@ def createCombinedImages():
 
             item_list = list(request.glob("*"))
 
-            combined_preview_folder = request / "combined-preview"
+            combined_preview_folder = request / "0_combined-preview"
             combined_preview_folder.mkdir(exist_ok = True)            
 
             for i, item in enumerate(request.glob("*"), 1):
