@@ -3,3 +3,4 @@ userconfig.py
 data/bigTiles/* 
 geocropper.db
 geocropper.log
+user-config.ini

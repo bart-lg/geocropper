@@ -1,5 +1,0 @@
-copernicusUser = ""
-copernicusPW = ""
-
-usgsUser = ""
-usgsPW = ""

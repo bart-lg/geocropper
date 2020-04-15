@@ -30,7 +30,7 @@ conda env update -f env.yml
 
 ## Configuration
 
-Copy the file userconfig_empty.py to userconfig.py and add your user credentials for the following platforms:
+Copy the file default-config.ini to user-config.ini and add your user credentials for the following platforms:
 - Copernicus Open Access Hub: https://scihub.copernicus.eu/dhus/
 - USGS Earth Resources Observation and Science (EROS) System: https://ers.cr.usgs.gov/register/
 
