@@ -113,9 +113,11 @@ def loadImportedCSVdata():
     data = db.getImportedCSVdata()
 
     # index i serves as a counter
-    i = 1
+    i = 0
 
     for item in data:
+
+        i += 1
 
         # TODO: is it really necessary to check the length of items? it should always be more than 0...
         if len(item) > 0:
@@ -142,8 +144,6 @@ def loadImportedCSVdata():
 
             # move database record to archive table
             db.moveCSVItemToArchive(item["rowid"])
-            
-        i += 1
 
     print("#### Create combined preview images...")
     utils.createCombinedImages()

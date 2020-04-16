@@ -190,7 +190,6 @@ class Geocropper:
 
             print("Download")
             print("-----------------\n")
-            logger.info("Download started.")
             
             # index i serves as a counter
             i = 1
@@ -225,6 +224,7 @@ class Geocropper:
 
                     # download sentinel product
                     # sentinel wrapper has a resume function for incomplete downloads
+                    logger.info("Download started.")
                     print("[%d/%d]: Download %s" % (i, len(products), products[key]["title"]))
                     self.sentinel.downloadSentinelProduct(key)
 
@@ -372,6 +372,7 @@ class Geocropper:
 
                     # download landsat product
                     # landsat wrapper has NO resume function for incomplete downloads
+                    logger.info("Download started.")
                     print("[%d/%d]: Download %s" % (i, len(products), product["displayId"]))
                     self.landsat.downloadLandsatProduct(product["entityId"])
 
@@ -925,8 +926,6 @@ class Geocropper:
 
         # TODO: one command still generates some output to the console
 
-        logger.info("Create preview images.")
-
         search_result = list(source_dir.glob(r_band_search_pattern))
         if len(search_result) == 0:
             return
@@ -950,6 +949,8 @@ class Geocropper:
                 i = i + 1
                 preview_file = "preview(" + str(i) + ").tif"
             # TODO: throw exception if i > 99
+
+		logger.info("Create preview image.")
 
         # rescale red band
         command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
