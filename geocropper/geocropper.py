@@ -924,8 +924,6 @@ class Geocropper:
     def createPreviewRGBImage(self, r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir, \
         target_dir, max_scale = 4096, exponential_scale = 0.5):
 
-        # TODO: one command still generates some output to the console
-
         search_result = list(source_dir.glob(r_band_search_pattern))
         if len(search_result) == 0:
             return
@@ -968,7 +966,7 @@ class Geocropper:
         subprocess.call(command)
 
         # create preview image
-        command = ["gdal_merge.py", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB", \
+        command = ["gdal_merge.py", "-q", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB", \
                    "-o", str( target_dir / preview_file ), str( target_dir / "r-scaled.tif" ), str( target_dir / "g-scaled.tif" ), \
                    str( target_dir / "b-scaled.tif" )]
         subprocess.call(command)                   
