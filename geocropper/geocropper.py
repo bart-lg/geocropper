@@ -922,7 +922,7 @@ class Geocropper:
 
 
     def createPreviewRGBImage(self, r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir, \
-        target_dir, max_scale = 4096, exponential_scale = 0.5):
+        target_dir, max_scale = 4095, exponential_scale = 0.5):
 
         search_result = list(source_dir.glob(r_band_search_pattern))
         if len(search_result) == 0:
