@@ -966,7 +966,7 @@ class Geocropper:
         subprocess.call(command)
 
         # create preview image
-        command = ["gdal_merge.py", "-q", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB", \
+        command = ["gdal_merge.py", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB", \
                    "-o", str( target_dir / preview_file ), str( target_dir / "r-scaled.tif" ), str( target_dir / "g-scaled.tif" ), \
                    str( target_dir / "b-scaled.tif" )]
         subprocess.call(command)                   
