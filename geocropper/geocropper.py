@@ -952,7 +952,7 @@ class Geocropper:
             preview_file_small = "preview_small(" + str(i) + ").tif"
         
 
-		logger.info("Create preview image.")
+        logger.info("Create preview image.")
 
         # rescale red band
         command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
