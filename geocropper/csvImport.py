@@ -145,7 +145,9 @@ def loadImportedCSVdata():
             # move database record to archive table
             db.moveCSVItemToArchive(item["rowid"])
 
-    print("#### Create combined preview images...")
-    utils.createCombinedImages()
-    print("done.\n")
+    if config.combinedPreview:
+        print("#### Create combined preview images...")
+        utils.createCombinedImages()
+        print("done.\n")
+        
     logger.info("[ ##### Load imported data... %d/%d ...done! ##### ]" % (i, len(data)))

@@ -98,6 +98,10 @@ optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperatio
 
 # combined preview images
 try:
+	combinedPreview = userConfig["Combined Preview Images"].getboolean("combinedPreview")
+except:
+	combinedPreview = defaultConfig["Combined Preview Images"].getboolean("combinedPreview")
+try:
 	previewBorder = userConfig["Combined Preview Images"].getint("previewBorder")
 except:
 	previewBorder = defaultConfig["Combined Preview Images"].getint("previewBorder")
