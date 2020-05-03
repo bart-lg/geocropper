@@ -982,5 +982,5 @@ class Geocropper:
 
         if config.resizePreviewImage:
             image = Image.open(str( target_dir / preview_file ))
-            small_image = image.resize((config.widthPreviewImageSmall, config.heightPreviewImageSmall) Image.ANTIALIAS)
+            small_image = image.resize((config.widthPreviewImageSmall, config.heightPreviewImageSmall), Image.ANTIALIAS)
             small_image.save(str( target_dir / preview_file_small ))
