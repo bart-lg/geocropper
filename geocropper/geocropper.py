@@ -14,6 +14,7 @@ import rasterio
 import math 
 from shapely.geometry import Point
 from shapely.ops import transform
+from PIL import Image
 
 from geocropper.database import database
 import geocropper.config as config
@@ -940,6 +941,7 @@ class Geocropper:
         b_band = search_result[0]
 
         preview_file = "preview.tif"
+        preview_file_small = "preview_small.tif"
         if ( target_dir / preview_file ).exists():
             i = 2
             preview_file = "preview(" + str(i) + ").tif"
@@ -947,6 +949,8 @@ class Geocropper:
                 i = i + 1
                 preview_file = "preview(" + str(i) + ").tif"
             # TODO: throw exception if i > 99
+            preview_file_small = "preview_small(" + str(i) + ").tif"
+        
 
 		logger.info("Create preview image.")
 
@@ -975,3 +979,8 @@ class Geocropper:
         ( target_dir / "r-scaled.tif" ).unlink()
         ( target_dir / "g-scaled.tif" ).unlink()
         ( target_dir / "b-scaled.tif" ).unlink()
+
+        if config.resizePreviewImage:
+            image = Image.open(str( target_dir / preview_file ))
+            small_image = image.resize((config.widthPreviewImageSmall, config.heightPreviewImageSmall) Image.ANTIALIAS)
+            small_image.save(str( target_dir / preview_file_small ))

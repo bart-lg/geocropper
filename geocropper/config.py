@@ -96,6 +96,20 @@ except:
 # optional landsat parameters => max_cloud_cover (value in db stored as cloudcoverpercentage)
 optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", "swathidentifier", "cloudcoverpercentage", "timeliness"]
 
+# small preview image
+try:
+	resizePreviewImage = userConfig["Small Preview Image"].getboolean("resizePreviewImage")
+except:
+	resizePreviewImage = defaultConfig["Small Preview Image"].getboolean("resizePreviewImage")
+try:
+	widthPreviewImageSmall = userConfig["Small Preview Image"].getint("widthPreviewImageSmall")
+except:
+	widthPreviewImageSmall = defaultConfig["Small Preview Image"].getint("widthPreviewImageSmall")	
+try:
+	heightPreviewImageSmall = userConfig["Small Preview Image"].getint("heightPreviewImageSmall")
+except:
+	heightPreviewImageSmall = defaultConfig["Small Preview Image"].getint("heightPreviewImageSmall")
+
 # combined preview images
 try:
 	combinedPreview = userConfig["Combined Preview Images"].getboolean("combinedPreview")
