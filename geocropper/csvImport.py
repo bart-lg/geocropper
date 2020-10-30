@@ -147,7 +147,7 @@ def loadImportedCSVdata():
 
     if config.combinedPreview:
         print("#### Create combined preview images...")
-        utils.createCombinedImages()
+        utils.combineImages()
         print("done.\n")
         
     logger.info("[ ##### Load imported data... %d/%d ...done! ##### ]" % (i, len(data)))

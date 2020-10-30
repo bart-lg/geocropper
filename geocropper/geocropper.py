@@ -6,9 +6,7 @@ import os
 import subprocess
 import pathlib
 import shutil
-from dateutil.parser import *
 import pyproj
-from functools import partial
 from pprint import pprint
 import rasterio
 import math 
@@ -27,7 +25,7 @@ from osgeo import gdal
 # gdal library distributed by conda destroys PATH environment variable
 # see -> https://github.com/OSGeo/gdal/issues/1231
 # workaround: remove first entry...
-os.environ["PATH"] = os.environ["PATH"].split(';')[1]
+# os.environ["PATH"] = os.environ["PATH"].split(';')[1]
 
 logger = log.setupCustomLogger('main')
 db = database()
@@ -145,16 +143,16 @@ class Geocropper:
         self.sentinel = sentinelWrapper.sentinelWrapper()
         
         # convert date to required format
-        dateFrom = self.convertDate(dateFrom, "%Y%m%d")
-        dateTo = self.convertDate(dateTo, "%Y%m%d")
+        dateFrom = utils.convertDate(dateFrom, "%Y%m%d")
+        dateTo = utils.convertDate(dateTo, "%Y%m%d")
         
 
         # print search info
 
         print("Search for Sentinel data:")
         self.printPosition()
-        print("From: " + self.convertDate(dateFrom, "%d.%m.%Y"))
-        print("To: " + self.convertDate(dateTo, "%d.%m.%Y"))
+        print("From: " + utils.convertDate(dateFrom, "%d.%m.%Y"))
+        print("To: " + utils.convertDate(dateTo, "%d.%m.%Y"))
         print("Platform: " + platform)
         if tileLimit > 0:
             print("Tile-limit: %d" % tileLimit)
@@ -164,8 +162,8 @@ class Geocropper:
         print("----------------------------\n")
 
         logger.info("Search for Sentinel data:")
-        logger.info("From: " + self.convertDate(dateFrom, "%d.%m.%Y"))
-        logger.info("To: " + self.convertDate(dateTo, "%d.%m.%Y"))
+        logger.info("From: " + utils.convertDate(dateFrom, "%d.%m.%Y"))
+        logger.info("To: " + utils.convertDate(dateTo, "%d.%m.%Y"))
         logger.info("Platform: " + platform)
         if tileLimit > 0:
             logger.info("Tile-limit: %d" % tileLimit)
@@ -308,16 +306,16 @@ class Geocropper:
         maxCloudCoverage = 100
 
         # convert date to required format
-        dateFrom = self.convertDate(dateFrom)
-        dateTo = self.convertDate(dateTo)
+        dateFrom = utils.convertDate(dateFrom)
+        dateTo = utils.convertDate(dateTo)
 
 
         # print search info
 
         print("Search for Landsat data:")
         self.printPosition()
-        print("From: " + self.convertDate(dateFrom, "%d.%m.%Y"))
-        print("To: " + self.convertDate(dateTo, "%d.%m.%Y"))
+        print("From: " + utils.convertDate(dateFrom, "%d.%m.%Y"))
+        print("To: " + utils.convertDate(dateTo, "%d.%m.%Y"))
         print("Platform: " + platform)
         if tileLimit > 0:
             print("Tile-limit: %d" % tileLimit)
@@ -538,9 +536,9 @@ class Geocropper:
                     print("Cropping %s ..." % tile["folderName"])
 
                     if poi["platform"] == "Sentinel-1" or poi["platform"] == "Sentinel-2":
-                        beginposition = self.convertDate(tile["beginposition"], newFormat="%Y%m%d-%H%M")
+                        beginposition = utils.convertDate(tile["beginposition"], newFormat="%Y%m%d-%H%M")
                     else:
-                        beginposition = self.convertDate(tile["beginposition"], newFormat="%Y%m%d")
+                        beginposition = utils.convertDate(tile["beginposition"], newFormat="%Y%m%d")
 
                     poiParameters = self.getPoiParametersForOutputFolder(poi)
                     connectionId = db.getTilePoiConnectionId(poiId, tile["rowid"])
@@ -605,9 +603,9 @@ class Geocropper:
                                         path = pathImgDataItem / item
 
                                         # CROP IMAGE
-                                        self.cropImg(path, item, topLeft, bottomRight, targetSubDir, fileFormat)
+                                        utils.cropImg(path, item, topLeft, bottomRight, targetSubDir, fileFormat)
 
-                                    self.createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", targetSubDir, previewDir)
+                                    utils.createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", targetSubDir, previewDir)
                                 
                                 else:
 
@@ -617,10 +615,10 @@ class Geocropper:
                                     path = pathImgDataItem
 
                                     # CROP IMAGE
-                                    self.cropImg(path, imgDataItem, topLeft, bottomRight, targetDir, fileFormat)
+                                    utils.cropImg(path, imgDataItem, topLeft, bottomRight, targetDir, fileFormat)
 
                             if is_S2L1:
-                                self.createPreviewRGBImage("*B04.jp2", "*B03.jp2", "*B02.jp2", targetDir, previewDir)                                
+                                utils.createPreviewRGBImage("*B04.jp2", "*B03.jp2", "*B02.jp2", targetDir, previewDir)                                
 
                         print("done.\n")        
 
@@ -638,7 +636,8 @@ class Geocropper:
 
                         if config.createSymlink:
                             tileDir = config.bigTilesDir / tile["folderName"]
-                            metaDir.symlink_to(os.path.relpath(str(tileDir.resolve()), str(metaDir.parent.resolve())))
+                            # TODO: set config parameter for realpath or relpath for symlinks
+                            metaDir.symlink_to(os.path.realpath(str(tileDir.resolve()), str(metaDir.parent.resolve())))
                             print("Symlink created.")
 
                         # set date for tile cropped 
@@ -669,7 +668,7 @@ class Geocropper:
                                 path = pathImgData / item
 
                                 # CROP IMAGE
-                                self.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
+                                utils.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
 
                         if poi["platform"] == "LANDSAT_8_C1":
                             r_band_search_pattern = "*B4.TIF"
@@ -679,7 +678,7 @@ class Geocropper:
                             r_band_search_pattern = "*B3.TIF"
                             g_band_search_pattern = "*B2.TIF"
                             b_band_search_pattern = "*B1.TIF"                           
-                        self.createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, targetDir, previewDir)                         
+                        utils.createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, targetDir, previewDir)                         
 
                         print("done.")
 
@@ -696,7 +695,8 @@ class Geocropper:
 
                         if config.createSymlink:
                             tileDir = pathImgData
-                            metaDir.symlink_to(os.path.relpath(str(tileDir.resolve()), str(metaDir.parent.resolve())))
+                            # TODO: set config parameter for realpath or relpath for symlink
+                            metaDir.symlink_to(os.path.realpath(str(tileDir.resolve()), str(metaDir.parent.resolve())))
                             print("Symlink created.")                            
 
                         # set date for tile cropped 
@@ -709,12 +709,12 @@ class Geocropper:
         folderName = ""
 
         try:
-            folderElements.append("df" + self.convertDate(poi["dateFrom"], "%Y%m%d"))
+            folderElements.append("df" + utils.convertDate(poi["dateFrom"], "%Y%m%d"))
         except:
             pass
 
         try:
-            folderElements.append("dt" + self.convertDate(poi["dateTo"], "%Y%m%d"))
+            folderElements.append("dt" + utils.convertDate(poi["dateTo"], "%Y%m%d"))
         except:
             pass
             
@@ -786,35 +786,6 @@ class Geocropper:
         return folderName
             
 
-
-    def cropImg(self, path, item, topLeft, bottomRight, targetDir, fileFormat):
-    
-        # open raster image file
-        img = rasterio.open(str(path))
-
-        # prepare parameters for coordinate system transform function 
-        toTargetCRS = partial(pyproj.transform, \
-            pyproj.Proj('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs '), pyproj.Proj(img.crs))
-
-        # transform corner coordinates for cropping
-        topLeftTransformed = transform(toTargetCRS, topLeft)
-        bottomRightTransformed = transform(toTargetCRS, bottomRight)
-
-        # open image with GDAL
-        ds = gdal.Open(str(path))
-
-        # make sure that target directory exists
-        if not os.path.isdir(str(targetDir)):
-            os.makedirs(str(targetDir))
-
-        # CROP IMAGE
-        ds = gdal.Translate(str(targetDir / item), ds, format=fileFormat, \
-            projWin = [topLeftTransformed.x, topLeftTransformed.y, \
-            bottomRightTransformed.x, bottomRightTransformed.y])
-
-        ds = None
-
-
     def downloadAndCrop(self, groupname, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
         """Download and crop/clip Sentinel or Landsat tiles to directories specified in the config file.
 
@@ -873,8 +844,8 @@ class Geocropper:
 
 
         # convert date formats
-        dateFrom = self.convertDate(dateFrom)
-        dateTo = self.convertDate(dateTo)
+        dateFrom = utils.convertDate(dateFrom)
+        dateTo = utils.convertDate(dateTo)
 
 
         # check if point of interest (POI) exists in database
@@ -915,72 +886,3 @@ class Geocropper:
         else:
             return len(products)
 
-
-
-    def convertDate(self, date, newFormat="%Y-%m-%d"):
-        temp = parse(date)
-        return temp.strftime(newFormat)
-
-
-    def createPreviewRGBImage(self, r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir, \
-        target_dir, max_scale = 4095, exponential_scale = 0.5):
-
-        search_result = list(source_dir.glob(r_band_search_pattern))
-        if len(search_result) == 0:
-            return
-        r_band = search_result[0]
-        
-        search_result = list(source_dir.glob(g_band_search_pattern))
-        if len(search_result) == 0:
-            return
-        g_band = search_result[0]
-
-        search_result = list(source_dir.glob(b_band_search_pattern))
-        if len(search_result) == 0:
-            return
-        b_band = search_result[0]
-
-        preview_file = "preview.tif"
-        preview_file_small = "preview_small.tif"
-        if ( target_dir / preview_file ).exists():
-            i = 2
-            preview_file = "preview(" + str(i) + ").tif"
-            while i < 100 and ( target_dir / preview_file ).exists():
-                i = i + 1
-                preview_file = "preview(" + str(i) + ").tif"
-            # TODO: throw exception if i > 99
-            preview_file_small = "preview_small(" + str(i) + ").tif"
-        
-
-        logger.info("Create preview image.")
-
-        # rescale red band
-        command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
-                   str(exponential_scale), str( r_band ), str( target_dir / "r-scaled.tif")]
-        subprocess.call(command)
-
-        # rescale green band
-        command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
-                   str(exponential_scale), str( g_band ), str( target_dir / "g-scaled.tif")]
-        subprocess.call(command)
-
-        # rescale blue band
-        command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
-                   str(exponential_scale), str( b_band ), str( target_dir / "b-scaled.tif")]
-        subprocess.call(command)
-
-        # create preview image
-        command = ["gdal_merge.py", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB", \
-                   "-o", str( target_dir / preview_file ), str( target_dir / "r-scaled.tif" ), str( target_dir / "g-scaled.tif" ), \
-                   str( target_dir / "b-scaled.tif" )]
-        subprocess.call(command)                   
-
-        # remove scaled bands
-        ( target_dir / "r-scaled.tif" ).unlink()
-        ( target_dir / "g-scaled.tif" ).unlink()
-        ( target_dir / "b-scaled.tif" ).unlink()
-
-        if config.resizePreviewImage:
-            image = Image.open(str( target_dir / preview_file ))
-            small_image = image.resize((config.widthPreviewImageSmall, config.heightPreviewImageSmall), Image.ANTIALIAS)
-            small_image.save(str( target_dir / preview_file_small ))
