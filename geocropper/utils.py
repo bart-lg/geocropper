@@ -32,18 +32,47 @@ def convertDate(date, newFormat="%Y-%m-%d"):
     temp = parse(date)
     return temp.strftime(newFormat)
 
-def cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat):
+def getXYCornerCoordinates(path, lat, lon, width, height):
+
+    poi_transformed = transformPointLatLonToXY(path, Point(lon, lat))
+    poi_x = poi_transformed.x
+    poi_y = poi_transformed.y
+
+    # open image with GDAL
+    dataset = gdal.Open(str(path))
+    
+    upper_left_x, xres, xskew, upper_left_y, yskew, yres = dataset.GetGeoTransform()
+    cols = dataset.RasterXSize
+    rows = dataset.RasterYSize
+
+    top_left_x = poi_x - (width/2) - (height/2) / yres * xskew
+    top_left_y = poi_y + (height/2) - (width/2) / xres * yskew
+    bottom_right_x = poi_x + (width/2) + (height/2) / yres * xskew
+    bottom_right_y = poi_y - (height/2) + (width/2) / xres * yskew
+
+    return({ "top_left": Point(top_left_x, top_left_y), "bottom_right": Point(bottom_right_x, bottom_right_y)})    
+
+
+def transformPointLatLonToXY(path, point):
 
     # open raster image file
     img = rasterio.open(str(path))
 
-    # prepare parameters for coordinate system transform function 
-    toTargetCRS = partial(pyproj.transform, \
+    # prepare parameters for coordinate system transform function
+    toTargetCRS = partial(pyproj.transform,
         pyproj.Proj('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs '), pyproj.Proj(img.crs))
 
     # transform corner coordinates for cropping
-    topLeftTransformed = transform(toTargetCRS, topLeft)
-    bottomRightTransformed = transform(toTargetCRS, bottomRight)
+    point = transform(toTargetCRS, point)
+
+    return(point)
+
+
+def cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat, isLatLon = True):
+
+    if (isLatLon):
+        topLeft = transformPointLatLonToXY(path, topLeft)
+        bottomRight = transformPointLatLonToXY(path, bottomRight)
 
     # open image with GDAL
     ds = gdal.Open(str(path))
@@ -53,21 +82,21 @@ def cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat):
         os.makedirs(str(targetDir))
 
     # CROP IMAGE
-    ds = gdal.Translate(str(targetDir / item), ds, format=fileFormat, \
-        projWin = [topLeftTransformed.x, topLeftTransformed.y, \
-        bottomRightTransformed.x, bottomRightTransformed.y])
+    ds = gdal.Translate(str(targetDir / item), ds, format=fileFormat,
+                        projWin=[topLeft.x, topLeft.y,
+                                 bottomRight.x, bottomRight.y])
 
     ds = None
 
 
-def createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir, \
-    target_dir, max_scale = 4095, exponential_scale = 0.5):
+def createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir,
+                          target_dir, max_scale=4095, exponential_scale=0.5):
 
     search_result = list(source_dir.glob(r_band_search_pattern))
     if len(search_result) == 0:
         return
     r_band = search_result[0]
-    
+
     search_result = list(source_dir.glob(g_band_search_pattern))
     if len(search_result) == 0:
         return
@@ -80,54 +109,53 @@ def createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_s
 
     preview_file = "preview.tif"
     preview_file_small = "preview_small.tif"
-    if ( target_dir / preview_file ).exists():
+    if (target_dir / preview_file).exists():
         i = 2
         preview_file = "preview(" + str(i) + ").tif"
-        while i < 100 and ( target_dir / preview_file ).exists():
+        while i < 100 and (target_dir / preview_file).exists():
             i = i + 1
             preview_file = "preview(" + str(i) + ").tif"
         # TODO: throw exception if i > 99
         preview_file_small = "preview_small(" + str(i) + ").tif"
-    
 
     logger.info("Create preview image.")
 
     # rescale red band
-    command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
-               str(exponential_scale), os.path.realpath( str( r_band ) ), os.path.realpath( str( target_dir / "r-scaled.tif") )]
+    command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent",
+               str(exponential_scale), os.path.realpath(str(r_band)), os.path.realpath(str(target_dir / "r-scaled.tif"))]
     subprocess.call(command)
 
     # rescale green band
-    command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
-               str(exponential_scale), os.path.realpath( str( g_band ) ), os.path.realpath( str( target_dir / "g-scaled.tif") )]
+    command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent",
+               str(exponential_scale), os.path.realpath(str(g_band)), os.path.realpath(str(target_dir / "g-scaled.tif"))]
     subprocess.call(command)
 
     # rescale blue band
-    command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent", \
-               str(exponential_scale), os.path.realpath( str( b_band ) ), os.path.realpath( str( target_dir / "b-scaled.tif") )]
+    command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent",
+               str(exponential_scale), os.path.realpath(str(b_band)), os.path.realpath(str(target_dir / "b-scaled.tif"))]
     subprocess.call(command)
 
     # create preview image
-    command = ["gdal_merge.py", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB", \
-               "-o", os.path.realpath(str( target_dir / preview_file )), \
-               os.path.realpath(str( target_dir / "r-scaled.tif" )), \
-               os.path.realpath(str( target_dir / "g-scaled.tif" )), \
-               os.path.realpath(str( target_dir / "b-scaled.tif" ))]
-    subprocess.call(command)                   
+    command = ["gdal_merge.py", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB",
+               "-o", os.path.realpath(str(target_dir / preview_file)),
+               os.path.realpath(str(target_dir / "r-scaled.tif")),
+               os.path.realpath(str(target_dir / "g-scaled.tif")),
+               os.path.realpath(str(target_dir / "b-scaled.tif"))]
+    subprocess.call(command)
 
     # remove scaled bands
-    ( target_dir / "r-scaled.tif" ).unlink()
-    ( target_dir / "g-scaled.tif" ).unlink()
-    ( target_dir / "b-scaled.tif" ).unlink()
+    (target_dir / "r-scaled.tif").unlink()
+    (target_dir / "g-scaled.tif").unlink()
+    (target_dir / "b-scaled.tif").unlink()
 
     if config.resizePreviewImage:
-        image = Image.open(str( target_dir / preview_file ))
+        image = Image.open(str(target_dir / preview_file))
         small_image = image.resize((config.widthPreviewImageSmall, config.heightPreviewImageSmall), Image.ANTIALIAS)
-        small_image.save(str( target_dir / preview_file_small ))    
+        small_image.save(str(target_dir / preview_file_small))
 
 
-def concat_images(image_path_list, output_file, gap = 3, bcolor = (0,0,0), paths_to_file = None, \
-    upper_label_list = None, lower_label_list = None, write_image_text = True, center_point = False):
+def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_to_file=None,
+                  upper_label_list=None, lower_label_list=None, write_image_text=True, center_point=False):
     """Combine images to one image
 
     Parameters
@@ -169,7 +197,7 @@ def concat_images(image_path_list, output_file, gap = 3, bcolor = (0,0,0), paths
     max_width = 0
 
     for image_path in image_path_list:
-        image = pyplot.imread(image_path)[:,:,:3]
+        image = pyplot.imread(image_path)[:, :, :3]
         height, width = image.shape[:2]
         if height > max_height:
             max_height = height
@@ -177,22 +205,22 @@ def concat_images(image_path_list, output_file, gap = 3, bcolor = (0,0,0), paths
             max_width = width
 
     # add gap to width and height
-    total_height = max_height * raster_size + gap * ( raster_size - 1 )
-    total_width = max_width * raster_size + gap * ( raster_size - 1 )
+    total_height = max_height * raster_size + gap * (raster_size - 1)
+    total_width = max_width * raster_size + gap * (raster_size - 1)
 
     # assign positions to images
     # positions = [row, column, height_start, width_start]
-    positions = numpy.zeros((len(list(image_path_list)), 4), dtype = int)
+    positions = numpy.zeros((len(list(image_path_list)), 4), dtype=int)
     for i, image_path in enumerate(image_path_list, 1):
         # determine position
         row = math.ceil(i / raster_size)
         column = i % raster_size
         if column == 0:
-            column = raster_size        
+            column = raster_size
 
         # determine starting width and height
-        height_start = ( row - 1 ) * ( max_height + gap )   
-        width_start = ( column - 1 ) * ( max_width + gap )
+        height_start = (row - 1) * (max_height + gap)
+        width_start = (column - 1) * (max_width + gap)
 
         positions[i-1][0] = int(row)
         positions[i-1][1] = int(column)
@@ -204,9 +232,9 @@ def concat_images(image_path_list, output_file, gap = 3, bcolor = (0,0,0), paths
 
     # paste images to combined image
     for i, image_path in enumerate(image_path_list):
-        
+
         # read image
-        image = pyplot.imread(image_path)[:,:,:3]
+        image = pyplot.imread(image_path)[:, :, :3]
 
         # determine width and height
         height, width = image.shape[:2]
@@ -216,28 +244,27 @@ def concat_images(image_path_list, output_file, gap = 3, bcolor = (0,0,0), paths
 
         # center point
         if center_point:
-            combined_image[positions[i][2] + round(height / 2), positions[i][3] + round(width / 2)] = (255,0,0)
-
+            combined_image[positions[i][2] + round(height / 2), positions[i][3] + round(width / 2)] = (255, 0, 0)
 
     # write file
     image = Image.fromarray(numpy.uint8(combined_image))
 
     # write paths on image
     if write_image_text:
-        font = ImageFont.truetype(str( \
+        font = ImageFont.truetype(str(
             pathlib.Path(os.environ["CONDA_PREFIX"]) / "fonts" / "open-fonts" / "IBMPlexMono-Regular.otf"), config.previewImageFontSize)
         draw = ImageDraw.Draw(image)
         if upper_label_list == None:
             upper_label_list = image_path_list
         for i, upper_label in enumerate(upper_label_list):
             # draw.text requires coordinates in following order: width, height
-            draw.text((positions[i][3] + 5, positions[i][2] + 5), upper_label, font=font, fill=(255,0,0))
+            draw.text((positions[i][3] + 5, positions[i][2] + 5), upper_label, font=font, fill=(255, 0, 0))
         if lower_label_list != None:
             for i, lower_label in enumerate(lower_label_list):
                 # draw.text requires coordinates in following order: width, height
-                draw.text((positions[i][3] + 5, positions[i][2] + 15), lower_label, font=font, fill=(255,0,0))            
+                draw.text((positions[i][3] + 5, positions[i][2] + 15), lower_label, font=font, fill=(255, 0, 0))
 
-    image.save(output_file) 
+    image.save(output_file)
 
     # create file list
     if paths_to_file != None:
@@ -261,7 +288,7 @@ def createCombinedImages(source_folder):
     item_list = list(source_folder.glob("*"))
 
     combined_preview_folder = source_folder / "0_combined-preview"
-    combined_preview_folder.mkdir(exist_ok = True)            
+    combined_preview_folder.mkdir(exist_ok=True)
 
     for i, item in enumerate(source_folder.glob("*"), 1):
 
@@ -275,24 +302,25 @@ def createCombinedImages(source_folder):
 
             if i % config.previewImagesCombined == 0 or i == len(item_list):
 
-                counter = counter + 1 
+                counter = counter + 1
 
                 output_file = combined_preview_folder / ("combined-preview-" + str(counter) + ".tif")
                 summary_file = combined_preview_folder / ("combined-preview-" + str(counter) + "-paths.txt")
 
-                concat_images(image_path_list, output_file, gap = config.previewBorder, \
-                    bcolor = config.previewBackground, paths_to_file = summary_file, \
-                    upper_label_list = upper_label_list, center_point = True)
+                concat_images(image_path_list, output_file, gap=config.previewBorder,
+                              bcolor=config.previewBackground, paths_to_file=summary_file,
+                              upper_label_list=upper_label_list, center_point=True)
 
                 image_path_list = []
                 upper_label_list = []
-                # lower_label_list = []     
+                # lower_label_list = []
 
-def combineImages(folder = "", has_subdir = True):
+
+def combineImages(folder="", has_subdir=True):
 
     for group in config.croppedTilesDir.glob("*"):
 
-        if len(folder) == 0 or ( len(folder) > 0 and folder == str(group.name) ) : 
+        if len(folder) == 0 or (len(folder) > 0 and folder == str(group.name)):
 
             if has_subdir:
                 for request in group.glob("*"):
@@ -300,9 +328,8 @@ def combineImages(folder = "", has_subdir = True):
             else:
                 createCombinedImages(group)
 
- 
 
-def create_random_crops(crops_per_tile = 30, output_folder = "random_crops", width = 1000, height = 1000):
+def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1000, height=1000):
     """Creates random crops out of existing Sentinel 2 level 2 big tiles.
 
     ## check if output_folder & "_wxxx_hxxx" exists, if yes increment postfix _xx until no folder found
@@ -318,13 +345,15 @@ def create_random_crops(crops_per_tile = 30, output_folder = "random_crops", wid
     max_loops_per_tile = 1000
     # outProj = pyproj.Proj(init='epsg:3857')
 
-    output_path = config.croppedTilesDir / ( output_folder + "_w" + str(width) + "_h" + str(height) )
+    output_path = config.croppedTilesDir / (output_folder + "_w" + str(width) + "_h" + str(height))
     if output_path.exists():
         i = 1
-        output_path = config.croppedTilesDir / ( output_folder + "_w" + str(width) + "_h" + str(height) + "_" + str(i).zfill(2) )
-        while output_path.exists() and i < 100 :
+        output_path = config.croppedTilesDir / \
+            (output_folder + "_w" + str(width) + "_h" + str(height) + "_" + str(i).zfill(2))
+        while output_path.exists() and i < 100:
             i = i + 1
-            output_path = config.croppedTilesDir / ( output_folder + "_w" + str(width) + "_h" + str(height) + "_" + str(i).zfill(2) )
+            output_path = config.croppedTilesDir / \
+                (output_folder + "_w" + str(width) + "_h" + str(height) + "_" + str(i).zfill(2))
 
     if output_path.exists():
         print("Could not create a unique output folder!")
@@ -341,7 +370,7 @@ def create_random_crops(crops_per_tile = 30, output_folder = "random_crops", wid
 
         # Sentinel-2 img data are in jp2-format
         # set appropriate format for GDAL lib
-        fileFormat="JP2OpenJPEG"
+        fileFormat = "JP2OpenJPEG"
 
         # go through "SAFE"-directory structure of Sentinel-2
 
@@ -358,9 +387,17 @@ def create_random_crops(crops_per_tile = 30, output_folder = "random_crops", wid
                 # open image with GDAL
                 file = list(HQ_dir.glob("*_B02_10m.jp2"))[0]
                 dataset = gdal.Open(str(file))
-                upper_left_x, xres, xskew, upper_left_y, yskew, yres  = dataset.GetGeoTransform()
-                lower_right_x = upper_left_x + (dataset.RasterXSize * xres)
-                lower_right_y = upper_left_y + (dataset.RasterYSize * yres)
+
+                # yres is negative!
+                upper_left_x, xres, xskew, upper_left_y, yskew, yres = dataset.GetGeoTransform()
+                cols = dataset.RasterXSize
+                rows = dataset.RasterYSize
+                lower_left_x = upper_left_x + (rows * xskew)
+                lower_left_y = upper_left_y + (rows * yres)
+                upper_right_x = upper_left_x + (cols * xres)
+                upper_right_y = upper_left_y + (cols * yskew)
+                lower_right_x = upper_left_x + (rows * xskew) + (cols * xres)
+                lower_right_y = upper_left_y + (cols * yskew) + (rows * yres)
 
                 random_crops = 0
                 loop_counter = 0
@@ -372,15 +409,27 @@ def create_random_crops(crops_per_tile = 30, output_folder = "random_crops", wid
 
                     loop_counter = loop_counter + 1
 
-                    random_x = random.uniform(lower_right_x, upper_left_x)
-                    random_y = random.uniform(lower_right_y, upper_left_y)
+                    # reduce the tile area where the random point may be generated randomly 
+                    # by half of the crop height and width
+                    reduced_upper_left_x = upper_left_x + (width/2) + (height/2) / yres * xskew
+                    reduced_upper_left_y = upper_left_y - (height/2) + (width/2) / xres * yskew
+                    reduced_lower_left_x = lower_left_x + (width/2) - (height/2) / yres * xskew
+                    reduced_lower_left_y = lower_left_y + (height/2) + (width/2) / xres * yskew
+                    reduced_upper_right_x = upper_right_x - (width/2) + (height/2) / yres * xskew
+                    reduced_upper_right_y = upper_right_y - (height/2) - (width/2) / xres * yskew
+                    reduced_lower_right_x = lower_right_x - (width/2) - (height/2) / yres * xskew
+                    reduced_lower_right_y = lower_right_y + (height/2) - (width/2) / xres * yskew
+
+                    # generate random point inside the reduced tile area
+                    random_x = random.uniform(reduced_lower_right_x, reduced_upper_left_x)
+                    random_y = random.uniform(reduced_lower_right_y, reduced_upper_left_y)
 
                     has_values = False
 
                     for file in HQ_dir.glob("*_B*_10m.jp2"):
                         dataset = gdal.Open(str(file))
-                        x_index = (random_x - min( [lower_right_x, upper_left_x] )) / xres
-                        y_index = (random_y - min( [lower_right_y, upper_left_y] )) / yres
+                        x_index = (random_x - lower_left_x) / xres
+                        y_index = (random_y - lower_left_y) / ( yres * -1 )
                         x_index, y_index = int(x_index + 0.5), int(y_index + 0.5)
                         array = dataset.ReadAsArray()
                         pixel_val = array[y_index, x_index]
@@ -391,30 +440,26 @@ def create_random_crops(crops_per_tile = 30, output_folder = "random_crops", wid
                         random_crops = random_crops + 1
                         j = j + 1
 
-                        diag = math.sqrt((width/2)**2 + (height/2)**2)
-
-                        lat, lon = inProj(random_x, random_y, inverse=True)
-
-                        topLeftLon, topLeftLat, backAzimuth = (pyproj.Geod(ellps="WGS84").fwd(lat,lon,315,diag))
-                        bottomRightLon, bottomRightLat, backAzimuth = (pyproj.Geod(ellps="WGS84").fwd(lat,lon,135,diag))
+                        top_left_x = random_x - (width/2) - (height/2) / yres * xskew
+                        top_left_y = random_y + (height/2) - (width/2) / xres * yskew
+                        bottom_right_x = random_x + (width/2) + (height/2) / yres * xskew
+                        bottom_right_y = random_y - (height/2) + (width/2) / xres * yskew
 
                         # convert to Point object (shapely)
-                        topLeft = Point(topLeftLon, topLeftLat)
-                        bottomRight = Point(bottomRightLon, bottomRightLat)  
+                        topLeft = Point(top_left_y, top_left_x)
+                        bottomRight = Point(bottom_right_y, bottom_right_x)
 
-                        # proj_x, proj_y = pyproj.transform(inProj, outProj, random_x, random_y)
-
-                        mainTargetFolder = output_path / ( "%s_%s_%s" % (j, lat, lon) )      
+                        mainTargetFolder = output_path / ("%s_%s_%s" % (j, lat, lon))
 
                         # target directory for cropped image
                         targetDir = mainTargetFolder / "sensordata"
-                        targetDir.mkdir(parents = True, exist_ok = True)               
+                        targetDir.mkdir(parents=True, exist_ok=True)
 
                         # target directory for meta information
                         metaDir = mainTargetFolder / "original-metadata"
 
                         # target directory for preview image
-                        previewDir = mainTargetFolder 
+                        previewDir = mainTargetFolder
 
                         for imgDataItem in os.listdir(pathImgData):
 
@@ -423,25 +468,25 @@ def create_random_crops(crops_per_tile = 30, output_folder = "random_crops", wid
                             targetSubDir = targetDir / imgDataItem
 
                             if os.path.isdir(pathImgDataItem):
-                    
+
                                 for item in os.listdir(pathImgDataItem):
 
                                     # set path of img file
                                     path = pathImgDataItem / item
 
                                     # CROP IMAGE
-                                    cropImg(path, item, topLeft, bottomRight, targetSubDir, fileFormat)
+                                    cropImg(path, item, topLeft, bottomRight, targetSubDir, fileFormat, isLatLon=False)
 
                         createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", targetSubDir, previewDir)
 
-                        if config.copyMetadata:                            
-                            metaDir.mkdir(parents = True)
+                        if config.copyMetadata:
+                            metaDir.mkdir(parents=True)
                             tileDir = big_tile
                             for item in tileDir.rglob('*'):
                                 if item.is_file() and item.suffix.lower() != ".jp2":
                                     targetDir = metaDir / item.parent.relative_to(tileDir)
                                     if not targetDir.exists():
-                                        targetDir.mkdir(parents = True)
+                                        targetDir.mkdir(parents=True)
                                     shutil.copy(item, targetDir)
 
                         if config.createSymlink:
@@ -452,5 +497,5 @@ def create_random_crops(crops_per_tile = 30, output_folder = "random_crops", wid
                         print(f"random crop {j} done.\n")
 
     print("### Generate combined preview images...")
-    combineImages(str(output_path.name), has_subdir = False)   
+    combineImages(str(output_path.name), has_subdir=False)
     print("done.")

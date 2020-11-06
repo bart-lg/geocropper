@@ -513,17 +513,6 @@ class Geocropper:
         # crop tile if point of interest (POI) exists and width and height bigger than 0
         if not poi == None and poi["width"] > 0 and poi["height"] > 0:
 
-            # calculate diagonal distance from center to corners
-            diag = math.sqrt((poi["width"]/2)**2 + (poi["height"]/2)**2)
-
-            # determine top left and bottom right coordinates in WGS84
-            topLeftLon, topLeftLat, backAzimuth = (pyproj.Geod(ellps="WGS84").fwd(poi["lon"],poi["lat"],315,diag))
-            bottomRightLon, bottomRightLat, backAzimuth = (pyproj.Geod(ellps="WGS84").fwd(poi["lon"],poi["lat"],135,diag))
-
-            # convert to Point object (shapely)
-            topLeft = Point(topLeftLon, topLeftLat)
-            bottomRight = Point(bottomRightLon, bottomRightLat) 
-
             # get tiles that need to be cropped
             tiles = db.getTilesForPoi(poiId)
             
@@ -553,7 +542,8 @@ class Geocropper:
 
                     # target directory for preview image
                     previewDir = mainTargetFolder 
-                    # previewDir.mkdir(parents = True, exist_ok = True)               
+                    # previewDir.mkdir(parents = True, exist_ok = True)   
+
 
                     # SENTINEL 1 CROPPING
                     
@@ -569,6 +559,8 @@ class Geocropper:
 
                     # crop Sentinel-2 tile
                     if poi["platform"] == "Sentinel-2":
+
+                        corner_coordinates = None
 
                         # Sentinel-2 img data are in jp2-format
                         # set appropriate format for GDAL lib
@@ -602,8 +594,12 @@ class Geocropper:
                                         # set path of img file
                                         path = pathImgDataItem / item
 
+                                        if corner_coordinates == None:
+                                            corner_coordinates = utils.getXYCornerCoordinates(path, poi["lat"], poi["lon"], poi["width"], poi["height"])
+
                                         # CROP IMAGE
-                                        utils.cropImg(path, item, topLeft, bottomRight, targetSubDir, fileFormat)
+                                        utils.cropImg(path, item, corner_coordinates["top_left"], corner_coordinates["bottom_right"], 
+                                                      targetSubDir, fileFormat, isLatLon=False)
 
                                     utils.createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", targetSubDir, previewDir)
                                 
@@ -614,8 +610,12 @@ class Geocropper:
                                     # set path of image file
                                     path = pathImgDataItem
 
+                                    if corner_coordinates == None:
+                                        corner_coordinates = utils.getXYCornerCoordinates(path, poi["lat"], poi["lon"], poi["width"], poi["height"])
+
                                     # CROP IMAGE
-                                    utils.cropImg(path, imgDataItem, topLeft, bottomRight, targetDir, fileFormat)
+                                    utils.cropImg(path, imgDataItem, corner_coordinates["top_left"], corner_coordinates["bottom_right"], 
+                                                  targetDir, fileFormat, isLatLon=False)
 
                             if is_S2L1:
                                 utils.createPreviewRGBImage("*B04.jp2", "*B03.jp2", "*B02.jp2", targetDir, previewDir)                                
@@ -637,7 +637,7 @@ class Geocropper:
                         if config.createSymlink:
                             tileDir = config.bigTilesDir / tile["folderName"]
                             # TODO: set config parameter for realpath or relpath for symlinks
-                            metaDir.symlink_to(os.path.realpath(str(tileDir.resolve()), str(metaDir.parent.resolve())))
+                            metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
                             print("Symlink created.")
 
                         # set date for tile cropped 
@@ -648,59 +648,62 @@ class Geocropper:
 
                     if poi["platform"].startswith("LANDSAT"):
                     
-                        # Landsat img data are in GeoTiff-format
-                        # set appropriate format for GDAL lib
-                        fileFormat="GTiff"
+                        print("Cropping of Landsat data not yet supported.\n")
+                        db.setCancelledTileForPoi(poiId, tile["rowid"])
 
-                        # all images are in root dir of tile
+                        # # Landsat img data are in GeoTiff-format
+                        # # set appropriate format for GDAL lib
+                        # fileFormat="GTiff"
 
-                        # set path of root dir of tile
-                        pathImgData = config.bigTilesDir / tile["folderName"]
+                        # # all images are in root dir of tile
 
-                        # TODO: switch to pathlib (for item in pathImgData)
-                        # go through all files in root dir of tile
-                        for item in os.listdir(pathImgData):
+                        # # set path of root dir of tile
+                        # pathImgData = config.bigTilesDir / tile["folderName"]
 
-                            # if file ends with tif then crop
-                            if item.lower().endswith(".tif"):
+                        # # TODO: switch to pathlib (for item in pathImgData)
+                        # # go through all files in root dir of tile
+                        # for item in os.listdir(pathImgData):
 
-                                # set path of image file
-                                path = pathImgData / item
+                        #     # if file ends with tif then crop
+                        #     if item.lower().endswith(".tif"):
 
-                                # CROP IMAGE
-                                utils.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
+                        #         # set path of image file
+                        #         path = pathImgData / item
 
-                        if poi["platform"] == "LANDSAT_8_C1":
-                            r_band_search_pattern = "*B4.TIF"
-                            g_band_search_pattern = "*B3.TIF"
-                            b_band_search_pattern = "*B2.TIF"
-                        else:
-                            r_band_search_pattern = "*B3.TIF"
-                            g_band_search_pattern = "*B2.TIF"
-                            b_band_search_pattern = "*B1.TIF"                           
-                        utils.createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, targetDir, previewDir)                         
+                        #         # CROP IMAGE
+                        #         utils.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
 
-                        print("done.")
+                        # if poi["platform"] == "LANDSAT_8_C1":
+                        #     r_band_search_pattern = "*B4.TIF"
+                        #     g_band_search_pattern = "*B3.TIF"
+                        #     b_band_search_pattern = "*B2.TIF"
+                        # else:
+                        #     r_band_search_pattern = "*B3.TIF"
+                        #     g_band_search_pattern = "*B2.TIF"
+                        #     b_band_search_pattern = "*B1.TIF"                           
+                        # utils.createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, targetDir, previewDir)                         
 
-                        if config.copyMetadata:
-                            print("Copy metadata...")
-                            metaDir.mkdir(parents = True)
-                            for item in pathImgData.glob('*'):
-                                if item.is_file():
-                                    if item.suffix.lower() != ".tif":
-                                        shutil.copy(item, metaDir)
-                                if item.is_dir():
-                                    shutil.copytree(item, (metaDir / item.name))
-                            print("done.\n")
+                        # print("done.")
 
-                        if config.createSymlink:
-                            tileDir = pathImgData
-                            # TODO: set config parameter for realpath or relpath for symlink
-                            metaDir.symlink_to(os.path.realpath(str(tileDir.resolve()), str(metaDir.parent.resolve())))
-                            print("Symlink created.")                            
+                        # if config.copyMetadata:
+                        #     print("Copy metadata...")
+                        #     metaDir.mkdir(parents = True)
+                        #     for item in pathImgData.glob('*'):
+                        #         if item.is_file():
+                        #             if item.suffix.lower() != ".tif":
+                        #                 shutil.copy(item, metaDir)
+                        #         if item.is_dir():
+                        #             shutil.copytree(item, (metaDir / item.name))
+                        #     print("done.\n")
 
-                        # set date for tile cropped 
-                        db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)                                              
+                        # if config.createSymlink:
+                        #     tileDir = pathImgData
+                        #     # TODO: set config parameter for realpath or relpath for symlink
+                        #     metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
+                        #     print("Symlink created.")                            
+
+                        # # set date for tile cropped 
+                        # db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)                                              
 
 
     def getPoiParametersForOutputFolder(self, poi):
