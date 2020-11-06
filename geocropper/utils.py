@@ -68,6 +68,13 @@ def transformPointLatLonToXY(path, point):
     return(point)
 
 
+def transformPointXYToLatLon(path, point):
+    img = rasterio.open(str(path))
+    inProj = pyproj.Proj(img.crs)
+    lat, lon = inProj(point.x, point.y, inverse=True)
+    return({"lat": lat, "lon": lon})
+
+
 def cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat, isLatLon = True):
 
     if (isLatLon):
@@ -403,7 +410,6 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
                 loop_counter = 0
 
                 img = rasterio.open(str(file))
-                inProj = pyproj.Proj(img.crs)
 
                 while random_crops < crops_per_tile and loop_counter < max_loops_per_tile:
 
@@ -449,7 +455,10 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
                         topLeft = Point(top_left_y, top_left_x)
                         bottomRight = Point(bottom_right_y, bottom_right_x)
 
-                        mainTargetFolder = output_path / ("%s_%s_%s" % (j, lat, lon))
+                        file = list(HQ_dir.glob("*_B02_10m.jp2"))[0]
+                        point = transformPointXYToLatLon(file, Point(random_x, random_y))
+
+                        mainTargetFolder = output_path / ("%s_%s_%s" % (j, point["lat"], point["lon"]))
 
                         # target directory for cropped image
                         targetDir = mainTargetFolder / "sensordata"
