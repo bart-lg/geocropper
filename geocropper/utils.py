@@ -452,8 +452,8 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
                         bottom_right_y = random_y - (height/2) + (width/2) / xres * yskew
 
                         # convert to Point object (shapely)
-                        topLeft = Point(top_left_y, top_left_x)
-                        bottomRight = Point(bottom_right_y, bottom_right_x)
+                        topLeft = Point(top_left_x, top_left_y)
+                        bottomRight = Point(bottom_right_x, bottom_right_y)
 
                         file = list(HQ_dir.glob("*_B02_10m.jp2"))[0]
                         point = transformPointXYToLatLon(file, Point(random_x, random_y))
