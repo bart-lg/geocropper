@@ -13,6 +13,7 @@ from shapely.ops import transform
 from dateutil.parser import *
 from functools import partial
 import subprocess
+import sys
 
 import geocropper.config as config
 
@@ -307,20 +308,20 @@ def createCombinedImages(source_folder):
             upper_label_list.append(item.name.split("_")[0])
             # lower_label_list.append(item.parent.name)
 
-            if i % config.previewImagesCombined == 0 or i == len(item_list):
+        if i % config.previewImagesCombined == 0 or i == len(item_list):
 
-                counter = counter + 1
+            counter = counter + 1
 
-                output_file = combined_preview_folder / ("combined-preview-" + str(counter) + ".tif")
-                summary_file = combined_preview_folder / ("combined-preview-" + str(counter) + "-paths.txt")
+            output_file = combined_preview_folder / ("combined-preview-" + str(counter) + ".tif")
+            summary_file = combined_preview_folder / ("combined-preview-" + str(counter) + "-paths.txt")
 
-                concat_images(image_path_list, output_file, gap=config.previewBorder,
-                              bcolor=config.previewBackground, paths_to_file=summary_file,
-                              upper_label_list=upper_label_list, center_point=True)
+            concat_images(image_path_list, output_file, gap=config.previewBorder,
+                          bcolor=config.previewBackground, paths_to_file=summary_file,
+                          upper_label_list=upper_label_list, center_point=True)
 
-                image_path_list = []
-                upper_label_list = []
-                # lower_label_list = []
+            image_path_list = []
+            upper_label_list = []
+            # lower_label_list = []
 
 
 def combineImages(folder="", has_subdir=True):
@@ -338,16 +339,6 @@ def combineImages(folder="", has_subdir=True):
 
 def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1000, height=1000):
     """Creates random crops out of existing Sentinel 2 level 2 big tiles.
-
-    ## check if output_folder & "_wxxx_hxxx" exists, if yes increment postfix _xx until no folder found
-    ## list folders in bigtiles beginning with S2
-    ## determine corner coordinates
-    ## create random list of coordinates (check values of pixel if valid pixel)
-    ## path of new crops: id_lat_lon
-    ## create preview images
-    create combined previews
-    console prints
-
     """
     max_loops_per_tile = 1000
     # outProj = pyproj.Proj(init='epsg:3857')
@@ -508,3 +499,125 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
     print("### Generate combined preview images...")
     combineImages(str(output_path.name), has_subdir=False)
     print("done.")
+
+
+def trim_crops(source_dir, target_dir, width, height):
+    """Trim crops to smaller size. Reference point is the center of the image. 
+    
+    All directories in source_dir will be copied to target_dir 
+    and all .jp2 files within that directories will be trimmed to new size. 
+    The preview images will be deleted and new preview images will be created.
+    Also new combined previews will be created.
+
+    Parameters
+    ----------
+    source_dir : str
+        path of the directory containing source crops
+    target_dir : str
+        path of the target directory
+    width : int
+        width of the trimmed crops in meter
+    height : int
+        height of the trimmed crops in meter
+
+    """
+
+    # check if source_dir exists, exit if no
+    if not os.path.isdir(str(source_dir)):
+        sys.exit("ERROR trim_crops: source_dir is not a directory!")
+
+    # check if target_dir exists, exit if yes
+    if os.path.exists(str(target_dir)):
+        sys.exit("ERROR trim_crops: target_dir already exists!")
+
+    # create target_dir
+    os.makedirs(str(target_dir))
+
+    # convert to pathlib objects
+    source_dir = pathlib.Path(source_dir)
+    target_dir = pathlib.Path(target_dir)
+
+    # set file types to trim
+    file_types = [".tif", ".jp2"]
+ 
+    # get subfolders of folder_in
+    for n, folder_in in enumerate(source_dir.glob("*"), 1):
+
+        if folder_in.is_dir() and folder_in.name != "0_combined-preview":
+
+            print(f"{n}: {folder_in}")
+
+            # determine output folder
+            folder_out = target_dir / folder_in.name
+
+            # copy whole subfolder first
+            shutil.copytree(folder_in, folder_out, symlinks = True)
+
+            # get all files of subfolder
+            for file in folder_out.rglob("*"):
+
+                # trim files with matching suffix
+                if file.suffix in file_types:
+
+                    if file.suffix == ".jp2":
+
+                        # Sentinel-2 img data are in jp2-format
+                        # set appropriate format for GDAL lib
+                        fileFormat = "JP2OpenJPEG"                        
+
+                        # open image with GDAL
+                        img = gdal.Open(str(file))
+
+                        # yres is negative!
+                        upper_left_x, xres, xskew, upper_left_y, yskew, yres = img.GetGeoTransform()
+
+                        # get number of columns and rows
+                        cols = img.RasterXSize
+                        rows = img.RasterYSize
+
+                        # determine center pixel
+                        # if cols/rows are even take the next pixel at the top left
+                        center_pixel_col = math.ceil(cols / 2)
+                        center_pixel_row = math.ceil(rows / 2)
+
+                        # determine coordinates of pixel
+                        center_pixel_x = xres * center_pixel_col + xskew * center_pixel_row + upper_left_x 
+                        center_pixel_y = yskew * center_pixel_col + yres * center_pixel_row + upper_left_y
+
+                        # shift to center of the pixel
+                        center_pixel_x += xres / 2
+                        center_pixel_y += yres / 2
+
+                        # calculate top left and bottom right coordinate of area to trim
+                        top_left_x = center_pixel_x - (width/2) - (height/2) / yres * xskew
+                        top_left_y = center_pixel_y + (height/2) - (width/2) / xres * yskew
+                        bottom_right_x = center_pixel_x + (width/2) + (height/2) / yres * xskew
+                        bottom_right_y = center_pixel_y - (height/2) + (width/2) / xres * yskew                        
+
+                        # trim image
+                        img = gdal.Translate(str(file) + "_new", img, format=fileFormat,
+                                            projWin=[top_left_x, top_left_y,
+                                                     bottom_right_x, bottom_right_y])                      
+
+                        # save and replace
+
+                        img = None
+
+                        file.unlink()
+                        file_new = pathlib.Path(str(file) + "_new")
+                        file_new.rename(file)
+
+
+                    # remove old preview files
+                    if file.suffix == ".tif":
+
+                        if file.name == "preview.tif":
+                            # remove file
+                            file.unlink()  
+
+            # create preview image
+            createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", folder_out / "sensordata" / "R10m", folder_out)   
+
+
+    # create combined previews
+    createCombinedImages(target_dir)
