@@ -144,3 +144,7 @@ try:
 	previewImagesCombined = userConfig["Combined Preview Images"].getint("previewImagesCombined")
 except:
 	previewImagesCombined = defaultConfig["Combined Preview Images"].getint("previewImagesCombined")		
+try:
+	previewCenterDot = userConfig["Combined Preview Images"].getboolean("previewCenterDot")
+except:
+	previewCenterDot = defaultConfig["Combined Preview Images"].getboolean("previewCenterDot")

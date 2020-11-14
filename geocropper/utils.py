@@ -318,7 +318,7 @@ def createCombinedImages(source_folder):
             concat_images(image_path_list, output_file, gap=config.previewBorder,
                           bcolor=config.previewBackground, paths_to_file=summary_file,
                           upper_label_list=upper_label_list, write_image_text=config.previewTextOnImage, 
-                          center_point=True)
+                          center_point=config.previewCenterDot)
 
             image_path_list = []
             upper_label_list = []
