@@ -552,7 +552,9 @@ def trim_crops(source_dir, target_dir, width, height):
             folder_out = target_dir / folder_in.name
 
             # copy whole subfolder first
-            shutil.copytree(folder_in, folder_out, symlinks = True)
+            # copy_function default is shutil.copy2 which copies also the permissions
+            # shutil.copy ignores original permission settings
+            shutil.copytree(folder_in, folder_out, symlinks = True, copy_function=shutil.copy)
 
             # get all files of subfolder
             for file in folder_out.rglob("*"):
