@@ -558,22 +558,14 @@ def trim_crops(source_dir, target_dir, width, height):
             shutil.copytree(folder_in, folder_out, symlinks = True, copy_function=shutil.copy)
 
             # chmod to 664 for files and 775 for dirs
+            dir_mod = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
+            file_mod = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH
+            os.chmod(folder_out, dir_mod)
             for item in folder_out.rglob("*"):
                 if item.is_dir():
-                    os.chmod(item, stat.S_IRUSR |
-                                   stat.S_IWUSR |
-                                   stat.S_IXUSR |
-                                   stat.S_IRGRP |
-                                   stat.S_IWGRP |
-                                   stat.S_IXGRP |
-                                   stat.S_IROTH |
-                                   stat.S_IXOTH)                    
+                    os.chmod(item, dir_mod)                    
                 else:
-                    os.chmod(item, stat.S_IRUSR |
-                                   stat.S_IWUSR |
-                                   stat.S_IRGRP |
-                                   stat.S_IWGRP |
-                                   stat.S_IROTH)                    
+                    os.chmod(item, file_mod)                    
 
             # get all files of subfolder
             for file in folder_out.rglob("*"):
