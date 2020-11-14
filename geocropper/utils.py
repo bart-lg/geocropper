@@ -557,26 +557,15 @@ def trim_crops(source_dir, target_dir, width, height):
             # shutil.cop2: Identical to copy() except that copy2() also attempts to preserve file metadata.
             shutil.copytree(folder_in, folder_out, symlinks = True, copy_function=shutil.copy)
 
+            # chmod to 664 for files and 775 for dirs
+            for root, dirs, files in os.walk(str(folder_out)):
+                for d in dirs:
+                    os.chmod(os.path.join(root, d), 0775)
+                for f in files:
+                    os.chmod(os.path.join(root, f), 0664)
+
             # get all files of subfolder
             for file in folder_out.rglob("*"):
-
-                # chmod to 664 for files and 775 for dirs
-                if file.is_dir():
-                    os.chmod(file, stat.S_IRUSR |
-                                   stat.S_IWUSR |
-                                   stat.S_IXUSR |
-                                   stat.S_IRGRP |
-                                   stat.S_IWGRP |
-                                   stat.S_IXGRP |
-                                   stat.S_IROTH |
-                                   stat.S_IXOTH)
-                else:
-                    os.chmod(file, stat.S_IRUSR |
-                                   stat.S_IWUSR |
-                                   stat.S_IRGRP |
-                                   stat.S_IWGRP |
-                                   stat.S_IROTH)
-
 
                 # trim files with matching suffix
                 if file.suffix in file_types:
