@@ -560,9 +560,20 @@ def trim_crops(source_dir, target_dir, width, height):
             # chmod to 664 for files and 775 for dirs
             for root, dirs, files in os.walk(str(folder_out)):
                 for d in dirs:
-                    os.chmod(os.path.join(root, d), 0775)
+                    os.chmod(os.path.join(root, d), stat.S_IRUSR |
+                                   stat.S_IWUSR |
+                                   stat.S_IXUSR |
+                                   stat.S_IRGRP |
+                                   stat.S_IWGRP |
+                                   stat.S_IXGRP |
+                                   stat.S_IROTH |
+                                   stat.S_IXOTH)                    
                 for f in files:
-                    os.chmod(os.path.join(root, f), 0664)
+                    os.chmod(os.path.join(root, f), stat.S_IRUSR |
+                                   stat.S_IWUSR |
+                                   stat.S_IRGRP |
+                                   stat.S_IWGRP |
+                                   stat.S_IROTH)                    
 
             # get all files of subfolder
             for file in folder_out.rglob("*"):
