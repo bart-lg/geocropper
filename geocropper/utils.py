@@ -3,6 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 import math
 import matplotlib.pyplot as pyplot
 import os
+import stat
 import pathlib
 import rasterio
 import shutil
@@ -552,12 +553,30 @@ def trim_crops(source_dir, target_dir, width, height):
             folder_out = target_dir / folder_in.name
 
             # copy whole subfolder first
-            # copy_function default is shutil.copy2 which copies also the permissions
-            # shutil.copy ignores original permission settings
+            # copy_function default is shutil.copy2 
+            # shutil.cop2: Identical to copy() except that copy2() also attempts to preserve file metadata.
             shutil.copytree(folder_in, folder_out, symlinks = True, copy_function=shutil.copy)
 
             # get all files of subfolder
             for file in folder_out.rglob("*"):
+
+                # chmod to 664 for files and 775 for dirs
+                if file.is_dir():
+                    os.chmod(file, stat.S_IRUSR |
+                                   stat.S_IWUSR |
+                                   stat.S_IXUSR |
+                                   stat.S_IRGRP |
+                                   stat.S_IWGRP |
+                                   stat.S_IXGRP |
+                                   stat.S_IROTH |
+                                   stat.S_IXOTH)
+                else:
+                    os.chmod(file, stat.S_IRUSR |
+                                   stat.S_IWUSR |
+                                   stat.S_IRGRP |
+                                   stat.S_IWGRP |
+                                   stat.S_IROTH)
+
 
                 # trim files with matching suffix
                 if file.suffix in file_types:
