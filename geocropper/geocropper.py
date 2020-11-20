@@ -584,7 +584,7 @@ class Geocropper:
                                 print("Symlink created.")
 
                             # create preview image
-                            utils.createPreviewRGImage(str(targetDir / "s1_cropped.tif"), targetDir)
+                            utils.createPreviewRGImage(str(targetDir / "s1_cropped.tif"), mainTargetFolder)
 
                             # set date for tile cropped 
                             db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)

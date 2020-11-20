@@ -145,9 +145,15 @@ def loadImportedCSVdata():
             # move database record to archive table
             db.moveCSVItemToArchive(item["rowid"])
 
-    if config.combinedPreview:
-        print("#### Create combined preview images...")
-        utils.combineImages()
-        print("done.\n")
-        
+    
+
+    # Turned off, because it creates combined preview images of all cropped tiles folder
+    # TODO: combinedPreview only for new or changed cropped tiles folder
+
+    # if config.combinedPreview:
+    #     print("#### Create combined preview images...")
+    #     utils.combineImages()
+    #     print("done.\n")
+    
+
     logger.info("[ ##### Load imported data... %d/%d ...done! ##### ]" % (i, len(data)))
