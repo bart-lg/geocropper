@@ -184,11 +184,11 @@ def createPreviewRGImage(file, target_dir, max_scale=4095, exponential_scale=0.5
     # rescale from db scale min:-30 max:30 to min:0 max:255 with exponent of 0.5
     # since the min scale for the source is negative we need to provide subprocess.call with a whole string and turn the argument shell to True
     # docs subprocess: "If passing a single string, either shell must be True [...]"
-    command = "gdal_translate -b 1 -q -ot Byte -scale -30 30 0 255 -exponent " +
+    command = "gdal_translate -b 1 -q -ot Byte -scale -30 30 0 255 -exponent " + \
               f"{str(exponential_scale)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'r-scaled.tif'))}"        
     subprocess.call(command, shell=True)    
 
-    command = "gdal_translate -b 2 -q -ot Byte -scale -30 30 0 255 -exponent " +
+    command = "gdal_translate -b 2 -q -ot Byte -scale -30 30 0 255 -exponent " + \
               f"{str(exponential_scale)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'g-scaled.tif'))}"            
     subprocess.call(command, shell=True)    
 
