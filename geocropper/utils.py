@@ -8,6 +8,7 @@ import pathlib
 import rasterio
 import shutil
 import pyproj
+from pyproj import Geod
 import random
 from shapely.geometry import Point
 from shapely.ops import transform
@@ -127,7 +128,7 @@ def createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_s
         # TODO: throw exception if i > 99
         preview_file_small = "preview_small(" + str(i) + ").tif"
 
-    logger.info("Create preview image.")
+    logger.info("Create RGB preview image.")
 
     # rescale red band
     command = ["gdal_translate", "-q", "-ot", "Byte", "-scale", "0", str(max_scale), "0", "255", "-exponent",
@@ -161,6 +162,58 @@ def createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_s
         image = Image.open(str(target_dir / preview_file))
         small_image = image.resize((config.widthPreviewImageSmall, config.heightPreviewImageSmall), Image.ANTIALIAS)
         small_image.save(str(target_dir / preview_file_small))
+
+
+def createPreviewRGImage(file, target_dir, max_scale=4095, exponential_scale=0.5):
+    """Creates a RGB preview file out of an db scaled image with only 2 bands.
+    """
+
+    preview_file = "preview.tif"
+    preview_file_small = "preview_small.tif"
+    if (target_dir / preview_file).exists():
+        i = 2
+        preview_file = "preview(" + str(i) + ").tif"
+        while i < 100 and (target_dir / preview_file).exists():
+            i = i + 1
+            preview_file = "preview(" + str(i) + ").tif"
+        # TODO: throw exception if i > 99
+        preview_file_small = "preview_small(" + str(i) + ").tif"
+
+    logger.info("Create RGb preview image.")
+
+    # rescale from db scale min:-30 max:30 to min:0 max:255 with exponent of 0.5
+    # since the min scale for the source is negative we need to provide subprocess.call with a whole string and turn the argument shell to True
+    # docs subprocess: "If passing a single string, either shell must be True [...]"
+    command = "gdal_translate -b 1 -q -ot Byte -scale -30 30 0 255 -exponent " +
+              f"{str(exponential_scale)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'r-scaled.tif'))}"        
+    subprocess.call(command, shell=True)    
+
+    command = "gdal_translate -b 2 -q -ot Byte -scale -30 30 0 255 -exponent " +
+              f"{str(exponential_scale)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'g-scaled.tif'))}"            
+    subprocess.call(command, shell=True)    
+
+    # create empty blue band
+    command = ["gdal_calc.py", "--quiet", "-A", os.path.realpath(str(target_dir / "r-scaled.tif")), 
+               f"--outfile={os.path.realpath(str(target_dir)) }/b-empty.tif", "--calc=0" ]
+    subprocess.call(command)               
+
+    # create preview image
+    command = ["gdal_merge.py", "-ot", "Byte", "-separate", "-of", "GTiff", "-co", "PHOTOMETRIC=RGB",
+               "-o", os.path.realpath(str(target_dir / preview_file)),
+               os.path.realpath(str(target_dir / "r-scaled.tif")),
+               os.path.realpath(str(target_dir / "g-scaled.tif")),
+               os.path.realpath(str(target_dir / "b-empty.tif"))]
+    subprocess.call(command)
+
+    # remove scaled bands
+    (target_dir / "r-scaled.tif").unlink()
+    (target_dir / "g-scaled.tif").unlink()
+    (target_dir / "b-empty.tif").unlink()
+
+    if config.resizePreviewImage:
+        image = Image.open(str(target_dir / preview_file))
+        small_image = image.resize((config.widthPreviewImageSmall, config.heightPreviewImageSmall), Image.ANTIALIAS)
+        small_image.save(str(target_dir / preview_file_small))      
 
 
 def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_to_file=None,
@@ -635,3 +688,85 @@ def trim_crops(source_dir, target_dir, width, height):
 
     # create combined previews
     createCombinedImages(target_dir)
+
+
+def moveLatLon(lat, lon, azimuth, distance):
+    """Move on WGS84 ellipsoid from a given point (lat/lon) in certain direction and distance.
+
+    Parameters
+    ----------
+    lat : float
+        latitude of origin point
+    lon : float
+        longitude of origin point
+    azimuth : float
+        direction in degree
+    distance : int
+        distance in meters
+
+    Returns
+    -------
+    Tuple
+        lat : float
+            latitude of new point
+        lon : float
+            longitude of new point
+
+    """
+    geoid = Geod(ellps="WGS84")
+    lon_new, lat_new, az_new = geoid.fwd(lon, lat, azimuth, distance)
+    return lat_new, lon_new
+
+
+def getLatLonCornerCoordinates(lat, lon, width, height):
+    """Get corner coordinates for crop on WGS84 ellipsoid given the center point and width and height of the crop.
+
+    Parameters
+    ----------
+    lat : float
+        latitude of origin point
+    lon : float
+        longitude of origin point
+    width : int
+        width of crop in meters
+    height : int
+        height of crop in meters
+
+    Returns
+    -------
+    List
+        Point
+            top left point in WKT format
+        Point
+            top right point in WKT format            
+        Point
+            bottom left point in WKT format
+        Point
+            bottom right point in WKT format
+        Point
+            top left point in WKT format            
+
+    """
+    
+    # determine top left corner
+    lat_temp, lon_temp = moveLatLon(lat, lon, 270, (width / 2))
+    top_left_lat, top_left_lon = moveLatLon(lat_temp, lon_temp, 0, (height / 2))
+
+    # determine top right corner
+    lat_temp, lon_temp = moveLatLon(lat, lon, 90, (width / 2))
+    top_right_lat, top_right_lon = moveLatLon(lat_temp, lon_temp, 0, (height / 2))    
+
+    # determine bottom right corner
+    lat_temp, lon_temp = moveLatLon(lat, lon, 90, (width / 2))
+    bottom_right_lat, bottom_right_lon = moveLatLon(lat_temp, lon_temp, 180, (height / 2))
+
+    # determine bottom right corner
+    lat_temp, lon_temp = moveLatLon(lat, lon, 270, (width / 2))
+    bottom_left_lat, bottom_left_lon = moveLatLon(lat_temp, lon_temp, 180, (height / 2))    
+
+    return ([ Point(top_left_lon, top_left_lat), 
+              Point(top_right_lon, top_right_lat),
+              Point(bottom_right_lon, bottom_right_lat),
+              Point(bottom_left_lon, bottom_left_lat),
+              Point(top_left_lon, top_left_lat)
+              ])

@@ -73,6 +73,19 @@ try:
 except:
 	dbFile = pathlib.Path(defaultConfig["Paths"]["dbFile"])	
 
+# path and filename of SNAP Graph Processing Tool (GPT)
+try:
+	gptSnap = pathlib.Path(userConfig["Paths"]["gptSnap"])
+except:
+	gptSnap = pathlib.Path(defaultConfig["Paths"]["gptSnap"])
+
+# path and filename of XML file for SNAP Graph Processing Tool (GPT)
+try:
+	xmlSnap = pathlib.Path(userConfig["Paths"]["xmlSnap"])
+except:
+	xmlSnap = pathlib.Path(defaultConfig["Paths"]["xmlSnap"])
+
+
 # logging modes: DEBUG, INFO, WARNING, ERROR, CRITICAL
 try:
 	loggingMode = userConfig["Logging"]["loggingMode"]

@@ -11,6 +11,7 @@ from pprint import pprint
 import rasterio
 import math 
 from shapely.geometry import Point
+from shapely.geometry import Polygon
 from shapely.ops import transform
 from PIL import Image
 
@@ -549,15 +550,52 @@ class Geocropper:
                     
                     if poi["platform"] == "Sentinel-1":
 
-                        # Sentinel-1 cropping is not available yet
+                        if config.gptSnap.exists():
 
-                        print("Cropping of Sentinel-1 data not yet supported.\n")
-                        db.setCancelledTileForPoi(poiId, tile["rowid"])
+                            corner_coordinates = utils.getLatLonCornerCoordinates(poi["lat"], poi["lon"], poi["width"], poi["height"])
+
+                            # preprocess and crop using SNAP GPT
+                            poly = Polygon([[p.x, p.y] for p in corner_coordinates])
+                            command = [str(config.gptSnap), os.path.realpath(str(config.xmlSnap)), 
+                                       ("-PinDir=" + os.path.realpath(str(config.bigTilesDir / tile["folderName"]))),
+                                       ("-Psubset=" + poly.wkt),
+                                       ("-PoutFile=" + os.path.realpath(str(targetDir / "s1_cropped.tif")))]
+                            subprocess.call(command)
+
+                            print("done.\n")
+
+                            # copy or link metadata
+                            if config.copyMetadata:                            
+                                print("Copy metadata...")
+                                metaDir.mkdir(parents = True)
+                                tileDir = config.bigTilesDir / tile["folderName"]
+                                for item in tileDir.rglob('*'):
+                                    if item.is_file() and item.suffix.lower() != ".tiff" and item.suffix.lower() != ".safe":
+                                        targetDir = metaDir / item.parent.relative_to(tileDir)
+                                        if not targetDir.exists():
+                                            targetDir.mkdir(parents = True)
+                                        shutil.copy(item, targetDir)
+                                print("done.\n")    
+
+                            if config.createSymlink:
+                                tileDir = config.bigTilesDir / tile["folderName"]
+                                # TODO: set config parameter for realpath or relpath for symlinks
+                                metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
+                                print("Symlink created.")
+
+                            # create preview image
+                            utils.createPreviewRGImage(str(targetDir / "S1_cropped.tif"), targetDir)
+
+                            # set date for tile cropped 
+                            db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
+
+                        else:
+                            print("SNAP GPT not configured. Sentinel-1 tiles cannot be cropped.\n")
+                            db.setCancelledTileForPoi(poiId, tile["rowid"])  
 
 
                     # SENTINEL 2 CROPPING
 
-                    # crop Sentinel-2 tile
                     if poi["platform"] == "Sentinel-2":
 
                         corner_coordinates = None
