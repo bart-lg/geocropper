@@ -198,7 +198,7 @@ def createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_s
         small_image.save(str(target_dir / preview_file_small))
 
 
-def createPreviewRGImage(file, target_dir, max_scale=4095, exponential_scale=0.5):
+def createPreviewRGImage(file, target_dir, min_scale=-30, max_scale=30, exponential_scale=0.5):
     """Creates a RGB preview file out of an db scaled image with only 2 bands.
     """
 
@@ -215,15 +215,20 @@ def createPreviewRGImage(file, target_dir, max_scale=4095, exponential_scale=0.5
 
     logger.info("Create RGb preview image.")
 
-    # rescale from db scale min:-30 max:30 to min:0 max:255 with exponent of 0.5
+    if exponential_scale == None:
+        exp_option = ""
+    else:
+        exp_option = f"-exponent {exponential_scale}"
+
+    # rescale from db scale min:-30 max:30 to min:0 max:255
     # since the min scale for the source is negative we need to provide subprocess.call with a whole string and turn the argument shell to True
     # docs subprocess: "If passing a single string, either shell must be True [...]"
-    command = "gdal_translate -b 1 -q -ot Byte -scale -30 30 0 255 -exponent " + \
-              f"{str(exponential_scale)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'r-scaled.tif'))}"        
+    command = f"gdal_translate -b 1 -q -ot Byte -scale {min_scale} {max_scale} 0 255 " + \
+              f"{str(exp_option)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'r-scaled.tif'))}"        
     subprocess.call(command, shell=True)    
 
-    command = "gdal_translate -b 2 -q -ot Byte -scale -30 30 0 255 -exponent " + \
-              f"{str(exponential_scale)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'g-scaled.tif'))}"            
+    command = f"gdal_translate -b 2 -q -ot Byte -scale {min_scale} {max_scale} 0 255 " + \
+              f"{str(exp_option)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'g-scaled.tif'))}"            
     subprocess.call(command, shell=True)    
 
     # create empty blue band
@@ -1067,7 +1072,7 @@ def cropTiles(poiId):
                             print("Symlink created.")
 
                         # create preview image
-                        createPreviewRGImage(str(targetDir / "s1_cropped.tif"), mainTargetFolder)
+                        createPreviewRGImage(str(targetDir / "s1_cropped.tif"), mainTargetFolder, exponential_scale=None)
 
                         # set date for tile cropped 
                         db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
