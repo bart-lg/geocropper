@@ -61,7 +61,8 @@ tables = {
         "lastDownloadRequest":      "TEXT",
         "downloadComplete":         "TEXT",
         "unzipped":                 "TEXT",
-        "cancelled":                "TEXT"
+        "cancelled":                "TEXT",
+        "projection":               "TEXT"
     },
 
     # table TilesForPOIs
@@ -73,6 +74,11 @@ tables = {
         "path":                     "TEXT",
         "tileCropped":              "TEXT",
         "cancelled":                "TEXT"
+        #"projection":               "TEXT",
+        #"leftTopCorner":            "TEXT",
+        #"rightBottomCorner":        "TEXT",
+        #"pixelWidth":               "INTEGER",
+        #"pixelHeight":              "INTEGER"
     },
 
     # table CSVInput
@@ -278,6 +284,13 @@ class database:
             return None
         else:
             return result["latest"]
+
+    def updateTileProjection(self, rowid, projection):
+        self.query("UPDATE Tiles SET projection = '%s' WHERE rowid = %d" % (projection, rowid))
+        logger.info("projection updated for tileId " + str(rowid))
+
+    def getTilesWithoutProjectionInfo(self):
+        return self.fetchAllRowsQuery("SELECT rowid, * FROM Tiles WHERE projection IS NULL AND downloadComplete IS NOT NULL")
 
 
     ### POIS ###

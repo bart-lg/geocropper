@@ -287,11 +287,17 @@ class Geocropper:
         # disconnect sentinel wrapper
         del self.sentinel
         
+        # unpack new big tiles
+        utils.unpackBigTiles()
+        logger.info("Big tiles unpacked.")
 
         # if there is a point of interest (POI) => set date for tiles identified
         # this means that all tiles for the requested POI have been identified and downloaded
         if int(poiId) > 0:
             db.setTilesIdentifiedForPoi(poiId)
+
+        # get projections of new downloaded tiles
+        utils.saveMissingTileProjections()
         
         return products
 
@@ -435,6 +441,10 @@ class Geocropper:
 
         # disconnect landsat wrapper
         del self.landsat
+
+        # unpack new big tiles
+        utils.unpackBigTiles()
+        logger.info("Big tiles unpacked.")
         
         # if there is a point of interest (POI) => set date for tiles identified
         # this means that all tiles for the requested POI have been identified and downloaded
@@ -531,9 +541,6 @@ class Geocropper:
         # if tiles found, unpack and crop them
 
         if not products == None and len(products) > 0:
-
-            utils.unpackBigTiles()
-            logger.info("Big tiles unpacked.")
             
             utils.cropTiles(poiId)
             logger.info("Tiles cropped.")

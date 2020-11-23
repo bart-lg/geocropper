@@ -969,6 +969,11 @@ def startAndCropRequestedDownloads():
 
                         print("Last successful download request not older than 24h. Please try again later.")
 
+
+    # get projections of new downloaded tiles
+    saveMissingTileProjections()
+    
+
     # crop outstanding points                    
 
     pois = db.getUncroppedPoisForDownloadedTiles()
@@ -1238,12 +1243,12 @@ def getPoiParametersForOutputFolder(poi):
     folderName = ""
 
     try:
-        folderElements.append("df" + utils.convertDate(poi["dateFrom"], "%Y%m%d"))
+        folderElements.append("df" + convertDate(poi["dateFrom"], "%Y%m%d"))
     except:
         pass
 
     try:
-        folderElements.append("dt" + utils.convertDate(poi["dateTo"], "%Y%m%d"))
+        folderElements.append("dt" + convertDate(poi["dateTo"], "%Y%m%d"))
     except:
         pass
         
@@ -1313,3 +1318,59 @@ def getPoiParametersForOutputFolder(poi):
             folderName = folderName + item
 
     return folderName    
+
+
+def saveMissingTileProjections():
+
+    tiles = db.getTilesWithoutProjectionInfo()
+    for tile in tiles:
+        saveTileProjection(tile["productId"])
+
+
+def saveTileProjection(productId):
+
+    tile = db.getTile(productId)
+
+    if tile != None and tile["downloadComplete"] != None:
+
+        mainFolder = config.bigTilesDir / tile["folderName"]
+        projection = None
+
+        if tile["platform"] == "Sentinel-1":
+
+            imageFolder = mainFolder / "measurement"
+
+            image = list(imageFolder.glob("*.tiff"))[0]
+
+            projection = getProjectionFromFile(image, tile["platform"])
+
+        if tile["platform"] == "Sentinel-2":
+
+            imageFolder = mainFolder / "GRANULE"
+
+            image = list(imageFolder.rglob("*_B02*.jp2"))[0]
+
+            projection = getProjectionFromFile(image, tile["platform"])
+
+        # save projection to database
+        if projection != None:
+            db.updateTileProjection(tile["rowid"], projection)
+
+
+def getProjectionFromFile(path, platform):
+
+    if path != None and path.exists():
+
+        img = rasterio.open(str(path))
+
+        if platform == "Sentinel-1":
+
+            # Sentinel-1 uses ground control points (GCPs)
+            gcps, gcp_crs = img.gcps
+            projection = gcp_crs
+
+        if platform == "Sentinel-2":
+
+            projection = img.crs
+    
+        return str(projection)
