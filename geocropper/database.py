@@ -135,6 +135,7 @@ class database:
 
         self.openConnection()
 
+
         # create new tables if not existing
         for tableName, tableContent in tables.items():
 
@@ -155,6 +156,26 @@ class database:
         logger.info("tables created if non existing")
 
 
+        # check tables for missing columns (e.g. new columns in newer versions)
+        for tableName, tableContent in tables.items():
+            
+            for columnName, dataType in tableContent.items():
+            
+                result = self.fetchFirstRowQuery(f"SELECT COUNT(*) AS num FROM pragma_table_info('{tableName}') \
+                                                   WHERE name='{columnName}'")
+            
+                if result == None or result["num"] == 0:
+
+                    # column is missing and needs to be appended
+                    self.query(f"ALTER TABLE {tableName} ADD {columnName} {dataType};")
+                    logger.info(f"db: column {columnName} added to table {tableName}")
+
+
+    def __del__(self):
+
+        self.closeConnection()
+
+
     def openConnection(self):
 
         logger.info("start DB connection")
@@ -169,6 +190,7 @@ class database:
         self.cursor = self.connection.cursor()
 
         logger.info("DB connected")
+
 
     def closeConnection(self):
 
@@ -187,9 +209,6 @@ class database:
         # save changes
         self.connection.commit()
         newId = self.cursor.lastrowid
-        # reconnect database
-        self.closeConnection()
-        self.openConnection()
         return newId
 
     # query function used for selects returning all rows of result
