@@ -111,7 +111,6 @@ try:
 except:
 	createSymlink = defaultConfig["Meta Data"].getboolean("createSymlink")
 
-# ATTENTION: Changes in optionalSentinelParameters requires manual removal of existing database before starting script!!!
 # optional landsat parameters => max_cloud_cover (value in db stored as cloudcoverpercentage)
 optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", "swathidentifier", "cloudcoverpercentage", "timeliness"]
 

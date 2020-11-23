@@ -18,6 +18,117 @@ import logging
 # get logger object
 logger = logging.getLogger('root')
 
+
+### DB structure
+
+tables = {
+
+    # table PointOfInterest
+    # holds the information for a geocropper call - one record for every point/parameter combination
+    # optional landsat parameters => max_cloud_cover (value in db stored as cloudcoverpercentage)
+    "PointOfInterests": {
+        "groupname":                "TEXT",
+        "country":                  "TEXT",
+        "lat":                      "REAL",
+        "lon":                      "REAL",
+        "dateFrom":                 "TEXT",
+        "dateTo":                   "TEXT",
+        "platform":                 "TEXT",
+        "polarisationmode":         "TEXT",
+        "producttype":              "TEXT",
+        "sensoroperationalmode":    "TEXT",
+        "swathidentifier":          "TEXT",
+        "cloudcoverpercentage":     "TEXT",
+        "timeliness":               "TEXT",
+        "width":                    "INTEGER",
+        "height":                   "INTEGER",
+        "tileLimit":                "INTEGER",
+        "description":              "TEXT",
+        "tilesIdentified":          "TEXT",
+        "poicreated":               "TEXT",
+        "cancelled":                "TEXT"
+    },
+
+    # table Tiles
+    # information about downloaded big tiles    
+    "Tiles": {
+        "platform":                 "TEXT",
+        "folderName":               "TEXT",
+        "productId":                "TEXT",
+        "beginposition":            "TEXT",
+        "endposition":              "TEXT",
+        "firstDownloadRequest":     "TEXT",
+        "lastDownloadRequest":      "TEXT",
+        "downloadComplete":         "TEXT",
+        "unzipped":                 "TEXT",
+        "cancelled":                "TEXT"
+    },
+
+    # table TilesForPOIs
+    # n:m relation between tables PointOfInterest and Tiles
+    # additional information: date of image cropping based on parameters of POI
+    "TilesForPOIs": {
+        "poiId":                    "INTEGER",
+        "tileId":                   "INTEGER",
+        "path":                     "TEXT",
+        "tileCropped":              "TEXT",
+        "cancelled":                "TEXT"
+    },
+
+    # table CSVInput
+    # holds imported records which have not yet been processed (loaded)
+    "CSVInput": {
+        "fileName":                 "TEXT",
+        "groupname":                "TEXT",
+        "lat":                      "REAL",
+        "lon":                      "REAL",
+        "dateFrom":                 "TEXT",
+        "dateTo":                   "TEXT",
+        "platform":                 "TEXT",
+        "polarisationmode":         "TEXT",
+        "producttype":              "TEXT",
+        "sensoroperationalmode":    "TEXT",
+        "swathidentifier":          "TEXT",
+        "cloudcoverpercentage":     "TEXT",
+        "timeliness":               "TEXT",
+        "width":                    "INTEGER",
+        "height":                   "INTEGER",
+        "tileLimit":                "INTEGER",
+        "description":              "TEXT",
+        "csvImported":              "TEXT",
+        "cancelled":                "TEXT"
+    },   
+
+    # table CSVLoaded
+    # holds imported and processed/loaded records
+    "CSVLoaded": {
+        "fileName":                 "TEXT",
+        "groupname":                "TEXT",
+        "lat":                      "REAL",
+        "lon":                      "REAL",
+        "dateFrom":                 "TEXT",
+        "dateTo":                   "TEXT",
+        "platform":                 "TEXT",
+        "polarisationmode":         "TEXT",
+        "producttype":              "TEXT",
+        "sensoroperationalmode":    "TEXT",
+        "swathidentifier":          "TEXT",
+        "cloudcoverpercentage":     "TEXT",
+        "timeliness":               "TEXT",
+        "width":                    "INTEGER",
+        "height":                   "INTEGER",
+        "tileLimit":                "INTEGER",
+        "description":              "TEXT",
+        "csvImported":              "TEXT",
+        "cancelled":                "TEXT",
+        "csvLoaded":                "TEXT"
+    }  
+
+}
+
+
+### DB class
+
 class database:
 
     def __init__(self):
@@ -25,44 +136,18 @@ class database:
         self.openConnection()
 
         # create new tables if not existing
+        for tableName, tableContent in tables.items():
 
-        # table PointOfInterest
-        # holds the information for a geocropper call - one record for every point/parameter combination
-        query = "CREATE TABLE IF NOT EXISTS PointOfInterests \
-            (groupname TEXT, country TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
-        for item in config.optionalSentinelParameters:
-            query = "%s, %s" % (query, item)
-        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, tilesIdentified TEXT, poicreated TEXT, cancelled TEXT)"
-        self.cursor.execute(query)
+            elements = ""
+            for columnName, dataType in tableContent.items():
+                if elements == "":
+                    elements = "%s %s" % (columnName, dataType)
+                else:
+                    elements = "%s, %s %s" % (elements, columnName, dataType)
 
-        # table Tiles
-        # information about downloaded big tiles
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS Tiles \
-            (platform TEXT, folderName TEXT, productId TEXT, beginposition TEXT, endposition TEXT, firstDownloadRequest TEXT, \
-            lastDownloadRequest TEXT, downloadComplete TEXT, unzipped TEXT, cancelled TEXT)")
+            query = "CREATE TABLE IF NOT EXISTS " + tableName + " (" + elements + ")"
 
-        # table TilesForPOIs
-        # n:m relation between tables PointOfInterest and Tiles
-        # additional information: date of image cropping based on parameters of POI
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS TilesForPOIs (poiId INTEGER, tileId INTEGER, path TEXT, tileCropped TEXT, cancelled TEXT)")
-
-        # table CSVInput
-        # holds imported records which have not yet been processed (loaded)
-        query = "CREATE TABLE IF NOT EXISTS CSVInput \
-            (fileName TEXT, groupname TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
-        for item in config.optionalSentinelParameters:
-            query = "%s, %s" % (query, item)
-        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, cancelled TEXT)"
-        self.cursor.execute(query)
-
-        # table CSVLoaded
-        # holds imported and processed/loaded records
-        query = "CREATE TABLE IF NOT EXISTS CSVLoaded \
-            (fileName TEXT, groupname TEXT, lat REAL, lon REAL, dateFrom TEXT, dateTo TEXT, platform TEXT"
-        for item in config.optionalSentinelParameters:
-            query = "%s, %s" % (query, item)
-        query = query + ", width INTEGER, height INTEGER, tileLimit INTEGER, description TEXT, csvImported TEXT, cancelled TEXT, csvLoaded TEXT)"
-        self.cursor.execute(query)
+            self.cursor.execute(query)
 
         # save changes to database
         self.connection.commit()
