@@ -40,6 +40,10 @@ try:
 	copernicusRequestDelay = userConfig["Misc"].getint("copernicusRequestDelay")
 except:
 	copernicusRequestDelay = defaultConfig["Misc"].getint("copernicusRequestDelay")
+try:
+	covertS1CropsToUTM = userConfig["Misc"].getboolean("covertS1CropsToUTM")
+except:
+	covertS1CropsToUTM = defaultConfig["Misc"].getboolean("covertS1CropsToUTM")	
 
 # various data paths
 try:

@@ -972,7 +972,7 @@ def startAndCropRequestedDownloads():
 
     # get projections of new downloaded tiles
     saveMissingTileProjections()
-    
+
 
     # crop outstanding points                    
 
@@ -1047,12 +1047,19 @@ def cropTiles(poiId):
 
                         corner_coordinates = getLatLonCornerCoordinates(poi["lat"], poi["lon"], poi["width"], poi["height"])
 
+                        # convert S1 crops to UTM projection or leave it in WGS84
+                        if config.covertS1CropsToUTM == True:
+                            projection = "AUTO:42001"
+                        else:
+                            projection = "EPSG:4326"
+
                         # preprocess and crop using SNAP GPT
                         poly = Polygon([[p.x, p.y] for p in corner_coordinates])
                         command = [str(config.gptSnap), os.path.realpath(str(config.xmlSnap)), 
                                    ("-PinDir=" + os.path.realpath(str(config.bigTilesDir / tile["folderName"]))),
                                    ("-Psubset=" + poly.wkt),
-                                   ("-PoutFile=" + os.path.realpath(str(targetDir / "s1_cropped.tif")))]
+                                   ("-PoutFile=" + os.path.realpath(str(targetDir / "s1_cropped.tif"))),
+                                   ("-PmapProjection=" + projection)]
                         subprocess.call(command)
 
                         print("done.\n")

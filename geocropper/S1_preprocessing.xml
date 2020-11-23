@@ -95,13 +95,7 @@
       <imgResamplingMethod>BILINEAR_INTERPOLATION</imgResamplingMethod>
       <pixelSpacingInMeter>10.0</pixelSpacingInMeter>
       <pixelSpacingInDegree>8.983152841195215E-5</pixelSpacingInDegree>
-      <mapProjection>GEOGCS[&quot;WGS84(DD)&quot;, &#xd;
-  DATUM[&quot;WGS84&quot;, &#xd;
-    SPHEROID[&quot;WGS84&quot;, 6378137.0, 298.257223563]], &#xd;
-  PRIMEM[&quot;Greenwich&quot;, 0.0], &#xd;
-  UNIT[&quot;degree&quot;, 0.017453292519943295], &#xd;
-  AXIS[&quot;Geodetic longitude&quot;, EAST], &#xd;
-  AXIS[&quot;Geodetic latitude&quot;, NORTH]]</mapProjection>
+      <mapProjection>${mapProjection}</mapProjection>
       <alignToStandardGrid>false</alignToStandardGrid>
       <standardGridOriginX>0.0</standardGridOriginX>
       <standardGridOriginY>0.0</standardGridOriginY>
