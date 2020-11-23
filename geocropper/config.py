@@ -35,6 +35,12 @@ try:
 except:
 	usgsPW = defaultConfig["Credentials"]["usgsPW"]	
 
+# miscellaneous variables
+try:
+	copernicusRequestDelay = userConfig["Misc"].getint("copernicusRequestDelay")
+except:
+	copernicusRequestDelay = defaultConfig["Misc"].getint("copernicusRequestDelay")
+
 # various data paths
 try:
 	dataDir = pathlib.Path(userConfig["Paths"]["data"])

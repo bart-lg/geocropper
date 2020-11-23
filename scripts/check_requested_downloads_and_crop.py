@@ -7,4 +7,4 @@ sys.path.append(os.getcwd())
 
 from geocropper import *
 
-geocropper.importAllCSVs()
+geocropper.utils.startAndCropRequestedDownloads()

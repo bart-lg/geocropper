@@ -22,19 +22,7 @@ class database:
 
     def __init__(self):
 
-        logger.info("start DB connection")
-
-        # open or create sqlite database file
-        self.connection = sqlite3.connect(config.dbFile)
-
-        # provide index-based and case-insensitive name-based access to columns
-        self.connection.row_factory = sqlite3.Row
-
-        # create sqlite cursor object to execute SQL commands
-        self.cursor = self.connection.cursor()
-
-        logger.info("DB connected")
-
+        self.openConnection()
 
         # create new tables if not existing
 
@@ -82,6 +70,26 @@ class database:
         logger.info("tables created if non existing")
 
 
+    def openConnection(self):
+
+        logger.info("start DB connection")
+
+        # open or create sqlite database file
+        self.connection = sqlite3.connect(config.dbFile)
+
+        # provide index-based and case-insensitive name-based access to columns
+        self.connection.row_factory = sqlite3.Row
+
+        # create sqlite cursor object to execute SQL commands
+        self.cursor = self.connection.cursor()
+
+        logger.info("DB connected")
+
+    def closeConnection(self):
+
+        self.connection.close()
+
+
     ### QUERIES ###
         
     # query function used for inserts and updates
@@ -93,7 +101,11 @@ class database:
             self.cursor.execute(query, values)
         # save changes
         self.connection.commit()
-        return self.cursor.lastrowid
+        newId = self.cursor.lastrowid
+        # reconnect database
+        self.closeConnection()
+        self.openConnection()
+        return newId
 
     # query function used for selects returning all rows of result
     def fetchAllRowsQuery(self, query, values=None):
@@ -127,17 +139,20 @@ class database:
         
     def addTile(self, platform, productId, beginposition, endposition, folderName = ""):
         newId = self.query("INSERT INTO Tiles (platform, folderName, productId, beginposition, endposition, \
-            firstDownloadRequest, lastDownloadRequest) \
-            VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))", 
+            firstDownloadRequest) \
+            VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))", 
             (platform, folderName, productId, beginposition, endposition))
         logger.info("new tile inserted into database")
         return newId
+
+    def getRequestedTiles(self):
+        return self.fetchAllRowsQuery("SELECT rowid, * FROM Tiles WHERE downloadComplete IS NULL AND cancelled IS NULL ")
         
     def setUnzippedForTile(self, rowid):
         self.query("UPDATE Tiles SET unzipped = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (unzipped)")
      
-    def setDownloadRequestForTile(self, rowid):
+    def setLastDownloadRequestForTile(self, rowid):
         self.query("UPDATE Tiles SET lastDownloadRequest = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (lastDownloadRequest)")
         
@@ -145,10 +160,21 @@ class database:
         self.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (downloadComplete)")
 
+    def clearLastDownloadRequestForTile(self, rowid):
+        self.query("UPDATE Tiles SET lastDownloadRequest = NULL WHERE rowid = %d" % rowid)
+        logger.info("tile updated in database (lastDownloadRequest cleared due to failed request)")
+
     def setCancelledTile(self, rowid):
         self.query("UPDATE Tiles SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
-        logger.info("tile updated in database (cancelled)")     
-        
+        logger.info("tile updated in database (cancelled)")  
+
+    def getLatestDownloadRequest(self):
+        result = self.fetchFirstRowQuery("SELECT MAX(lastDownloadRequest) as latest FROM Tiles WHERE downloadComplete IS NULL")
+        if result == None:
+            return None
+        else:
+            return result["latest"]
+
 
     ### POIS ###
     
@@ -220,6 +246,17 @@ class database:
     def getTilesForPoi(self, poiId):
         return self.fetchAllRowsQuery("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
             WHERE TilesForPOIs.poiId = %d" % poiId)
+
+    def getPoisForTile(self, tileId):
+        return self.fetchAllRowsQuery("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, TilesForPOIs.cancelled \
+                                       FROM PointOfInterests INNER JOIN TilesForPOIs ON PointOfInterests.rowid = TilesForPOIs.poiId \
+                                       WHERE TilesForPOIs.tileId = %d" % tileId)
+
+    def getUncroppedPoisForDownloadedTiles(self):
+        return self.fetchAllRowsQuery("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, TilesForPOIs.cancelled \
+                                       FROM PointOfInterests INNER JOIN TilesForPOIs ON PointOfInterests.rowid = TilesForPOIs.poiId \
+                                       INNER JOIN Tiles ON TilesForPOIs.tileId = Tiles.rowid \
+                                       WHERE Tiles.downloadComplete IS NOT NULL AND TilesForPOIs.tileCropped IS NULL AND TilesForPOIs.cancelled IS NULL")
 
     def getTilePoiConnectionId(self, poiId, tileId):
         data = self.fetchFirstRowQuery("SELECT rowid FROM TilesForPOIs WHERE poiId = %d AND tileId = %d" % (poiId, tileId))

@@ -51,5 +51,25 @@ class sentinelWrapper:
     # download sentinel product with certain product ID
     def downloadSentinelProduct(self, productID):
         logger.info("start downloading sentinel product")
-        self.api.download(productID, config.bigTilesDir)
-        logger.info("download complete")
+        product_info = self.api.download(productID, config.bigTilesDir)
+        if not product_info["Online"]:
+            logger.info("archived download triggered")
+            return False
+        else:
+            # TODO: Download should be checked
+            logger.info("download complete")
+            return True
+
+    def getProductData(self, productID):
+        return self.api.get_product_odata(productID)
+
+    def readyForDownload(self, productID):
+        return self.api.is_online(productID)
+
+    def requestOfflineTile(self, productID):
+        # HTTP-Code 202: Accepted for retrieval
+        product_info = self.api.get_product_odata(productID)
+        if self.api._trigger_offline_retrieval(product_info["url"]) == 202:
+            return True
+        else:
+            return False

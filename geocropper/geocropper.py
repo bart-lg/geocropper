@@ -1,6 +1,4 @@
 import geocropper.log as log
-import zipfile
-import tarfile
 from tqdm import tqdm
 import os
 import subprocess
@@ -220,18 +218,46 @@ class Geocropper:
                     else:
                         tileId = tile["rowid"]
                         # update download request date for existing tile in database
-                        db.setDownloadRequestForTile(tileId)
+                        db.setLastDownloadRequestForTile(tileId)
 
-                    # download sentinel product
-                    # sentinel wrapper has a resume function for incomplete downloads
-                    logger.info("Download started.")
-                    print("[%d/%d]: Download %s" % (i, len(products), products[key]["title"]))
-                    self.sentinel.downloadSentinelProduct(key)
+                    # check if tile ready for download
+                    if self.sentinel.readyForDownload(key):
 
-                    # if downloaded zip-file could be detected set download complete date in database
-                    if pathlib.Path(config.bigTilesDir / (products[key]["title"] + ".zip") ).is_file():
-                        db.setDownloadCompleteForTile(tileId)
-                
+                        # download sentinel product
+                        # sentinel wrapper has a resume function for incomplete downloads
+                        logger.info("Download started.")
+                        db.setLastDownloadRequestForTile(tileId)
+                        print("[%d/%d]: Download %s" % (i, len(products), products[key]["title"]))
+                        download_complete = self.sentinel.downloadSentinelProduct(key)
+
+                        if download_complete:
+
+                            # if downloaded zip-file could be detected set download complete date in database
+                            if pathlib.Path(config.bigTilesDir / (products[key]["title"] + ".zip") ).is_file():
+                                db.setDownloadCompleteForTile(tileId)
+
+                    else:
+
+                        lastRequest = utils.minutesSinceLastDownloadRequest()
+
+                        if lastRequest == None or lastRequest > config.copernicusRequestDelay:
+
+                            if self.sentinel.requestOfflineTile(key) == True:
+
+                                # Request successful
+                                db.setLastDownloadRequestForTile(tileId)
+                                print("Download of archived tile triggered. Please try again between 24 hours and 3 days later.")
+
+                            else:
+
+                                # Request error
+                                db.clearLastDownloadRequestForTile(tileId)
+                                print("Download request failed! Please try again later.")
+
+                        else:
+
+                            print(f"There has been already a download requested in the last {config.copernicusRequestDelay} minutes! Please try later.")
+
                 else:
 
                     # zip file or folder from previous download detected...
@@ -240,6 +266,7 @@ class Geocropper:
                         # if tile not yet in database add to database
                         # this could happen if database gets reset
                         tileId = db.addTile(platform, key, beginposition, endposition, folderName)
+                        db.setDownloadCompleteForTile(tileId)
                     else:
                         tileId = tile["rowid"]
                     
@@ -368,7 +395,7 @@ class Geocropper:
                     else:
                         tileId = tile["rowid"]
                         # update download request date for existing tile in database
-                        db.setDownloadRequestForTile(tileId)
+                        db.setLastDownloadRequestForTile(tileId)
 
                     # download landsat product
                     # landsat wrapper has NO resume function for incomplete downloads
@@ -388,6 +415,7 @@ class Geocropper:
                         # if tile not yet in database add to database
                         # this could happen if database gets reset
                         tileId = db.addTile(platform, product["entityId"], beginposition, endposition, folderName)
+                        db.setDownloadCompleteForTile(tileId)
                     else:
                         tileId = tile["rowid"]
                     
@@ -415,417 +443,6 @@ class Geocropper:
         
         return products        
 
-
-    def unpackBigTiles(self):
-
-        logger.info("start of unpacking tile zip/tar files")
-        
-        print("\nUnpack big tiles:")
-        print("-----------------\n")
-
-        # determine number of zip files        
-        filesNumZip = len([f for f in os.listdir(config.bigTilesDir) 
-             if f.endswith('.zip') and os.path.isfile(os.path.join(config.bigTilesDir, f))])
-
-        # determine number of tar files
-        filesNumTar = len([f for f in os.listdir(config.bigTilesDir) 
-             if f.endswith('.tar.gz') and os.path.isfile(os.path.join(config.bigTilesDir, f))])
-
-        # calculate number of total packed files
-        filesNum = filesNumZip + filesNumTar
-
-        # index i serves as a counter
-        i = 1
-        
-
-        # start unpacking
-
-        for item in os.listdir(config.bigTilesDir):
-
-            if item.endswith(".zip") or item.endswith(".tar.gz"):
-            
-                print("[%d/%d] %s:" % (i, filesNum, item))
-
-                # get path of the packed file
-                filePath = config.bigTilesDir / item
-
-                # unpack zip file if zip
-                if item.endswith(".zip"):
-
-                    # TODO: dirty... (is maybe first entry of zipRef)
-                    # get tile by folder name
-                    newFolderName = item[:-4] + ".SAFE"
-                    tile = db.getTile(folderName = newFolderName)              
-
-                    # unzip
-                    with zipfile.ZipFile(file=filePath) as zipRef:
-                        
-                        # show progress bar based on number of files in archive
-                        for file in tqdm(iterable=zipRef.namelist(), total=len(zipRef.namelist())):
-                            zipRef.extract(member=file, path=config.bigTilesDir)
-
-                    zipRef.close()
-
-
-                # unpack tar file if tar
-                if item.endswith(".tar.gz"):
-
-                    # get tile by folder name
-                    tile = db.getTile(folderName = item[:-7])
-
-                    # create target directory, since there is no root dir in tar package
-                    targetDir = config.bigTilesDir / tile["folderName"]
-                    if not os.path.isdir(targetDir):
-                        os.makedirs(targetDir)                    
-
-                    # untar
-                    with tarfile.open(name=filePath, mode="r:gz") as tarRef:
-
-                        # show progress bar based on number of files in archive
-                        for file in tqdm(iterable=tarRef.getmembers(), total=len(tarRef.getmembers())):
-                            tarRef.extract(member=file, path=targetDir)
-
-                    tarRef.close()
-
-
-                # remove packed file
-                os.remove(filePath)
-
-                # set unpacked date in database
-                db.setUnzippedForTile(tile["rowid"])
-
-                i += 1
-
-
-        logger.info("tile zip/tar files extracted")
-
-
-
-    def cropTiles(self, poiId):
-        
-        print("\nCrop tiles:")
-        print("-----------------")
-
-        poi = db.getPoiFromId(poiId)
-
-        print("(w: %d, h: %d)\n" % (poi["width"], poi["height"]))
-
-
-        # crop tile if point of interest (POI) exists and width and height bigger than 0
-        if not poi == None and poi["width"] > 0 and poi["height"] > 0:
-
-            # get tiles that need to be cropped
-            tiles = db.getTilesForPoi(poiId)
-            
-            # go through the tiles
-            for tile in tiles:
-            
-                # crop if tile is not cropped yet (with the parameters of POI)
-                if tile["tileCropped"] == None:
-
-                    print("Cropping %s ..." % tile["folderName"])
-
-                    if poi["platform"] == "Sentinel-1" or poi["platform"] == "Sentinel-2":
-                        beginposition = utils.convertDate(tile["beginposition"], newFormat="%Y%m%d-%H%M")
-                    else:
-                        beginposition = utils.convertDate(tile["beginposition"], newFormat="%Y%m%d")
-
-                    poiParameters = self.getPoiParametersForOutputFolder(poi)
-                    connectionId = db.getTilePoiConnectionId(poiId, tile["rowid"])
-                    mainTargetFolder = config.croppedTilesDir / poi["groupname"] / poiParameters / ( "%s_%s_%s_%s" % (connectionId, poi["lon"], poi["lat"], beginposition) )
-
-                    # target directory for cropped image
-                    targetDir = mainTargetFolder / "sensordata"
-                    targetDir.mkdir(parents = True, exist_ok = True)               
-
-                    # target directory for meta information
-                    metaDir = mainTargetFolder / "original-metadata"
-
-                    # target directory for preview image
-                    previewDir = mainTargetFolder 
-                    # previewDir.mkdir(parents = True, exist_ok = True)   
-
-
-                    # SENTINEL 1 CROPPING
-                    
-                    if poi["platform"] == "Sentinel-1":
-
-                        if config.gptSnap.exists():
-
-                            corner_coordinates = utils.getLatLonCornerCoordinates(poi["lat"], poi["lon"], poi["width"], poi["height"])
-
-                            # preprocess and crop using SNAP GPT
-                            poly = Polygon([[p.x, p.y] for p in corner_coordinates])
-                            command = [str(config.gptSnap), os.path.realpath(str(config.xmlSnap)), 
-                                       ("-PinDir=" + os.path.realpath(str(config.bigTilesDir / tile["folderName"]))),
-                                       ("-Psubset=" + poly.wkt),
-                                       ("-PoutFile=" + os.path.realpath(str(targetDir / "s1_cropped.tif")))]
-                            subprocess.call(command)
-
-                            print("done.\n")
-
-                            # copy or link metadata
-                            if config.copyMetadata:                            
-                                print("Copy metadata...")
-                                metaDir.mkdir(parents = True)
-                                tileDir = config.bigTilesDir / tile["folderName"]
-                                for item in tileDir.rglob('*'):
-                                    if item.is_file() and item.suffix.lower() != ".tiff" and item.suffix.lower() != ".safe":
-                                        targetDir = metaDir / item.parent.relative_to(tileDir)
-                                        if not targetDir.exists():
-                                            targetDir.mkdir(parents = True)
-                                        shutil.copy(item, targetDir)
-                                print("done.\n")    
-
-                            if config.createSymlink:
-                                tileDir = config.bigTilesDir / tile["folderName"]
-                                # TODO: set config parameter for realpath or relpath for symlinks
-                                metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
-                                print("Symlink created.")
-
-                            # create preview image
-                            utils.createPreviewRGImage(str(targetDir / "s1_cropped.tif"), mainTargetFolder)
-
-                            # set date for tile cropped 
-                            db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
-
-                        else:
-                            print("SNAP GPT not configured. Sentinel-1 tiles cannot be cropped.\n")
-                            db.setCancelledTileForPoi(poiId, tile["rowid"])  
-
-
-                    # SENTINEL 2 CROPPING
-
-                    if poi["platform"] == "Sentinel-2":
-
-                        corner_coordinates = None
-
-                        # Sentinel-2 img data are in jp2-format
-                        # set appropriate format for GDAL lib
-                        fileFormat="JP2OpenJPEG"
-
-                        # go through "SAFE"-directory structure of Sentinel-2
-
-                        is_S2L1 = True
-
-                        pathGranule = config.bigTilesDir / tile["folderName"] / "GRANULE"
-                        for mainFolder in os.listdir(pathGranule):
-
-                            pathImgData = pathGranule / mainFolder / "IMG_DATA"
-                            for imgDataItem in os.listdir(pathImgData):
-
-                                pathImgDataItem = pathImgData / imgDataItem
-
-                                # if Level-1 data pathImgDataItem is already an image file
-                                # if Level-2 data pathImgDataItem is a directory with image files
-
-                                if os.path.isdir(pathImgDataItem):
-
-                                    # Level-2 data
-
-                                    is_S2L1 = False
-
-                                    targetSubDir = targetDir / imgDataItem
-                                
-                                    for item in os.listdir(pathImgDataItem):
-
-                                        # set path of img file
-                                        path = pathImgDataItem / item
-
-                                        if corner_coordinates == None:
-                                            corner_coordinates = utils.getXYCornerCoordinates(path, poi["lat"], poi["lon"], poi["width"], poi["height"])
-
-                                        # CROP IMAGE
-                                        utils.cropImg(path, item, corner_coordinates["top_left"], corner_coordinates["bottom_right"], 
-                                                      targetSubDir, fileFormat, isLatLon=False)
-
-                                    utils.createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", targetSubDir, previewDir)
-                                
-                                else:
-
-                                    # Level-1 data
-
-                                    # set path of image file
-                                    path = pathImgDataItem
-
-                                    if corner_coordinates == None:
-                                        corner_coordinates = utils.getXYCornerCoordinates(path, poi["lat"], poi["lon"], poi["width"], poi["height"])
-
-                                    # CROP IMAGE
-                                    utils.cropImg(path, imgDataItem, corner_coordinates["top_left"], corner_coordinates["bottom_right"], 
-                                                  targetDir, fileFormat, isLatLon=False)
-
-                            if is_S2L1:
-                                utils.createPreviewRGBImage("*B04.jp2", "*B03.jp2", "*B02.jp2", targetDir, previewDir)                                
-
-                        print("done.\n")        
-
-                        if config.copyMetadata:                            
-                            print("Copy metadata...")
-                            metaDir.mkdir(parents = True)
-                            tileDir = config.bigTilesDir / tile["folderName"]
-                            for item in tileDir.rglob('*'):
-                                if item.is_file() and item.suffix.lower() != ".jp2":
-                                    targetDir = metaDir / item.parent.relative_to(tileDir)
-                                    if not targetDir.exists():
-                                        targetDir.mkdir(parents = True)
-                                    shutil.copy(item, targetDir)
-                            print("done.\n")
-
-                        if config.createSymlink:
-                            tileDir = config.bigTilesDir / tile["folderName"]
-                            # TODO: set config parameter for realpath or relpath for symlinks
-                            metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
-                            print("Symlink created.")
-
-                        # set date for tile cropped 
-                        db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
-
-
-                    # LANDSAT CROPPING
-
-                    if poi["platform"].startswith("LANDSAT"):
-                    
-                        print("Cropping of Landsat data not yet supported.\n")
-                        db.setCancelledTileForPoi(poiId, tile["rowid"])
-
-                        # # Landsat img data are in GeoTiff-format
-                        # # set appropriate format for GDAL lib
-                        # fileFormat="GTiff"
-
-                        # # all images are in root dir of tile
-
-                        # # set path of root dir of tile
-                        # pathImgData = config.bigTilesDir / tile["folderName"]
-
-                        # # TODO: switch to pathlib (for item in pathImgData)
-                        # # go through all files in root dir of tile
-                        # for item in os.listdir(pathImgData):
-
-                        #     # if file ends with tif then crop
-                        #     if item.lower().endswith(".tif"):
-
-                        #         # set path of image file
-                        #         path = pathImgData / item
-
-                        #         # CROP IMAGE
-                        #         utils.cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
-
-                        # if poi["platform"] == "LANDSAT_8_C1":
-                        #     r_band_search_pattern = "*B4.TIF"
-                        #     g_band_search_pattern = "*B3.TIF"
-                        #     b_band_search_pattern = "*B2.TIF"
-                        # else:
-                        #     r_band_search_pattern = "*B3.TIF"
-                        #     g_band_search_pattern = "*B2.TIF"
-                        #     b_band_search_pattern = "*B1.TIF"                           
-                        # utils.createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, targetDir, previewDir)                         
-
-                        # print("done.")
-
-                        # if config.copyMetadata:
-                        #     print("Copy metadata...")
-                        #     metaDir.mkdir(parents = True)
-                        #     for item in pathImgData.glob('*'):
-                        #         if item.is_file():
-                        #             if item.suffix.lower() != ".tif":
-                        #                 shutil.copy(item, metaDir)
-                        #         if item.is_dir():
-                        #             shutil.copytree(item, (metaDir / item.name))
-                        #     print("done.\n")
-
-                        # if config.createSymlink:
-                        #     tileDir = pathImgData
-                        #     # TODO: set config parameter for realpath or relpath for symlink
-                        #     metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
-                        #     print("Symlink created.")                            
-
-                        # # set date for tile cropped 
-                        # db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)                                              
-
-
-    def getPoiParametersForOutputFolder(self, poi):
-        
-        folderElements = []
-        folderName = ""
-
-        try:
-            folderElements.append("df" + utils.convertDate(poi["dateFrom"], "%Y%m%d"))
-        except:
-            pass
-
-        try:
-            folderElements.append("dt" + utils.convertDate(poi["dateTo"], "%Y%m%d"))
-        except:
-            pass
-            
-        try:
-            if poi["platform"] == "Sentinel-1":
-                folderElements.append("pfS1")
-            if poi["platform"] == "Sentinel-2":
-                folderElements.append("pfS2")
-            if poi["platform"] == "LANDSAT_TM_C1":
-                folderElements.append("pfLTM")
-            if poi["platform"] == "LANDSAT_ETM_C1":
-                folderElements.append("pfLETM")
-            if poi["platform"] == "LANDSAT_8_C1":
-                folderElements.append("pfL8")
-        except:
-            pass
-            
-        try:
-            folderElements.append("tl" + str(poi["tileLimit"]))
-        except:
-            pass
-            
-        try:
-            folderElements.append("cc" + str(poi["cloudcoverpercentage"]))
-        except:
-            pass
-            
-        try:
-            folderElements.append("pm" + str(poi["polarisatiomode"]))
-        except:
-            pass
-            
-        try:
-            folderElements.append("pt" + str(poi["producttype"]))
-        except:
-            pass
-            
-        try:
-            folderElements.append("som" + str(poi["sensoroperationalmode"]))
-        except:
-            pass
-            
-        try:
-            folderElements.append("si" + str(poi["swathidentifier"]))
-        except:
-            pass
-            
-        try:
-            folderElements.append("tls" + str(poi["timeliness"]))
-        except:
-            pass
-            
-        try:
-            folderElements.append("w" + str(poi["width"]))
-        except:
-            pass
-            
-        try:
-            folderElements.append("h" + str(poi["height"]))
-        except:
-            pass
-
-        for item in folderElements:
-            if not item.endswith("None"):            
-                if len(folderName) > 0:
-                    folderName = folderName + "_"
-                folderName = folderName + item
-
-        return folderName
-            
 
     def downloadAndCrop(self, groupname, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
         """Download and crop/clip Sentinel or Landsat tiles to directories specified in the config file.
@@ -915,10 +532,10 @@ class Geocropper:
 
         if not products == None and len(products) > 0:
 
-            self.unpackBigTiles()
+            utils.unpackBigTiles()
             logger.info("Big tiles unpacked.")
             
-            self.cropTiles(poiId)
+            utils.cropTiles(poiId)
             logger.info("Tiles cropped.")
 
         
