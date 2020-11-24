@@ -14,8 +14,12 @@ source <(grep "conda_env" ../user-config.ini  | tr -d " ")
 if [[ ! -z "$conda_env" ]]
 then
 
+	# init conda environment
+	# see: https://github.com/conda/conda/issues/7980#issuecomment-492784093
+	eval "$(conda shell.bash hook)"
+
 	# activate conda environment
-	source /opt/miniconda3/bin/activate "${conda_env}" 
+	conda activate "${conda_env}" 
 
 	# defining output file for console output
 	OUTPUT_FILE="console-outputs/console-output_$(date +%Y-%m-%d_%H-%M-%S).txt"
