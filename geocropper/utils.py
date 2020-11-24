@@ -1053,16 +1053,34 @@ def cropTiles(poiId):
                         else:
                             projection = "EPSG:4326"
 
+                        targetFile = targetDir / "s1_cropped.tif"
+
                         # preprocess and crop using SNAP GPT
                         poly = Polygon([[p.x, p.y] for p in corner_coordinates])
                         command = [str(config.gptSnap), os.path.realpath(str(config.xmlSnap)), 
                                    ("-PinDir=" + os.path.realpath(str(config.bigTilesDir / tile["folderName"]))),
                                    ("-Psubset=" + poly.wkt),
-                                   ("-PoutFile=" + os.path.realpath(str(targetDir / "s1_cropped.tif"))),
+                                   ("-PoutFile=" + os.path.realpath(str(targetFile))),
                                    ("-PmapProjection=" + projection)]
                         subprocess.call(command)
 
-                        print("done.\n")
+                        if targetFile.exists():
+
+                            print("done.\n")
+
+                            # create preview image
+                            createPreviewRGImage(str(targetFile), mainTargetFolder, exponential_scale=None)
+
+                            # set date for tile cropped 
+                            db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
+
+                        else:
+
+                            print("Sentinel-1 crop could not be created!")
+
+                            # cancel crop
+                            db.setCancelledTileForPoi(poiId, tile["rowid"])
+
 
                         # copy or link metadata
                         if config.copyMetadata:                            
@@ -1081,13 +1099,7 @@ def cropTiles(poiId):
                             tileDir = config.bigTilesDir / tile["folderName"]
                             # TODO: set config parameter for realpath or relpath for symlinks
                             metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
-                            print("Symlink created.")
-
-                        # create preview image
-                        createPreviewRGImage(str(targetDir / "s1_cropped.tif"), mainTargetFolder, exponential_scale=None)
-
-                        # set date for tile cropped 
-                        db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
+                            print("Symlink created.")                        
 
                     else:
                         print("SNAP GPT not configured. Sentinel-1 tiles cannot be cropped.\n")

@@ -389,11 +389,11 @@ class database:
 
     def setTileCropped(self, poiId, tileId, path):
         self.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime'), path = '%s' WHERE poiId = %d AND tileId = %d" % (path, poiId, tileId))
-        logger.info("tile-poi updated in database (tileCropped)")
+        logger.info("tile-poi updated in database (tileCropped): poiId:%d tileId:%d" % (poiId, tileId))
 
     def setCancelledTileForPoi(self, poiId, tileId):
         self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poiId, tileId))
-        logger.info("tile-poi updated in database (cancelled)")          
+        logger.info("tile-poi updated in database (cancelled): poiId:%d tileId:%d" % (poiId, tileId))          
         
 
     ### CSV ###
