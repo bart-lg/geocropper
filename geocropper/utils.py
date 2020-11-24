@@ -1097,9 +1097,10 @@ def cropTiles(poiId):
 
                         if config.createSymlink:
                             tileDir = config.bigTilesDir / tile["folderName"]
-                            # TODO: set config parameter for realpath or relpath for symlinks
-                            metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
-                            print("Symlink created.")                        
+                            if not metaDir.exists():
+                                # TODO: set config parameter for realpath or relpath for symlinks
+                                metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
+                                print("Symlink created.")                        
 
                     else:
                         print("SNAP GPT not configured. Sentinel-1 tiles cannot be cropped.\n")
