@@ -982,7 +982,7 @@ def startAndCropRequestedDownloads():
 
 
     # unpack new big tiles
-    utils.unpackBigTiles()
+    unpackBigTiles()
     logger.info("Big tiles unpacked.")
 
     # get projections of new downloaded tiles
