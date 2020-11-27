@@ -25,6 +25,7 @@ from datetime import datetime
 import geocropper.config as config
 from geocropper.database import database
 import geocropper.sentinelWrapper as sentinelWrapper
+import geocropper.asfWrapper as asfWrapper
 
 import logging
 
@@ -905,6 +906,7 @@ def startAndCropRequestedDownloads():
     if not tiles == None:
 
         sentinel = sentinelWrapper.sentinelWrapper()
+        asf = asfWrapper.asfWrapper()
 
         for tile in tiles:
 
