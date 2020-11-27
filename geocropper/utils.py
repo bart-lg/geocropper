@@ -943,7 +943,7 @@ def startAndCropRequestedDownloads():
                     
                     print("Product not available for download yet.")
 
-                    if granule.startswith("S1") and self.asf.downloadS1Tile(granule, config.bigTilesDir):
+                    if granule.startswith("S1") and asf.downloadS1Tile(granule, config.bigTilesDir):
 
                         unpackBigTiles()
                         db.setDownloadCompleteForTile(tile['rowid'])
