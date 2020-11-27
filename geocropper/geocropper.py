@@ -17,6 +17,7 @@ from geocropper.database import database
 import geocropper.config as config
 import geocropper.sentinelWrapper as sentinelWrapper
 import geocropper.landsatWrapper as landsatWrapper
+import geocropper.asfWrapper as asfWrapper
 import geocropper.csvImport as csvImport
 import geocropper.utils as utils
 
@@ -140,6 +141,7 @@ class Geocropper:
         # load sentinel wrapper
 
         self.sentinel = sentinelWrapper.sentinelWrapper()
+        self.asf = asfWrapper.asfWrapper()
         
         # convert date to required format
         dateFrom = utils.convertDate(dateFrom, "%Y%m%d")
@@ -207,7 +209,7 @@ class Geocropper:
                 
                 # check for previous downloads
                 if not pathlib.Path(config.bigTilesDir / folderName).is_dir() and \
-                  not pathlib.Path(config.bigTilesDir / (products[key]["title"] + ".zip") ).is_file():
+                   not pathlib.Path(config.bigTilesDir / (products[key]["title"] + ".zip") ).is_file():
                     
                     # no previous download detected...
 
@@ -220,6 +222,8 @@ class Geocropper:
                         # update download request date for existing tile in database
                         db.setLastDownloadRequestForTile(tileId)
 
+                    granule = products[key]["title"]
+
                     # check if tile ready for download
                     if self.sentinel.readyForDownload(key):
 
@@ -227,36 +231,43 @@ class Geocropper:
                         # sentinel wrapper has a resume function for incomplete downloads
                         logger.info("Download started.")
                         db.setLastDownloadRequestForTile(tileId)
-                        print("[%d/%d]: Download %s" % (i, len(products), products[key]["title"]))
+                        print("[%d/%d]: Download %s" % (i, len(products), granule))
                         download_complete = self.sentinel.downloadSentinelProduct(key)
 
                         if download_complete:
 
                             # if downloaded zip-file could be detected set download complete date in database
-                            if pathlib.Path(config.bigTilesDir / (products[key]["title"] + ".zip") ).is_file():
+                            if pathlib.Path(config.bigTilesDir / (granule + ".zip") ).is_file():
                                 db.setDownloadCompleteForTile(tileId)
 
                     else:
 
-                        lastRequest = utils.minutesSinceLastDownloadRequest()
+                        if granule.startswith("S1") and self.asf.downloadS1Tile(granule, config.bigTilesDir):
 
-                        if lastRequest == None or lastRequest > config.copernicusRequestDelay:
-
-                            if self.sentinel.requestOfflineTile(key) == True:
-
-                                # Request successful
-                                db.setLastDownloadRequestForTile(tileId)
-                                print("Download of archived tile triggered. Please try again between 24 hours and 3 days later.")
-
-                            else:
-
-                                # Request error
-                                db.clearLastDownloadRequestForTile(tileId)
-                                print("Download request failed! Please try again later.")
+                            db.setDownloadCompleteForTile(tileId)
+                            print(f"Tile {granule} downloaded from Alaska Satellite Facility")
 
                         else:
 
-                            print(f"There has been already a download requested in the last {config.copernicusRequestDelay} minutes! Please try later.")
+                            lastRequest = utils.minutesSinceLastDownloadRequest()
+
+                            if lastRequest == None or lastRequest > config.copernicusRequestDelay:
+
+                                if self.sentinel.requestOfflineTile(key) == True:
+
+                                    # Request successful
+                                    db.setLastDownloadRequestForTile(tileId)
+                                    print("Download of archived tile triggered. Please try again between 24 hours and 3 days later.")
+
+                                else:
+
+                                    # Request error
+                                    db.clearLastDownloadRequestForTile(tileId)
+                                    print("Download request failed! Please try again later.")
+
+                            else:
+
+                                print(f"There has been already a download requested in the last {config.copernicusRequestDelay} minutes! Please try later.")
 
                 else:
 
@@ -292,7 +303,7 @@ class Geocropper:
         logger.info("Big tiles unpacked.")
 
         # if there is a point of interest (POI) => set date for tiles identified
-        # this means that all tiles for the requested POI have been identified and downloaded
+        # this means that all tiles for the requested POI have been identified
         if int(poiId) > 0:
             db.setTilesIdentifiedForPoi(poiId)
 

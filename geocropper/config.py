@@ -35,6 +35,16 @@ try:
 except:
 	usgsPW = defaultConfig["Credentials"]["usgsPW"]	
 
+# used for download of Sentinel-1 data from the Alaska Satellite Facility
+try:
+	asfUser = userConfig["Credentials"]["asfUser"]
+except:
+	asfUser = defaultConfig["Credentials"]["asfUser"]	
+try:
+	asfPW = userConfig["Credentials"]["asfPW"]
+except:
+	asfPW = defaultConfig["Credentials"]["asfPW"]	
+
 # miscellaneous variables
 try:
 	copernicusRequestDelay = userConfig["Misc"].getint("copernicusRequestDelay")

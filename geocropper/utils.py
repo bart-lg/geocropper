@@ -918,6 +918,8 @@ def startAndCropRequestedDownloads():
                 else:
                     print(f"Last download request: {convertDate(tile['lastDownloadRequest'], newFormat='%Y-%m-%d %H:%M:%S')}\n")
 
+                granule = tile['folderName'].split(".")[0]
+
                 if sentinel.readyForDownload(tile['productId']):
 
                     print("Product ready for download!\n")
@@ -930,49 +932,59 @@ def startAndCropRequestedDownloads():
                     if download_complete:
 
                         # if downloaded zip-file could be detected set download complete date in database
-                        if pathlib.Path(config.bigTilesDir / (tile['folderName'].split(".")[0] + ".zip") ).is_file():
+                        if pathlib.Path(config.bigTilesDir / (granule + ".zip") ).is_file():
 
                             unpackBigTiles()
-
                             db.setDownloadCompleteForTile(tile['rowid'])
 
                 else:
                     
                     print("Product not available for download yet.")
 
-                    if tile['lastDownloadRequest'] == None or dateOlderThan24h(tile['lastDownloadRequest']):
+                    if granule.startswith("S1") and self.asf.downloadS1Tile(granule, config.bigTilesDir):
 
-                        print("Last successful download request older than 24h or non-existing.")
-                        print("Repeat download request...")
+                        unpackBigTiles()
+                        db.setDownloadCompleteForTile(tile['rowid'])
+                        print(f"Tile {granule} downloaded from Alaska Satellite Facility")
 
-                        lastRequest = minutesSinceLastDownloadRequest()
+                    else:                    
 
-                        if lastRequest == None or lastRequest > config.copernicusRequestDelay:
+                        if tile['lastDownloadRequest'] == None or dateOlderThan24h(tile['lastDownloadRequest']):
 
-                            if sentinel.requestOfflineTile(tile['productId']) == True:
+                            print("Last successful download request older than 24h or non-existing.")
+                            print("Repeat download request...")
 
-                                # Request successful
-                                db.setLastDownloadRequestForTile(tile["rowid"])
-                                print("Download of archived tile triggered. Please try again between 24 hours and 3 days later.")
+                            lastRequest = minutesSinceLastDownloadRequest()
+
+                            if lastRequest == None or lastRequest > config.copernicusRequestDelay:
+
+                                if sentinel.requestOfflineTile(tile['productId']) == True:
+
+                                    # Request successful
+                                    db.setLastDownloadRequestForTile(tile["rowid"])
+                                    print("Download of archived tile triggered. Please try again between 24 hours and 3 days later.")
+
+                                else:
+
+                                    # Request error
+                                    db.clearLastDownloadRequestForTile(tile["rowid"])
+                                    print("Download request failed! Please try again later.")                        
 
                             else:
 
-                                # Request error
-                                db.clearLastDownloadRequestForTile(tile["rowid"])
-                                print("Download request failed! Please try again later.")                        
+                                print(f"There has been already a download requested in the last {config.copernicusRequestDelay} minutes! Please try later.")
 
                         else:
 
-                            print(f"There has been already a download requested in the last {config.copernicusRequestDelay} minutes! Please try later.")
+                            print("Last successful download request not older than 24h. Please try again later.")
 
-                    else:
 
-                        print("Last successful download request not older than 24h. Please try again later.")
-
+    # unpack new big tiles
+    utils.unpackBigTiles()
+    logger.info("Big tiles unpacked.")
 
     # get projections of new downloaded tiles
     saveMissingTileProjections()
-
 
     # crop outstanding points                    
 
