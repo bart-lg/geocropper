@@ -107,10 +107,20 @@ def importCSV(filePath, delimiter=',', quotechar='"', autoLoad = True):
 
 
 # load imported csv data: call geocropper for individual records
-def loadImportedCSVdata():
+def loadImportedCSVdata(lowerBoundary=None, upperBoundary=None):
 
     # get imported and not yet loaded data
     data = db.getImportedCSVdata()
+
+    if upperBoundary > 0 and len(data) > upperBoundary:
+        data = data[0:upperBoundary]
+
+    if lowerBoundary > 0:
+        if len(data) < lowerBoundary:
+            data = data[lowerBoundary:]
+        else:
+            print("Lower boundary higher than number of elements left")
+            exit()
 
     # index i serves as a counter
     i = 0
@@ -125,6 +135,9 @@ def loadImportedCSVdata():
             print("\n############################################################")
             print("\n[ Load imported data... %d/%d ]" % (i, len(data)))
             logger.info("[ ##### Load imported data... %d/%d ##### ]" % (i, len(data)))
+            if lowerBoundary != None or upperBoundary != None:
+                print(f"\n[ Boundaries: {lowerBoundary}:{upperBoundary} ]")
+                logger.info(f"\n[ Boundaries: {lowerBoundary}:{upperBoundary} ]")
 
             # initialize geocropper instance
             geoc = geocropper.init(item["lat"], item["lon"])
@@ -157,3 +170,5 @@ def loadImportedCSVdata():
     
 
     logger.info("[ ##### Load imported data... %d/%d ...done! ##### ]" % (i, len(data)))
+    if lowerBoundary != None or upperBoundary != None:
+        logger.info(f"\n[ Boundaries: {lowerBoundary}:{upperBoundary} ]")    
