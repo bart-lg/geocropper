@@ -116,7 +116,7 @@ def loadImportedCSVdata(lowerBoundary=None, upperBoundary=None):
         data = data[0:upperBoundary]
 
     if lowerBoundary > 0:
-        if len(data) < lowerBoundary:
+        if len(data) > lowerBoundary:
             data = data[lowerBoundary:]
         else:
             print("Lower boundary higher than number of elements left")
