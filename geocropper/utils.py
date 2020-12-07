@@ -30,6 +30,7 @@ import geocropper.asfWrapper as asfWrapper
 import logging
 
 from osgeo import gdal
+
 # gdal library distributed by conda destroys PATH environment variable
 # see -> https://github.com/OSGeo/gdal/issues/1231
 # workaround: remove first entry...
@@ -41,6 +42,8 @@ db = database()
 
 
 def convertDate(date, newFormat="%Y-%m-%d"):
+	"""Converts a date object to a string of a given format. Default is %Y-%m-%d.
+	"""
     temp = parse(date)
     return temp.strftime(newFormat)
 
