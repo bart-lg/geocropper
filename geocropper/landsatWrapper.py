@@ -9,7 +9,7 @@ logger = logging.getLogger('root')
 
 
 # landsatWrapper serves as interface between this module and landsat-api-module
-class landsatWrapper:
+class LandsatWrapper:
 
     def __init__(self):
         
@@ -19,7 +19,7 @@ class landsatWrapper:
         self.api = landsatxplore.api.API(config.usgsUser, config.usgsPW)
 
         # connection to EarthExplorer for download requests
-        self.earthExplorer = EarthExplorer(config.usgsUser, config.usgsPW)
+        self.earth_explorer = EarthExplorer(config.usgsUser, config.usgsPW)
 
         logger.info("landsat API connected")
 
@@ -27,10 +27,10 @@ class landsatWrapper:
     def __del__(self):
         # logout from API and EarthExplorer
         self.api.logout()
-        self.earthExplorer.logout()
+        self.earth_explorer.logout()
 
     
-    def getLandsatProducts(self, lat, lon, dateFrom, dateTo, platform, maxCloudCoverage = 100, limit = 0):
+    def get_landsat_products(self, lat, lon, date_from, date_to, platform, max_cloud_coverage = 100, limit = 0):
         # datasets: [LANDSAT_TM_C1|LANDSAT_ETM_C1|LANDSAT_8_C1]
         # format for dates: 'YYYY-MM-DD'
     
@@ -41,22 +41,22 @@ class landsatWrapper:
                 dataset=platform,
                 latitude=lat,
                 longitude=lon,
-                start_date=dateFrom,
-                end_date=dateTo,
-                max_cloud_cover=maxCloudCoverage,
+                start_date=date_from,
+                end_date=date_to,
+                max_cloud_cover=max_cloud_coverage,
                 max_results=limit)
         else:
             scenes = self.api.search(
                 dataset=platform,
                 latitude=lat,
                 longitude=lon,
-                start_date=dateFrom,
-                end_date=dateTo,
+                start_date=date_from,
+                end_date=date_to,
                 max_cloud_cover=maxCloudCoverage)        
         
         return scenes
 
 
-    def downloadLandsatProduct(self, sceneId):
-        self.earthExplorer.download(scene_id=sceneId, output_dir=config.bigTilesDir)
+    def download_landsat_product(self, scene_id):
+        self.earth_explorer.download(scene_id=scene_id, output_dir=config.bigTilesDir)
         

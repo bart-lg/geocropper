@@ -51,7 +51,7 @@ from geocropper import *
 ### Using CSV
 
 ```python
-geocropper.importAllCSVs()
+geocropper.import_all_csvs()
 ```
 
 Place your CSV files in the inputCSV directory defined in the config file (default: 'data/inputCSV').

@@ -135,24 +135,24 @@ tables = {
 
 ### DB class
 
-class database:
+class Database:
 
     def __init__(self):
 
-        self.openConnection()
+        self.open_connection()
 
 
         # create new tables if not existing
-        for tableName, tableContent in tables.items():
+        for table_name, table_content in tables.items():
 
             elements = ""
-            for columnName, dataType in tableContent.items():
+            for column_name, data_type in table_content.items():
                 if elements == "":
-                    elements = "%s %s" % (columnName, dataType)
+                    elements = "%s %s" % (column_name, data_type)
                 else:
-                    elements = "%s, %s %s" % (elements, columnName, dataType)
+                    elements = "%s, %s %s" % (elements, column_name, data_type)
 
-            query = "CREATE TABLE IF NOT EXISTS " + tableName + " (" + elements + ")"
+            query = "CREATE TABLE IF NOT EXISTS " + table_name + " (" + elements + ")"
 
             self.cursor.execute(query)
 
@@ -163,26 +163,26 @@ class database:
 
 
         # check tables for missing columns (e.g. new columns in newer versions)
-        for tableName, tableContent in tables.items():
+        for table_name, table_content in tables.items():
             
-            for columnName, dataType in tableContent.items():
+            for column_name, data_type in table_content.items():
             
-                result = self.fetchFirstRowQuery(f"SELECT COUNT(*) AS num FROM pragma_table_info('{tableName}') \
-                                                   WHERE name='{columnName}'")
+                result = self.fetch_first_row_query(f"SELECT COUNT(*) AS num FROM pragma_table_info('{table_name}') \
+                                                   WHERE name='{column_name}'")
             
                 if result == None or result["num"] == 0:
 
                     # column is missing and needs to be appended
-                    self.query(f"ALTER TABLE {tableName} ADD {columnName} {dataType};")
-                    logger.info(f"db: column {columnName} added to table {tableName}")
+                    self.query(f"ALTER TABLE {table_name} ADD {column_name} {data_type};")
+                    logger.info(f"db: column {column_name} added to table {table_name}")
 
 
     def __del__(self):
 
-        self.closeConnection()
+        self.close_connection()
 
 
-    def openConnection(self):
+    def open_connection(self):
 
         logger.info("start DB connection")
 
@@ -198,7 +198,7 @@ class database:
         logger.info("DB connected")
 
 
-    def closeConnection(self):
+    def close_connection(self):
 
         self.connection.close()
 
@@ -214,11 +214,11 @@ class database:
             self.cursor.execute(query, values)
         # save changes
         self.connection.commit()
-        newId = self.cursor.lastrowid
-        return newId
+        new_id = self.cursor.lastrowid
+        return new_id
 
     # query function used for selects returning all rows of result
-    def fetchAllRowsQuery(self, query, values=None):
+    def fetch_all_rows_query(self, query, values=None):
         if values == None:
             self.cursor.execute(query)
         else:
@@ -226,7 +226,7 @@ class database:
         return self.cursor.fetchall()
 
     # query function used for selects returning only first row of result
-    def fetchFirstRowQuery(self, query, values=None):
+    def fetch_first_row_query(self, query, values=None):
         if values == None:
             self.cursor.execute(query)
         else:
@@ -236,88 +236,88 @@ class database:
 
     ### TILES ###
         
-    def getTile(self, productId = None, folderName = None):
-        if not productId == None and not folderName == None:
-            qresult = self.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE productId = '?' AND folderName = '?'", \
-                (productId, folderName))
+    def get_tile(self, product_id = None, folder_name = None):
+        if not product_id == None and not folder_name == None:
+            qresult = self.fetch_first_row_query("SELECT rowid, * FROM Tiles WHERE productId = '?' AND folderName = '?'", \
+                (product_id, folder_name))
         else:
-            if not productId == None:
-                qresult = self.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE productId = '%s'" % productId)
-            if not folderName == None:
-                qresult = self.fetchFirstRowQuery("SELECT rowid, * FROM Tiles WHERE folderName = '%s'" % folderName)            
+            if not product_id == None:
+                qresult = self.fetch_first_row_query("SELECT rowid, * FROM Tiles WHERE productId = '%s'" % product_id)
+            if not folder_name == None:
+                qresult = self.fetch_first_row_query("SELECT rowid, * FROM Tiles WHERE folderName = '%s'" % folder_name)            
         return qresult
         
-    def addTile(self, platform, productId, beginposition, endposition, folderName = ""):
+    def add_tile(self, platform, product_id, beginposition, endposition, folder_name = ""):
         newId = self.query("INSERT INTO Tiles (platform, folderName, productId, beginposition, endposition, \
             firstDownloadRequest) \
             VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))", 
-            (platform, folderName, productId, beginposition, endposition))
+            (platform, folder_name, product_id, beginposition, endposition))
         logger.info("new tile inserted into database")
         return newId
 
-    def getRequestedTiles(self):
-        return self.fetchAllRowsQuery("SELECT rowid, * FROM Tiles WHERE downloadComplete IS NULL AND cancelled IS NULL ")
+    def get_requested_tiles(self):
+        return self.fetch_all_rows_query("SELECT rowid, * FROM Tiles WHERE downloadComplete IS NULL AND cancelled IS NULL ")
         
-    def setUnzippedForTile(self, rowid):
+    def set_unzipped_for_tile(self, rowid):
         self.query("UPDATE Tiles SET unzipped = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (unzipped)")
      
-    def setLastDownloadRequestForTile(self, rowid):
+    def set_last_download_request_for_tile(self, rowid):
         self.query("UPDATE Tiles SET lastDownloadRequest = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (lastDownloadRequest)")
         
-    def setDownloadCompleteForTile(self, rowid):
+    def set_download_complete_for_tile(self, rowid):
         self.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (downloadComplete)")
 
-    def clearLastDownloadRequestForTile(self, rowid):
+    def clear_last_download_request_for_tile(self, rowid):
         self.query("UPDATE Tiles SET lastDownloadRequest = NULL WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (lastDownloadRequest cleared due to failed request)")
 
-    def setCancelledTile(self, rowid):
+    def set_cancelled_tile(self, rowid):
         self.query("UPDATE Tiles SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (cancelled)")  
 
-    def getLatestDownloadRequest(self):
-        result = self.fetchFirstRowQuery("SELECT MAX(lastDownloadRequest) as latest FROM Tiles WHERE downloadComplete IS NULL")
+    def get_latest_download_request(self):
+        result = self.fetch_first_row_query("SELECT MAX(lastDownloadRequest) as latest FROM Tiles WHERE downloadComplete IS NULL")
         if result == None:
             return None
         else:
             return result["latest"]
 
-    def updateTileProjection(self, rowid, projection):
+    def update_tile_projection(self, rowid, projection):
         self.query("UPDATE Tiles SET projection = '%s' WHERE rowid = %d" % (projection, rowid))
         logger.info("projection updated for tileId " + str(rowid))
 
-    def getTilesWithoutProjectionInfo(self):
-        return self.fetchAllRowsQuery("SELECT rowid, * FROM Tiles WHERE projection IS NULL AND downloadComplete IS NOT NULL")
+    def get_tiles_without_projection_info(self):
+        return self.fetch_all_rows_query("SELECT rowid, * FROM Tiles WHERE projection IS NULL AND downloadComplete IS NOT NULL")
 
 
     ### POIS ###
     
-    def getPoi(self, groupname, lat, lon, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
+    def get_poi(self, groupname, lat, lon, date_from, date_to, platform, width, height, tile_limit = 0, **kwargs):
 
-        query = "SELECT rowid, * FROM PointOfInterests WHERE groupname = '" + str(groupname)  + "' AND lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + dateFrom + "'" \
-            + " AND dateTo = '" + dateTo + "' AND platform = '" + platform + "' AND width = " + str(width) + " AND height = " + str(height) \
-            + " AND tileLimit = " + str(tileLimit)
+        query = "SELECT rowid, * FROM PointOfInterests WHERE groupname = '" + str(groupname)  + "' AND lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + date_from + "'" \
+            + " AND dateTo = '" + date_to + "' AND platform = '" + platform + "' AND width = " + str(width) + " AND height = " + str(height) \
+            + " AND tileLimit = " + str(tile_limit)
 
-        usedKeys = []
+        used_keys = []
 
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = "%s AND %s = '%s'" % (query, key, value)
-                usedKeys.append(key)
+                used_keys.append(key)
 
         # check for unused keys
         # this is important to prevent fetching of different POIs with further arguments 
         for item in config.optionalSentinelParameters:
-            if not ( item in usedKeys ):
+            if not ( item in used_keys ):
                 query = "%s AND %s IS NULL" % (query, item)
 
-        qresult = self.fetchFirstRowQuery(query)
+        qresult = self.fetch_first_row_query(query)
         return qresult
         
-    def addPoi(self, groupname, lat, lon, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
+    def add_poi(self, groupname, lat, lon, date_from, date_to, platform, width, height, tile_limit = 0, **kwargs):
         query = "INSERT INTO PointOfInterests (groupname, lat, lon"
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
@@ -327,14 +327,14 @@ class database:
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = query + ", '" + str(value) + "'"
-        query = query + ", '" + self.getCountry(lat, lon) + "', '" + dateFrom + "', '" + dateTo + "', '" + platform + "', " + str(width) + ", " + str(height) \
-            + ", " + str(tileLimit) + ", " + "'', datetime('now', 'localtime'))"
-        poiId = self.query(query)
+        query = query + ", '" + self.get_country(lat, lon) + "', '" + date_from + "', '" + date_to + "', '" + platform + "', " + str(width) + ", " + str(height) \
+            + ", " + str(tile_limit) + ", " + "'', datetime('now', 'localtime'))"
+        poi_id = self.query(query)
 
         logger.info("new PointOfInterest inserted into database")    
-        return poiId
+        return poi_id
         
-    def getCountry(self, lat, lon):
+    def get_country(self, lat, lon):
         cc = countries.CountryChecker(config.worldBordersShapeFile)
         country = cc.getCountry(countries.Point(lat, lon))
         if country == None:
@@ -342,91 +342,91 @@ class database:
         else:
             return country.iso
         
-    def getPoiFromId(self, poiId):
-        return self.fetchFirstRowQuery("SELECT rowid, * FROM PointOfInterests WHERE rowid = %d" % poiId)
+    def get_poi_from_id(self, poi_id):
+        return self.fetch_first_row_query("SELECT rowid, * FROM PointOfInterests WHERE rowid = %d" % poi_id)
         
-    def setTilesIdentifiedForPoi(self, poiId):
-        self.query("UPDATE PointOfInterests SET tilesIdentified = datetime('now', 'localtime') WHERE rowid = %d" % poiId)
+    def set_tiles_identified_for_poi(self, poi_id):
+        self.query("UPDATE PointOfInterests SET tilesIdentified = datetime('now', 'localtime') WHERE rowid = %d" % poi_id)
         logger.info("PointOfInterest updated in database (tilesIdentified)")
 
-    def setCancelledPoi(self, rowid):
+    def set_cancelled_poi(self, rowid):
         self.query("UPDATE PointOfInterests SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("PointOfInterest updated in database (cancelled)")        
         
 
     ### TILE-POI-CONNECTION ###
         
-    def getTileForPoi(self, poiId, tileId):
-        return self.fetchFirstRowQuery("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
-            WHERE TilesForPOIs.poiId = %d AND TilesForPOIs.tileId = %d" % (poiId, tileId))
+    def get_tile_for_poi(self, poi_id, tile_id):
+        return self.fetch_first_row_query("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
+            WHERE TilesForPOIs.poiId = %d AND TilesForPOIs.tileId = %d" % (poi_id, tile_id))
         
-    def getTilesForPoi(self, poiId):
-        return self.fetchAllRowsQuery("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
-            WHERE TilesForPOIs.poiId = %d" % poiId)
+    def get_tiles_for_poi(self, poi_id):
+        return self.fetch_all_rows_query("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
+            WHERE TilesForPOIs.poiId = %d" % poi_id)
 
-    def getPoisForTile(self, tileId):
-        return self.fetchAllRowsQuery("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, TilesForPOIs.cancelled \
+    def get_pois_for_tile(self, tile_id):
+        return self.fetch_all_rows_query("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, TilesForPOIs.cancelled \
                                        FROM PointOfInterests INNER JOIN TilesForPOIs ON PointOfInterests.rowid = TilesForPOIs.poiId \
-                                       WHERE TilesForPOIs.tileId = %d" % tileId)
+                                       WHERE TilesForPOIs.tileId = %d" % tile_id)
 
-    def getUncroppedPoisForDownloadedTiles(self):
-        return self.fetchAllRowsQuery("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, TilesForPOIs.cancelled \
+    def get_uncropped_pois_for_downloaded_tiles(self):
+        return self.fetch_all_rows_query("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, TilesForPOIs.cancelled \
                                        FROM PointOfInterests INNER JOIN TilesForPOIs ON PointOfInterests.rowid = TilesForPOIs.poiId \
                                        INNER JOIN Tiles ON TilesForPOIs.tileId = Tiles.rowid \
                                        WHERE Tiles.downloadComplete IS NOT NULL AND TilesForPOIs.tileCropped IS NULL AND TilesForPOIs.cancelled IS NULL")
 
-    def getTilePoiConnectionId(self, poiId, tileId):
-        data = self.fetchFirstRowQuery("SELECT rowid FROM TilesForPOIs WHERE poiId = %d AND tileId = %d" % (poiId, tileId))
+    def get_tile_poi_connection_id(self, poi_id, tile_id):
+        data = self.fetch_first_row_query("SELECT rowid FROM TilesForPOIs WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
         if data == None:
             return 0
         else:
             return data["rowid"]   
         
-    def addTileForPoi(self, poiId, tileId):
-        newId = self.query("INSERT INTO TilesForPOIs (poiId, tileId) VALUES ( %d, %d)" % (poiId, tileId))
+    def add_tile_for_poi(self, poi_id, tile_id):
+        newId = self.query("INSERT INTO TilesForPOIs (poiId, tileId) VALUES ( %d, %d)" % (poi_id, tile_id))
         logger.info("new tile-poi connection inserted into database")
         return newId
 
-    def setTileCropped(self, poiId, tileId, path):
-        self.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime'), path = '%s' WHERE poiId = %d AND tileId = %d" % (path, poiId, tileId))
-        logger.info("tile-poi updated in database (tileCropped): poiId:%d tileId:%d" % (poiId, tileId))
+    def set_tile_cropped(self, poi_id, tile_id, path):
+        self.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime'), path = '%s' WHERE poiId = %d AND tileId = %d" % (path, poi_id, tile_id))
+        logger.info("tile-poi updated in database (tileCropped): poiId:%d tileId:%d" % (poi_id, tile_id))
 
-    def setCancelledTileForPoi(self, poiId, tileId):
-        self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poiId, tileId))
-        logger.info("tile-poi updated in database (cancelled): poiId:%d tileId:%d" % (poiId, tileId))          
+    def set_cancelled_tile_for_poi(self, poi_id, tile_id):
+        self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
+        logger.info("tile-poi updated in database (cancelled): poiId:%d tileId:%d" % (poi_id, tile_id))          
         
 
     ### CSV ###
 
-    def importCsvRow(self, fileName, row):
+    def import_csv_row(self, file_name, row):
         if not row == None:
-            optionalFields = ["width", "height", "tileLimit", "description"]
-            numFields = ["width", "height", "tileLimit"]
+            optional_fields = ["width", "height", "tileLimit", "description"]
+            num_fields = ["width", "height", "tileLimit"]
             keys = "fileName, groupname, lat, lon, dateFrom, dateTo, platform"
-            values = "'%s', '%s', %s, %s, '%s', '%s', '%s'" % (fileName, row["groupname"], row["lat"], row["lon"], row["dateFrom"], row["dateTo"], row["platform"])
+            values = "'%s', '%s', %s, %s, '%s', '%s', '%s'" % (file_name, row["groupname"], row["lat"], row["lon"], row["dateFrom"], row["dateTo"], row["platform"])
             for key, value in row.items():
-                if key in config.optionalSentinelParameters or key in optionalFields:
+                if key in config.optionalSentinelParameters or key in optional_fields:
                     if len(str(value)) > 0:
                         keys = "%s, %s" % (keys, key)
-                        if key in numFields:
+                        if key in num_fields:
                             values = "%s, %s" % (values, value)
                         else:
                             values = "%s, '%s'" % (values, value)
             keys = keys + ", csvImported"
             values = values + ", datetime('now', 'localtime')"
             query = "INSERT INTO CSVInput (%s) VALUES (%s)" % (keys, values)
-            csvImportRowId = self.query(query)
-            return csvImportRowId
+            csv_import_row_id = self.query(query)
+            return csv_import_row_id
 
-    def getImportedCSVdata(self):
-        return self.fetchAllRowsQuery("SELECT rowid, * FROM CSVInput")
+    def get_imported_csv_data(self):
+        return self.fetch_all_rows_query("SELECT rowid, * FROM CSVInput")
 
-    def moveCSVItemToArchive(self, rowid):
-        newId = self.query("INSERT INTO CSVLoaded SELECT *, datetime('now', 'localtime') as csvLoaded FROM CSVInput WHERE CSVInput.rowid = %d" % rowid)
+    def move_csv_item_to_archive(self, rowid):
+        new_id = self.query("INSERT INTO CSVLoaded SELECT *, datetime('now', 'localtime') as csvLoaded FROM CSVInput WHERE CSVInput.rowid = %d" % rowid)
         self.query("DELETE FROM CSVInput WHERE rowid = %d" % rowid)
-        return newId
+        return new_id
 
-    def setCancelledImport(self, rowid):
+    def set_cancelled_import(self, rowid):
         self.query("UPDATE CSVInput SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("import updated in database (cancelled)")
-        self.moveCSVItemToArchive(rowid)
+        self.move_csv_item_to_archive(rowid)

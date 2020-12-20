@@ -13,7 +13,7 @@ from shapely.geometry import Polygon
 from shapely.ops import transform
 from PIL import Image
 
-from geocropper.database import database
+from geocropper.database import Database
 import geocropper.config as config
 import geocropper.sentinelWrapper as sentinelWrapper
 import geocropper.landsatWrapper as landsatWrapper
@@ -27,11 +27,11 @@ from osgeo import gdal
 # workaround: remove first entry...
 # os.environ["PATH"] = os.environ["PATH"].split(';')[1]
 
-logger = log.setupCustomLogger('main')
-db = database()
+logger = log.setup_custom_logger('main')
+db = Database()
 
 
-def importAllCSVs(delimiter=',', quotechar='"'):
+def import_all_csvs(delimiter=',', quotechar='"'):
     """Import of all CSVs
 
     Place your CSV files in the inputCSV directory defined in the config file.
@@ -46,7 +46,7 @@ def importAllCSVs(delimiter=',', quotechar='"'):
         Used quote character in CSV file. Default is '"'
 
     """
-    csvImport.importAllCSVs(delimiter, quotechar)
+    csvImport.import_all_csvs(delimiter, quotechar)
 
 
 def init(lat, lon):
@@ -79,31 +79,31 @@ class Geocropper:
         logger.info("new geocropper instance initialized") 
 
 
-    def printPosition(self):
+    def print_position(self):
         """Prints current location attributes of Geocropper object to console."""
         print("lat: " + str(self.lat))
         print("lon: " + str(self.lon))
 
 
-    def downloadSentinelData(self, dateFrom, dateTo, platform, poiId = 0, tileLimit = 0, **kwargs):
+    def download_sentinel_data(self, date_from, date_to, platform, poi_id = 0, tile_limit = 0, **kwargs):
         """Download Sentinel tiles to directory specified in the config file.
 
         Parameters
         ----------
-        dateFrom : str
+        date_from : str
             Start date for search request in a chosen format.
             The format must be recognizable by the dateutil lib.
             In case of doubt use the format 'YYYY-MM-DD'.
-        dateTo : str
+        date_to : str
             End date for search request in a chosen format.
             The format must be recognizable by the dateutil lib.
             In case of doubt use the format 'YYYY-MM-DD'.
         platform : str
             Choose between 'Sentinel-1' and 'Sentinel-2'
-        poiId : int, optional
+        poi_id : int, optional
             ID of PointOfInterest record in sqlite database.
             This is primarly used by other functions to create a connection between the database records.
-        tileLimit : int, optional
+        tile_limit : int, optional
             Maximum number of tiles to be downloaded.
         cloudcoverpercentage : int, optional
             Value between 0 and 100 for maximum cloud cover percentage.
@@ -140,34 +140,34 @@ class Geocropper:
 
         # load sentinel wrapper
 
-        self.sentinel = sentinelWrapper.sentinelWrapper()
-        self.asf = asfWrapper.asfWrapper()
+        self.sentinel = sentinelWrapper.SentinelWrapper()
+        self.asf = asfWrapper.AsfWrapper()
         
         # convert date to required format
-        dateFrom = utils.convertDate(dateFrom, "%Y%m%d")
-        dateTo = utils.convertDate(dateTo, "%Y%m%d")
+        date_from = utils.convert_date(date_from, "%Y%m%d")
+        date_to = utils.convert_date(date_to, "%Y%m%d")
         
 
         # print search info
 
         print("Search for Sentinel data:")
-        self.printPosition()
-        print("From: " + utils.convertDate(dateFrom, "%d.%m.%Y"))
-        print("To: " + utils.convertDate(dateTo, "%d.%m.%Y"))
+        self.print_position()
+        print("From: " + utils.convert_date(date_from, "%d.%m.%Y"))
+        print("To: " + utils.convert_date(date_to, "%d.%m.%Y"))
         print("Platform: " + platform)
-        if tileLimit > 0:
-            print("Tile-limit: %d" % tileLimit)
+        if tile_limit > 0:
+            print("Tile-limit: %d" % tile_limit)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 print("%s: %s" % (key, str(value)))
         print("----------------------------\n")
 
         logger.info("Search for Sentinel data:")
-        logger.info("From: " + utils.convertDate(dateFrom, "%d.%m.%Y"))
-        logger.info("To: " + utils.convertDate(dateTo, "%d.%m.%Y"))
+        logger.info("From: " + utils.convert_date(date_from, "%d.%m.%Y"))
+        logger.info("To: " + utils.convert_date(date_to, "%d.%m.%Y"))
         logger.info("Platform: " + platform)
-        if tileLimit > 0:
-            logger.info("Tile-limit: %d" % tileLimit)
+        if tile_limit > 0:
+            logger.info("Tile-limit: %d" % tile_limit)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 logger.info("%s: %s" % (key, str(value)))        
@@ -175,10 +175,10 @@ class Geocropper:
         
         # search for sentinel data
         
-        if int(tileLimit) > 0:
-            products = self.sentinel.getSentinelProducts(self.lat, self.lon, dateFrom, dateTo, platform, limit=tileLimit, **kwargs)
+        if int(tile_limit) > 0:
+            products = self.sentinel.get_sentinel_products(self.lat, self.lon, date_from, date_to, platform, limit=tile_limit, **kwargs)
         else:   
-            products = self.sentinel.getSentinelProducts(self.lat, self.lon, dateFrom, dateTo, platform, **kwargs)
+            products = self.sentinel.get_sentinel_products(self.lat, self.lon, date_from, date_to, platform, **kwargs)
 
         print("Found tiles: %d\n" % len(products))
         logger.info("Found tiles: %d\n" % len(products))
@@ -202,13 +202,13 @@ class Geocropper:
                 endposition = products[key]["beginposition"]
                 
                 # folder name after unzip is < SENTINEL TILE TITLE >.SAFE
-                folderName = products[key]["title"] + ".SAFE"
+                folder_name = products[key]["title"] + ".SAFE"
 
-                tileId = None
-                tile = db.getTile(productId = key)
+                tile_id = None
+                tile = db.get_tile(product_id = key)
                 
                 # check for previous downloads
-                if not pathlib.Path(config.bigTilesDir / folderName).is_dir() and \
+                if not pathlib.Path(config.bigTilesDir / folder_name).is_dir() and \
                    not pathlib.Path(config.bigTilesDir / (products[key]["title"] + ".zip") ).is_file():
                     
                     # no previous download detected...
@@ -216,53 +216,53 @@ class Geocropper:
                     # only add new tile to database if not existing
                     # this leads automatically to a resume functionality
                     if tile == None:
-                        tileId = db.addTile(platform, key, beginposition, endposition, folderName)
+                        tile_id = db.add_tile(platform, key, beginposition, endposition, folder_name)
                     else:
-                        tileId = tile["rowid"]
+                        tile_id = tile["rowid"]
                         # update download request date for existing tile in database
-                        db.setLastDownloadRequestForTile(tileId)
+                        db.set_last_download_request_for_tile(tile_id)
 
                     granule = products[key]["title"]
 
                     # check if tile ready for download
-                    if self.sentinel.readyForDownload(key):
+                    if self.sentinel.ready_for_download(key):
 
                         # download sentinel product
                         # sentinel wrapper has a resume function for incomplete downloads
                         logger.info("Download started.")
-                        db.setLastDownloadRequestForTile(tileId)
+                        db.set_last_download_request_for_tile(tile_id)
                         print("[%d/%d]: Download %s" % (i, len(products), granule))
-                        download_complete = self.sentinel.downloadSentinelProduct(key)
+                        download_complete = self.sentinel.download_sentinel_product(key)
 
                         if download_complete:
 
                             # if downloaded zip-file could be detected set download complete date in database
                             if pathlib.Path(config.bigTilesDir / (granule + ".zip") ).is_file():
-                                db.setDownloadCompleteForTile(tileId)
+                                db.set_download_complete_for_tile(tile_id)
 
                     else:
 
-                        if granule.startswith("S1") and self.asf.downloadS1Tile(granule, config.bigTilesDir):
+                        if granule.startswith("S1") and self.asf.download_S1_tile(granule, config.bigTilesDir):
 
-                            db.setDownloadCompleteForTile(tileId)
+                            db.set_download_complete_for_tile(tile_id)
                             print(f"Tile {granule} downloaded from Alaska Satellite Facility")
 
                         else:
 
-                            lastRequest = utils.minutesSinceLastDownloadRequest()
+                            last_request = utils.minutes_since_last_download_request()
 
-                            if lastRequest == None or lastRequest > config.copernicusRequestDelay:
+                            if last_request == None or last_request > config.copernicusRequestDelay:
 
-                                if self.sentinel.requestOfflineTile(key) == True:
+                                if self.sentinel.request_offline_tile(key) == True:
 
                                     # Request successful
-                                    db.setLastDownloadRequestForTile(tileId)
+                                    db.set_last_download_request_for_tile(tile_id)
                                     print("Download of archived tile triggered. Please try again between 24 hours and 3 days later.")
 
                                 else:
 
                                     # Request error
-                                    db.clearLastDownloadRequestForTile(tileId)
+                                    db.clear_last_download_request_for_tile(tile_id)
                                     print("Download request failed! Please try again later.")
 
                             else:
@@ -276,21 +276,21 @@ class Geocropper:
                     if tile == None:
                         # if tile not yet in database add to database
                         # this could happen if database gets reset
-                        tileId = db.addTile(platform, key, beginposition, endposition, folderName)
-                        db.setDownloadCompleteForTile(tileId)
+                        tile_id = db.add_tile(platform, key, beginposition, endposition, folder_name)
+                        db.set_download_complete_for_tile(tile_id)
                     else:
-                        tileId = tile["rowid"]
+                        tile_id = tile["rowid"]
                     
                     print("[%d/%d]: %s already exists." % (i, len(products), products[key]["title"]))
 
 
                 # if there is a point of interest (POI) then create connection between tile and POI in database
 
-                if int(poiId) > 0:
+                if int(poi_id) > 0:
                     
-                    tilePoi = db.getTileForPoi(poiId, tileId)
-                    if tilePoi == None:
-                        db.addTileForPoi(poiId, tileId)
+                    tile_poi = db.get_tile_for_poi(poi_id, tile_id)
+                    if tile_poi == None:
+                        db.add_tile_for_poi(poi_id, tile_id)
 
                 i += 1
             
@@ -299,39 +299,39 @@ class Geocropper:
         del self.sentinel
         
         # unpack new big tiles
-        utils.unpackBigTiles()
+        utils.unpack_big_tiles()
         logger.info("Big tiles unpacked.")
 
         # if there is a point of interest (POI) => set date for tiles identified
         # this means that all tiles for the requested POI have been identified
-        if int(poiId) > 0:
-            db.setTilesIdentifiedForPoi(poiId)
+        if int(poi_id) > 0:
+            db.set_tiles_identified_for_poi(poi_id)
 
         # get projections of new downloaded tiles
-        utils.saveMissingTileProjections()
+        utils.save_missing_tile_projections()
         
         return products
 
         
-    def downloadLandsatData(self, dateFrom, dateTo, platform, poiId = 0, tileLimit = 0, **kwargs):
+    def download_landsat_data(self, date_from, date_to, platform, poi_id = 0, tile_limit = 0, **kwargs):
         """Download Landsat tiles to directory specified in the config file.
 
         Parameters
         ----------
-        dateFrom : str
+        date_from : str
             Start date for search request in a chosen format.
             The format must be recognizable by the dateutil lib.
             In case of doubt use the format 'YYYY-MM-DD'.
-        dateTo : str
+        date_to : str
             End date for search request in a chosen format.
             The format must be recognizable by the dateutil lib.
             In case of doubt use the format 'YYYY-MM-DD'.
         platform : str
             Choose between 'LANDSAT_TM_C1', 'LANDSAT_ETM_C1' and 'LANDSAT_8_C1'
-        poiId : int, optional
+        poi_id : int, optional
             ID of PointOfInterest record in sqlite database.
             This is primarly used by other functions to create a connection between the database records.
-        tileLimit : int, optional
+        tile_limit : int, optional
             Maximum number of tiles to be downloaded.
         cloudcoverpercentage : int, optional
             Value between 0 and 100 for maximum cloud cover percentage.
@@ -345,35 +345,35 @@ class Geocropper:
 
         # load landsat wrapper
 
-        self.landsat = landsatWrapper.landsatWrapper()
+        self.landsat = landsatWrapper.LandsatWrapper()
 
         # default max cloud coverage is set to 100
-        maxCloudCoverage = 100
+        max_cloud_coverage = 100
 
         # convert date to required format
-        dateFrom = utils.convertDate(dateFrom)
-        dateTo = utils.convertDate(dateTo)
+        date_from = utils.convert_date(date_from)
+        date_to = utils.convert_date(date_to)
 
 
         # print search info
 
         print("Search for Landsat data:")
-        self.printPosition()
-        print("From: " + utils.convertDate(dateFrom, "%d.%m.%Y"))
-        print("To: " + utils.convertDate(dateTo, "%d.%m.%Y"))
+        self.print_position()
+        print("From: " + utils.convert_date(date_from, "%d.%m.%Y"))
+        print("To: " + utils.convert_date(date_to, "%d.%m.%Y"))
         print("Platform: " + platform)
-        if tileLimit > 0:
-            print("Tile-limit: %d" % tileLimit)
+        if tile_limit > 0:
+            print("Tile-limit: %d" % tile_limit)
         for key, value in kwargs.items():
             if key == "cloudcoverpercentage":
-                maxCloudCoverage = value
+                max_cloud_coverage = value
                 print("%s: %s" %(key, str(value)))
         print("----------------------------\n")
 
 
         # search for landsat data
         
-        products = self.landsat.getLandsatProducts(self.lat, self.lon, dateFrom, dateTo, platform, maxCloudCoverage, tileLimit)
+        products = self.landsat.get_landsat_products(self.lat, self.lon, date_from, date_to, platform, max_cloud_coverage, tile_limit)
         print("Found tiles: %d\n" % len(products))
 
 
@@ -389,40 +389,40 @@ class Geocropper:
 
             for product in products:
                 
-                folderName = product["displayId"]
+                folder_name = product["displayId"]
 
                 # start- and endtime of sensoring
                 beginposition = product["startTime"]
                 endposition = product["endTime"]
 
-                tileId = None
-                tile = db.getTile(productId = product["entityId"])
+                tile_id = None
+                tile = db.get_tile(product_id = product["entityId"])
 
                 # TODO: check if existing tar file is complete => needs to be deleted and re-downloaded
 
                 # check for previous downloads
-                if not pathlib.Path(config.bigTilesDir / folderName).is_dir():             
+                if not pathlib.Path(config.bigTilesDir / folder_name).is_dir():             
 
                     # no previous download detected...
 
                     # only add new tile to database if not existing
                     # this leads automatically to a resume functionality
                     if tile == None:
-                        tileId = db.addTile(platform, product["entityId"], beginposition, endposition, folderName)
+                        tile_id = db.add_tile(platform, product["entityId"], beginposition, endposition, folder_name)
                     else:
-                        tileId = tile["rowid"]
+                        tile_id = tile["rowid"]
                         # update download request date for existing tile in database
-                        db.setLastDownloadRequestForTile(tileId)
+                        db.set_last_download_request_for_tile(tile_id)
 
                     # download landsat product
                     # landsat wrapper has NO resume function for incomplete downloads
                     logger.info("Download started.")
                     print("[%d/%d]: Download %s" % (i, len(products), product["displayId"]))
-                    self.landsat.downloadLandsatProduct(product["entityId"])
+                    self.landsat.download_landsat_product(product["entityId"])
 
                     # if downloaded tar-file could be detected set download complete date in database
                     if pathlib.Path(config.bigTilesDir / (product["displayId"] + ".tar.gz") ).is_file():
-                        db.setDownloadCompleteForTile(tileId)
+                        db.set_download_complete_for_tile(tile_id)
 
                 else:
 
@@ -431,21 +431,21 @@ class Geocropper:
                     if tile == None:
                         # if tile not yet in database add to database
                         # this could happen if database gets reset
-                        tileId = db.addTile(platform, product["entityId"], beginposition, endposition, folderName)
-                        db.setDownloadCompleteForTile(tileId)
+                        tile_id = db.add_tile(platform, product["entityId"], beginposition, endposition, folder_name)
+                        db.set_download_complete_for_tile(tile_id)
                     else:
-                        tileId = tile["rowid"]
+                        tile_id = tile["rowid"]
                     
                     print("[%d/%d]: %s already exists." % (i, len(products), product["displayId"]))                    
 
 
                 # if there is a point of interest (POI) then create connection between tile and POI in database
 
-                if int(poiId) > 0:
+                if int(poi_id) > 0:
                     
-                    tilePoi = db.getTileForPoi(poiId, tileId)
-                    if tilePoi == None:
-                        db.addTileForPoi(poiId, tileId)     
+                    tile_poi = db.get_tile_for_poi(poi_id, tile_id)
+                    if tile_poi == None:
+                        db.add_tile_for_poi(poi_id, tile_id)     
                         
                 i += 1       
 
@@ -454,29 +454,29 @@ class Geocropper:
         del self.landsat
 
         # unpack new big tiles
-        utils.unpackBigTiles()
+        utils.unpack_big_tiles()
         logger.info("Big tiles unpacked.")
         
         # if there is a point of interest (POI) => set date for tiles identified
         # this means that all tiles for the requested POI have been identified and downloaded
-        if int(poiId) > 0:
-           db.setTilesIdentifiedForPoi(poiId)
+        if int(poi_id) > 0:
+           db.set_tiles_identified_for_poi(poi_id)
         
         return products        
 
 
-    def downloadAndCrop(self, groupname, dateFrom, dateTo, platform, width, height, tileLimit = 0, **kwargs):
+    def download_and_crop(self, groupname, date_from, date_to, platform, width, height, tile_limit = 0, **kwargs):
         """Download and crop/clip Sentinel or Landsat tiles to directories specified in the config file.
 
         Parameters
         ----------
         groupname : str
             Short name to group datasets (groupname is used for folder structure in cropped tiles)
-        dateFrom : str
+        date_from : str
             Start date for search request in a chosen format.
             The format must be recognizable by the dateutil lib.
             In case of doubt use the format 'YYYY-MM-DD'.
-        dateTo : str
+        date_to : str
             End date for search request in a chosen format.
             The format must be recognizable by the dateutil lib.
             In case of doubt use the format 'YYYY-MM-DD'.
@@ -486,7 +486,7 @@ class Geocropper:
             Width of cropped rectangle. The rectangle surrounds the given geolocation (center point).
         height : int
             Heigth of cropped rectangle. The rectangle surrounds the given geolocation (center point).
-        tileLimit : int, optional
+        tile_limit : int, optional
             Maximum number of tiles to be downloaded.
         cloudcoverpercentage : int, optional
             Value between 0 and 100 for maximum cloud cover percentage.
@@ -523,19 +523,19 @@ class Geocropper:
 
 
         # convert date formats
-        dateFrom = utils.convertDate(dateFrom)
-        dateTo = utils.convertDate(dateTo)
+        date_from = utils.convert_date(date_from)
+        date_to = utils.convert_date(date_to)
 
 
         # check if point of interest (POI) exists in database
         # if not, create new POI record
 
-        poi = db.getPoi(groupname, self.lat, self.lon, dateFrom, dateTo, platform, width, height, tileLimit=tileLimit, **kwargs)
+        poi = db.get_poi(groupname, self.lat, self.lon, date_from, date_to, platform, width, height, tile_limit=tile_limit, **kwargs)
 
         if poi == None:     
-            poiId = db.addPoi(groupname, self.lat, self.lon, dateFrom, dateTo, platform, width, height, tileLimit, **kwargs)
+            poi_id = db.add_poi(groupname, self.lat, self.lon, date_from, date_to, platform, width, height, tile_limit, **kwargs)
         else:
-            poiId = poi["rowid"]
+            poi_id = poi["rowid"]
 
 
         # search and download tiles
@@ -543,17 +543,17 @@ class Geocropper:
         products = None
 
         if platform.startswith("Sentinel"):
-            products = self.downloadSentinelData(dateFrom, dateTo, platform, poiId=poiId, tileLimit=tileLimit, **kwargs)
+            products = self.download_sentinel_data(date_from, date_to, platform, poi_id=poi_id, tile_limit=tile_limit, **kwargs)
         
         if platform.startswith("LANDSAT"):
-            products = self.downloadLandsatData(dateFrom, dateTo, platform, poiId=poiId, tileLimit=tileLimit, **kwargs)
+            products = self.download_landsat_data(date_from, date_to, platform, poi_id=poi_id, tile_limit=tile_limit, **kwargs)
 
 
         # if tiles found, unpack and crop them
 
         if not products == None and len(products) > 0:
             
-            utils.cropTiles(poiId)
+            utils.crop_tiles(poi_id)
             logger.info("Tiles cropped.")
 
         

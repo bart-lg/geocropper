@@ -9,8 +9,8 @@ from sentinelsat import SentinelAPI, geojson_to_wkt
 logger = logging.getLogger('root')
 
 
-# sentinelWrapper serves as interface between this module and sentinel-api-module
-class sentinelWrapper:
+# SentinelWrapper serves as interface between this module and sentinel-api-module
+class SentinelWrapper:
 
     def __init__(self):
 
@@ -22,7 +22,7 @@ class sentinelWrapper:
         logger.info("sentinel API connected")
 
 
-    def getSentinelProducts(self, lat, lon, dateFrom, dateTo, platform, **kwargs):
+    def get_sentinel_products(self, lat, lon, date_from, date_to, platform, **kwargs):
         
         logger.info("start sentinel query")
 
@@ -34,7 +34,7 @@ class sentinelWrapper:
             kwargs["cloudcoverpercentage"] = (0, kwargs["cloudcoverpercentage"])
 
         # search query
-        result = self.api.query(footprint, date=(dateFrom, dateTo), platformname=platform, **kwargs)
+        result = self.api.query(footprint, date=(date_from, date_to), platformname=platform, **kwargs)
 
         logger.info("sentinel query complete")
 
@@ -42,16 +42,16 @@ class sentinelWrapper:
 
 
     # download multiple sentinel products (list of product IDs)
-    def downloadSentinelProducts(self, products):
+    def download_sentinel_products(self, products):
         logger.info("start downloading sentinel product list")
         self.api.download_all(products, config.bigTilesDir)
         logger.info("download complete")
 
 
     # download sentinel product with certain product ID
-    def downloadSentinelProduct(self, productID):
+    def download_sentinel_product(self, product_id):
         logger.info("start downloading sentinel product")
-        product_info = self.api.download(productID, config.bigTilesDir)
+        product_info = self.api.download(product_id, config.bigTilesDir)
         if not product_info["Online"]:
             logger.info("archived download triggered")
             return False
@@ -60,15 +60,15 @@ class sentinelWrapper:
             logger.info("download complete")
             return True
 
-    def getProductData(self, productID):
-        return self.api.get_product_odata(productID)
+    def get_product_data(self, product_id):
+        return self.api.get_product_odata(product_id)
 
-    def readyForDownload(self, productID):
-        return self.api.is_online(productID)
+    def ready_for_download(self, product_id):
+        return self.api.is_online(product_id)
 
-    def requestOfflineTile(self, productID):
+    def request_offline_tile(self, product_id):
         # HTTP-Code 202: Accepted for retrieval
-        product_info = self.api.get_product_odata(productID)
+        product_info = self.api.get_product_odata(product_id)
         if self.api._trigger_offline_retrieval(product_info["url"]) == 202:
             return True
         else:

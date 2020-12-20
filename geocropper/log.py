@@ -2,13 +2,15 @@ import logging
 import logging.handlers
 import geocropper.config as config
 
-def setupCustomLogger(name):
+def setup_custom_logger(name):
 
     # logger settings
-    logFileMaxSize = 1024 * 1024 * 100 # megabytes
-    logNumBackups = 3
-    logFormat = "%(asctime)s [%(levelname)s]: %(filename)s(%(funcName)s:%(lineno)s) >> %(message)s"
-    logFilemode = "a" # w: overwrite; a: append
+    # 100 MB
+    log_file_max_size = 1024 * 1024 * 100 
+    log_num_backups = 3
+    log_format = "%(asctime)s [%(levelname)s]: %(filename)s(%(funcName)s:%(lineno)s) >> %(message)s"
+    # w: overwrite; a: append
+    log_filemode = "a" 
 
     # setup logger
     if config.loggingMode == "DEBUG":
@@ -22,12 +24,12 @@ def setupCustomLogger(name):
     if config.loggingMode == "CRITICAL":
         level = logging.CRITICAL
 
-    logging.basicConfig(filename=config.logFile, format=logFormat, filemode=logFilemode ,level=level)
-    rotateFile = logging.handlers.RotatingFileHandler(
-        config.logFile, maxBytes=logFileMaxSize, backupCount=logNumBackups
+    logging.basicConfig(filename=config.logFile, format=log_format, filemode=log_filemode ,level=level)
+    rotate_file = logging.handlers.RotatingFileHandler(
+        config.logFile, maxBytes=log_file_max_size, backupCount=log_num_backups
     )
     logger = logging.getLogger(name)
-    logger.addHandler(rotateFile)
+    logger.addHandler(rotate_file)
 
     # print log messages to console
     #consoleHandler = logging.StreamHandler()
