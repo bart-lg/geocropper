@@ -1,182 +1,75 @@
-import configparser
+from configparser import ConfigParser
 import pathlib
 
-defaultConfig = configparser.ConfigParser()
-defaultConfig.read(pathlib.Path(__file__).parent.parent / "default-config.ini")
-
-if (pathlib.Path(__file__).parent.parent / "user-config.ini").exists():
-	userConfig = configparser.ConfigParser()
-	userConfig.read(pathlib.Path(__file__).parent.parent / "user-config.ini")	
-else:
-	userConfig = None
+config = ConfigParser()
+config.read([
+	pathlib.Path(__file__).parent.parent / "default-config.ini",
+	pathlib.Path(__file__).parent.parent / "user-config.ini"
+])
 
 # used for download of Sentinel data
-try:
-	copernicusUser = userConfig["Credentials"]["copernicusUser"]
-except:
-	copernicusUser = defaultConfig["Credentials"]["copernicusUser"]
-try:
-	copernicusPW = userConfig["Credentials"]["copernicusPW"]
-except:
-	copernicusPW = defaultConfig["Credentials"]["copernicusPW"]	
+copernicusUser = config["Credentials"]["copernicusUser"]
+copernicusPW = config["Credentials"]["copernicusPW"]
+copernicusURL = config["URLs"]["copernicusURL"]
 
-try:
-	copernicusURL = userConfig["URLs"]["copernicusURL"]
-except:
-	copernicusURL = defaultConfig["URLs"]["copernicusURL"]	
-
-# used for download of Landsat data
-try:
-	usgsUser = userConfig["Credentials"]["usgsUser"]
-except:
-	usgsUser = defaultConfig["Credentials"]["usgsUser"]	
-try:
-	usgsPW = userConfig["Credentials"]["usgsPW"]
-except:
-	usgsPW = defaultConfig["Credentials"]["usgsPW"]	
+usgsUser = config["Credentials"]["usgsUser"]
+usgsPW = config["Credentials"]["usgsPW"]
 
 # used for download of Sentinel-1 data from the Alaska Satellite Facility
-try:
-	asfUser = userConfig["Credentials"]["asfUser"]
-except:
-	asfUser = defaultConfig["Credentials"]["asfUser"]	
-try:
-	asfPW = userConfig["Credentials"]["asfPW"]
-except:
-	asfPW = defaultConfig["Credentials"]["asfPW"]	
+asfUser = config["Credentials"]["asfUser"]
+asfPW = config["Credentials"]["asfPW"]
 
 # miscellaneous variables
-try:
-	copernicusRequestDelay = userConfig["Misc"].getint("copernicusRequestDelay")
-except:
-	copernicusRequestDelay = defaultConfig["Misc"].getint("copernicusRequestDelay")
-try:
-	covertS1CropsToUTM = userConfig["Misc"].getboolean("covertS1CropsToUTM")
-except:
-	covertS1CropsToUTM = defaultConfig["Misc"].getboolean("covertS1CropsToUTM")	
+copernicusRequestDelay = config["Misc"].getint("copernicusRequestDelay")
+covertS1CropsToUTM = config["Misc"].getboolean("covertS1CropsToUTM")
 
 # various data paths
-try:
-	dataDir = pathlib.Path(userConfig["Paths"]["data"])
-except:
-	dataDir = pathlib.Path(defaultConfig["Paths"]["data"])
-try:
-	bigTilesDir = pathlib.Path(userConfig["Paths"]["bigTiles"])
-except:
-	bigTilesDir = pathlib.Path(defaultConfig["Paths"]["bigTiles"])
-try:
-	croppedTilesDir = pathlib.Path(userConfig["Paths"]["croppedTiles"])
-except:
-	croppedTilesDir = pathlib.Path(defaultConfig["Paths"]["croppedTiles"])
-try:
-	csvInputDir = pathlib.Path(userConfig["Paths"]["csvInput"])
-except:
-	csvInputDir = pathlib.Path(defaultConfig["Paths"]["csvInput"])
-try:
-	csvArchiveDir = pathlib.Path(userConfig["Paths"]["csvArchive"])
-except:
-	csvArchiveDir = pathlib.Path(defaultConfig["Paths"]["csvArchive"])
-try:
-	logFile = pathlib.Path(userConfig["Paths"]["logFile"])
-except:
-	logFile = pathlib.Path(defaultConfig["Paths"]["logFile"])	
+dataDir = pathlib.Path(config["Paths"]["data"])
+bigTilesDir = pathlib.Path(config["Paths"]["bigTiles"])
+croppedTilesDir = pathlib.Path(config["Paths"]["croppedTiles"])
+csvInputDir = pathlib.Path(config["Paths"]["csvInput"])
+csvArchiveDir = pathlib.Path(config["Paths"]["csvArchive"])
+logFile = pathlib.Path(config["Paths"]["logFile"])
 
 # shape file used to determine country for geolocation
-try:
-	worldBordersShapeFile = str(pathlib.Path(userConfig["Paths"]["worldBordersShapeFile"]))
-except:
-	worldBordersShapeFile = str(pathlib.Path(defaultConfig["Paths"]["worldBordersShapeFile"]))
+worldBordersShapeFile = str(pathlib.Path(config["Paths"]["worldBordersShapeFile"]))
 
 # path and filename of sqlite database file
-try:
-	dbFile = pathlib.Path(userConfig["Paths"]["dbFile"])
-except:
-	dbFile = pathlib.Path(defaultConfig["Paths"]["dbFile"])	
+dbFile = pathlib.Path(config["Paths"]["dbFile"])
 
 # path and filename of SNAP Graph Processing Tool (GPT)
-try:
-	gptSnap = pathlib.Path(userConfig["Paths"]["gptSnap"])
-except:
-	gptSnap = pathlib.Path(defaultConfig["Paths"]["gptSnap"])
+gptSnap = pathlib.Path(config["Paths"]["gptSnap"])
 
 # path and filename of XML file for SNAP Graph Processing Tool (GPT)
-try:
-	xmlSnap = pathlib.Path(userConfig["Paths"]["xmlSnap"])
-except:
-	xmlSnap = pathlib.Path(defaultConfig["Paths"]["xmlSnap"])
+xmlSnap = pathlib.Path(config["Paths"]["xmlSnap"])
 
 
 # logging modes: DEBUG, INFO, WARNING, ERROR, CRITICAL
-try:
-	loggingMode = userConfig["Logging"]["loggingMode"]
-except:
-	loggingMode = defaultConfig["Logging"]["loggingMode"]
+loggingMode = config["Logging"]["loggingMode"]
 
 
 # copy metadata from bigTiles to croppedTiles
-try:
-	copyMetadata = userConfig["Meta Data"].getboolean("copyMetadata")
-except:
-	copyMetadata = defaultConfig["Meta Data"].getboolean("copyMetadata")
+copyMetadata = config["Meta Data"].getboolean("copyMetadata")
 
 # creates symlink within croppedTiles to bigTiles
-try:
-	createSymlink = userConfig["Meta Data"].getboolean("createSymlink")
-except:
-	createSymlink = defaultConfig["Meta Data"].getboolean("createSymlink")
+createSymlink = config["Meta Data"].getboolean("createSymlink")
 
 # optional landsat parameters => max_cloud_cover (value in db stored as cloudcoverpercentage)
 optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", "swathidentifier", "cloudcoverpercentage", "timeliness"]
 
 # small preview image
-try:
-	resizePreviewImage = userConfig["Small Preview Image"].getboolean("resizePreviewImage")
-except:
-	resizePreviewImage = defaultConfig["Small Preview Image"].getboolean("resizePreviewImage")
-try:
-	widthPreviewImageSmall = userConfig["Small Preview Image"].getint("widthPreviewImageSmall")
-except:
-	widthPreviewImageSmall = defaultConfig["Small Preview Image"].getint("widthPreviewImageSmall")	
-try:
-	heightPreviewImageSmall = userConfig["Small Preview Image"].getint("heightPreviewImageSmall")
-except:
-	heightPreviewImageSmall = defaultConfig["Small Preview Image"].getint("heightPreviewImageSmall")
+resizePreviewImage = config["Small Preview Image"].getboolean("resizePreviewImage")
+widthPreviewImageSmall = config["Small Preview Image"].getint("widthPreviewImageSmall")
+heightPreviewImageSmall = config["Small Preview Image"].getint("heightPreviewImageSmall")
 
 # combined preview images
-try:
-	combinedPreview = userConfig["Combined Preview Images"].getboolean("combinedPreview")
-except:
-	combinedPreview = defaultConfig["Combined Preview Images"].getboolean("combinedPreview")
-try:
-	previewBorder = userConfig["Combined Preview Images"].getint("previewBorder")
-except:
-	previewBorder = defaultConfig["Combined Preview Images"].getint("previewBorder")
-try:
-	red = userConfig["Combined Preview Images"].getint("previewBackgroundR")
-except:
-	red = defaultConfig["Combined Preview Images"].getint("previewBackgroundR")
-try:
-	green = userConfig["Combined Preview Images"].getint("previewBackgroundG")
-except:
-	green = defaultConfig["Combined Preview Images"].getint("previewBackgroundG")
-try:
-	blue = userConfig["Combined Preview Images"].getint("previewBackgroundB")
-except:
-	blue = defaultConfig["Combined Preview Images"].getint("previewBackgroundB")	
+combinedPreview = config["Combined Preview Images"].getboolean("combinedPreview")
+previewBorder = config["Combined Preview Images"].getint("previewBorder")
+red = config["Combined Preview Images"].getint("previewBackgroundR")
+green = config["Combined Preview Images"].getint("previewBackgroundG")
+blue = config["Combined Preview Images"].getint("previewBackgroundB")
 previewBackground = (red,green,blue)
-try:
-	previewTextOnImage = userConfig["Combined Preview Images"].getboolean("previewTextOnImage")
-except:
-	previewTextOnImage = defaultConfig["Combined Preview Images"].getboolean("previewTextOnImage")
-try:
-	previewImageFontSize = userConfig["Combined Preview Images"].getint("previewImageFontSize")
-except:
-	previewImageFontSize = defaultConfig["Combined Preview Images"].getint("previewImageFontSize")	
-try:
-	previewImagesCombined = userConfig["Combined Preview Images"].getint("previewImagesCombined")
-except:
-	previewImagesCombined = defaultConfig["Combined Preview Images"].getint("previewImagesCombined")		
-try:
-	previewCenterDot = userConfig["Combined Preview Images"].getboolean("previewCenterDot")
-except:
-	previewCenterDot = defaultConfig["Combined Preview Images"].getboolean("previewCenterDot")
+previewTextOnImage = config["Combined Preview Images"].getboolean("previewTextOnImage")
+previewImageFontSize = config["Combined Preview Images"].getint("previewImageFontSize")
+previewImagesCombined = config["Combined Preview Images"].getint("previewImagesCombined")
+previewCenterDot = config["Combined Preview Images"].getboolean("previewCenterDot")
