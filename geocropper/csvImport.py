@@ -139,9 +139,6 @@ def load_imported_csv_data(lower_boundary=None, upper_boundary=None):
                 print(f"\n[ Boundaries: {lower_boundary}:{upper_boundary} ]")
                 logger.info(f"\n[ Boundaries: {lower_boundary}:{upper_boundary} ]")
 
-            # initialize geocropper instance
-            geoc = geocropper.init(item["lat"], item["lon"])
-
             # create arguments out of imported content
             kwargs = {}
             for key in item.keys():
@@ -149,11 +146,9 @@ def load_imported_csv_data(lower_boundary=None, upper_boundary=None):
                     kwargs[key] = item[key]
 
             # download and crop with geocropper module
-            geoc.download_and_crop(groupname = item["groupname"], date_from = item["dateFrom"], date_to = item["dateTo"], platform = item["platform"], \
+            geocropper.download_and_crop(item["lat"], item["lon"], groupname = item["groupname"], date_from = item["dateFrom"], date_to = item["dateTo"], platform = item["platform"], \
                 width = item["width"], height = item["height"], tile_limit = item["tileLimit"], **kwargs)
 
-            # cleanup
-            del geoc
 
             # move database record to archive table
             db.move_csv_item_to_archive(item["rowid"])
