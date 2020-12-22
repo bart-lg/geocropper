@@ -307,3 +307,44 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
     else:
         return len(products)
 
+
+def start_and_crop_requested_downloads():
+
+    print("\nStart requested downloads:")
+    print("--------------------------------")
+
+    tiles = db.get_requested_tiles()
+
+    if not tiles == None:
+
+        for tile in tiles:
+
+            print(f"\nPlatform: {tile['platform']}")
+            print(f"Tile: {tile['folderName']}")
+            print(f"Product ID: {tile['productId']}")            
+            print(f"First download request: {convert_date(tile['firstDownloadRequest'], new_format='%Y-%m-%d %H:%M:%S')}")
+            if tile['lastDownloadRequest'] == None:
+                print(f"Last download request: None\n")
+            else:
+                print(f"Last download request: {convert_date(tile['lastDownloadRequest'], new_format='%Y-%m-%d %H:%M:%S')}\n")
+
+            download.download_product(tile)
+
+    # crop outstanding points                    
+
+    pois = db.get_uncropped_pois_for_downloaded_tiles()
+
+    if not pois == None:
+
+        print("\nCrop outstanding points:")
+        print("------------------------------")
+
+        for poi in pois:
+
+            if poi['tileCropped'] == None and poi['cancelled'] == None:
+
+                print(f"Crop outstanding point: lat:{poi['lat']} lon:{poi['lon']} \
+                        groupname:{poi['groupname']} width:{poi['width']} height:{poi['height']}")
+                crop_tiles(poi['rowid'])
+    
+        print("\nCropped all outstanding points!")
