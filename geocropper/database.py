@@ -246,6 +246,9 @@ class Database:
             if not folder_name == None:
                 qresult = self.fetch_first_row_query("SELECT rowid, * FROM Tiles WHERE folderName = '%s'" % folder_name)            
         return qresult
+
+    def get_tile_by_rowid(self, row_id):
+        return self.fetch_first_row_query("SELECT rowid, * FROM tiles WHERE rowid = %d" % rowid)
         
     def add_tile(self, platform, product_id, beginposition, endposition, folder_name = ""):
         newId = self.query("INSERT INTO Tiles (platform, folderName, productId, beginposition, endposition, \
@@ -269,6 +272,10 @@ class Database:
     def set_download_complete_for_tile(self, rowid):
         self.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("tile updated in database (downloadComplete)")
+
+    def clear_download_complete_for_tile(self, rowid):
+        self.query("UPDATE Tiles SET downloadComplete = null WHERE rowid = %d" % rowid)
+        logger.info("tile updated in database (downloadComplete cleared)")        
 
     def clear_last_download_request_for_tile(self, rowid):
         self.query("UPDATE Tiles SET lastDownloadRequest = NULL WHERE rowid = %d" % rowid)

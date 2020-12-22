@@ -61,16 +61,20 @@ def date_older_than_24h(date):
 
 
 def minutes_since_last_download_request():
-    now = datetime.now()
     then = db.get_latest_download_request()
     if then != None:
-        then = datetime.fromisoformat(str(then))
-        duration = now - then
-        duration_in_s = duration.total_seconds()
-        minutes = divmod(duration_in_s, 60)[0]
-        return int(minutes)
+        return minutes_since_timestamp(then)
     else:
-        return None        
+        return None  
+
+
+def minutes_since_timestamp(timestamp):
+    now = datetime.now()
+    then = datetime.fromisoformat(str(timestamp))
+    duration = now - then
+    duration_in_s = duration.total_seconds()
+    minutes = divmod(duration_in_s, 60)[0]
+    return int(minutes)
 
 
 def get_xy_corner_coordinates(path, lat, lon, width, height):
@@ -820,6 +824,65 @@ def get_latlon_corner_coordinates(lat, lon, width, height):
               ])
 
 
+def unpack_big_tile(file_name, tile=None):
+
+    if file_name.endswith(".zip") or file_name.endswith(".tar.gz"):
+    
+        # get path of the packed file
+        file_path = config.bigTilesDir / item
+
+        # unpack zip file if zip
+        if file_name.endswith(".zip"):
+
+            if tile == None:
+
+                # TODO: dirty... (is maybe first entry of zip_ref)
+                # get tile by folder name
+                new_folder_name = item[:-4] + ".SAFE"
+                tile = db.get_tile(folder_name = new_folder_name)              
+
+            # unzip
+            with zipfile.ZipFile(file=file_path) as zip_ref:
+                
+                # show progress bar based on number of files in archive
+                print("Unpack file: " + file_name)
+                for file in tqdm(iterable=zip_ref.namelist(), total=len(zip_ref.namelist())):
+                    zip_ref.extract(member=file, path=config.bigTilesDir)
+
+            zip_ref.close()
+
+
+        # unpack tar file if tar
+        if file_name.endswith(".tar.gz"):
+
+            if tile == None:
+
+                # get tile by folder name
+                tile = db.get_tile(folder_name = file_name[:-7])
+
+            # create target directory, since there is no root dir in tar package
+            target_dir = config.bigTilesDir / tile["folderName"]
+            if not os.path.isdir(target_dir):
+                os.makedirs(target_dir)                    
+
+            # untar
+            with tarfile.open(name=file_path, mode="r:gz") as tar_ref:
+
+                # show progress bar based on number of files in archive
+                print("Unpack file: " + file_name)
+                for file in tqdm(iterable=tar_ref.getmembers(), total=len(tar_ref.getmembers())):
+                    tar_ref.extract(member=file, path=target_dir)
+
+            tar_ref.close()
+
+
+        # remove packed file
+        os.remove(file_path)
+
+        # set unpacked date in database
+        db.set_unzipped_for_tile(tile["rowid"])
+
+
 def unpack_big_tiles():
 
     logger.info("start of unpacking tile zip/tar files")
@@ -838,68 +901,12 @@ def unpack_big_tiles():
     # calculate number of total packed files
     files_num = files_num_zip + files_num_tar
 
-    # index i serves as a counter
-    i = 1
-    
-
     # start unpacking
 
     for item in os.listdir(config.bigTilesDir):
 
         if item.endswith(".zip") or item.endswith(".tar.gz"):
-        
-            print("[%d/%d] %s:" % (i, files_num, item))
-
-            # get path of the packed file
-            file_path = config.bigTilesDir / item
-
-            # unpack zip file if zip
-            if item.endswith(".zip"):
-
-                # TODO: dirty... (is maybe first entry of zip_ref)
-                # get tile by folder name
-                new_folder_name = item[:-4] + ".SAFE"
-                tile = db.get_tile(folder_name = new_folder_name)              
-
-                # unzip
-                with zipfile.ZipFile(file=file_path) as zip_ref:
-                    
-                    # show progress bar based on number of files in archive
-                    for file in tqdm(iterable=zip_ref.namelist(), total=len(zip_ref.namelist())):
-                        zip_ref.extract(member=file, path=config.bigTilesDir)
-
-                zip_ref.close()
-
-
-            # unpack tar file if tar
-            if item.endswith(".tar.gz"):
-
-                # get tile by folder name
-                tile = db.get_tile(folder_name = item[:-7])
-
-                # create target directory, since there is no root dir in tar package
-                target_dir = config.bigTilesDir / tile["folderName"]
-                if not os.path.isdir(target_dir):
-                    os.makedirs(target_dir)                    
-
-                # untar
-                with tarfile.open(name=file_path, mode="r:gz") as tar_ref:
-
-                    # show progress bar based on number of files in archive
-                    for file in tqdm(iterable=tar_ref.getmembers(), total=len(tar_ref.getmembers())):
-                        tar_ref.extract(member=file, path=target_dir)
-
-                tar_ref.close()
-
-
-            # remove packed file
-            os.remove(file_path)
-
-            # set unpacked date in database
-            db.set_unzipped_for_tile(tile["rowid"])
-
-            i += 1
-
+            unpack_big_tile(item)
 
     logger.info("tile zip/tar files extracted")
 
@@ -1367,12 +1374,16 @@ def save_missing_tile_projections():
 
     tiles = db.get_tiles_without_projection_info()
     for tile in tiles:
-        save_tile_projection(tile["productId"])
+        save_tile_projection(tile=tile)
 
 
-def save_tile_projection(product_id):
+def save_tile_projection(product_id=None, tile=None):
 
-    tile = db.get_tile(product_id)
+    if tile == None and product_id == None:
+        return None
+
+    if tile == None:
+        tile = db.get_tile(product_id)
 
     if tile != None and tile["downloadComplete"] != None:
 
@@ -1394,6 +1405,8 @@ def save_tile_projection(product_id):
             image = list(image_folder.rglob("*_B02*.jp2"))[0]
 
             projection = get_projection_from_file(image, tile["platform"])
+
+        # TODO: save tile projection of Landsat product
 
         # save projection to database
         if projection != None:

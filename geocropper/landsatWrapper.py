@@ -57,6 +57,15 @@ class LandsatWrapper:
         return scenes
 
 
+    def get_product_data(self, platform, product_id):
+
+        scenes = self.api.metadata(platform, [product_id])
+        if len(scenes) > 0:
+            return scenes[0]
+        else:
+            return None
+
+
     def download_landsat_product(self, scene_id):
         self.earth_explorer.download(scene_id=scene_id, output_dir=config.bigTilesDir)
         

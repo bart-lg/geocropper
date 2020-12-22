@@ -1,6 +1,8 @@
 import geocropper.config as config
+import geocropper.utils as utils
 import logging
 from geojson import Point
+from datetime import datetime
 # from sentinelsat.sentinel import SentinelAPI, geojson_to_wkt, read_geojson
 from sentinelsat import SentinelAPI, geojson_to_wkt
 
@@ -66,10 +68,26 @@ class SentinelWrapper:
     def ready_for_download(self, product_id):
         return self.api.is_online(product_id)
 
-    def request_offline_tile(self, product_id):
-        # HTTP-Code 202: Accepted for retrieval
-        product_info = self.api.get_product_odata(product_id)
-        if self.api._trigger_offline_retrieval(product_info["url"]) == 202:
-            return True
+    def request_offline_tile(self, last_tile_download_request, product_id):
+
+        # check if last request not within request delay
+        last_request = utils.minutes_since_last_download_request()
+        if last_request == None or last_request > config.copernicusRequestDelay:
+
+            if last_tile_download_request == None or \
+                    utils.minutes_since_timestamp(last_tile_download_request) > config.copernicusRepeatRequestAfterMin:
+
+                # HTTP-Code 202: Accepted for retrieval
+                # TODO: handle other HTTP-Codes as well...
+                product_info = self.api.get_product_odata(product_id)
+                if self.api._trigger_offline_retrieval(product_info["url"]) == 202:
+                    return True
+                else:
+                    return False               
+
         else:
+
             return False
+
+
+
