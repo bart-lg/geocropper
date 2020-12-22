@@ -21,6 +21,7 @@ asfPW = config["Credentials"]["asfPW"]
 
 # miscellaneous variables
 copernicusRequestDelay = config["Misc"].getint("copernicusRequestDelay")
+copernicusRepeatRequestAfterMin = config["Misc"].getint("copernicusRepeatRequestAfterMin")
 covertS1CropsToUTM = config["Misc"].getboolean("covertS1CropsToUTM")
 
 # various data paths

@@ -24,33 +24,33 @@ import geocropper.utils as utils
 logger = logging.getLogger('root')
 
 # open database
-db = database.database()
+db = database.Database()
 
 
 # import all csv files in import directory
-def importAllCSVs(delimiter=',', quotechar='"'):
+def import_all_csvs(delimiter=',', quotechar='"'):
 
     # go through all files in import directory
     for item in os.listdir(config.csvInputDir):
 
         # if file is csv file then import content to database
         if item.endswith(".csv"):
-            filePath = config.csvInputDir / item
-            importCSV(filePath = filePath, delimiter = delimiter, quotechar = quotechar, autoLoad = False)
+            file_path = config.csvInputDir / item
+            importcsv(file_path = file_path, delimiter = delimiter, quotechar = quotechar, auto_load = False)
     
     # load imported csv data: call geocropper for individual records
-    loadImportedCSVdata()
+    load_imported_csv_data()
 
 
 # import specific csv file
-def importCSV(filePath, delimiter=',', quotechar='"', autoLoad = True):
+def importcsv(file_path, delimiter=',', quotechar='"', auto_load = True):
     
     # cut filename out of path
-    fileName = os.path.basename(filePath)
+    file_name = os.path.basename(file_path)
 
 
     # open csv file
-    with open(filePath, newline='', encoding = 'utf-8-sig') as csvfile:
+    with open(file_path, newline='', encoding = 'utf-8-sig') as csvfile:
 
         # read content in dictionary
         content = csv.DictReader(csvfile, delimiter = delimiter, quotechar = quotechar)
@@ -58,31 +58,31 @@ def importCSV(filePath, delimiter=',', quotechar='"', autoLoad = True):
         # import rows to database
         counter = 0
         for row in content:
-            db.importCsvRow(fileName, row)
+            db.import_csv_row(file_name, row)
             counter += 1
 
-        logger.info("CSV import: " + str(filePath))
+        logger.info("CSV import: " + str(file_path))
         logger.info("%d rows imported into database." % counter)
 
     csvfile.close()
     
 
-    # check for unique csv filename in csv archive directory
-    if pathlib.Path(config.csvArchiveDir / fileName).is_file():
+    # check for unique csv file_name in csv archive directory
+    if pathlib.Path(config.csvArchiveDir / file_name).is_file():
         
         # if file exists try other variations
 
         i = 2
 
-        # get filename without file extension
-        filePrefix = os.path.splitext(fileName)[0]
+        # get file_name without file extension
+        file_prefix = os.path.splitext(file_name)[0]
 
         # loop through possible variations
-        while pathlib.Path(config.csvArchiveDir / ("%s(%s).csv" % (filePrefix, i)) ).is_file() and i < 1000:
+        while pathlib.Path(config.csvArchiveDir / ("%s(%s).csv" % (file_prefix, i)) ).is_file() and i < 1000:
             i += 1
 
-        # set new filename 
-        fileName = "%s(%s).csv" % (filePrefix, i)
+        # set new file_name 
+        file_name = "%s(%s).csv" % (file_prefix, i)
 
 
     # make sure that archive directory exists
@@ -90,34 +90,34 @@ def importCSV(filePath, delimiter=',', quotechar='"', autoLoad = True):
         os.makedirs(config.csvArchiveDir)
 
 
-    # set new path/filename
-    newPath = config.csvArchiveDir / fileName
+    # set new path/file_name
+    new_path = config.csvArchiveDir / file_name
 
     # move csv file to archive
-    if os.path.exists(newPath):
+    if os.path.exists(new_path):
         # TODO: ERROR OR WARNING MESSAGE!
-        os.remove(filePath)
+        os.remove(file_path)
     else:
-        shutil.move(filePath, newPath)
+        shutil.move(file_path, new_path)
 
 
     # load imported csv data: call geocropper for individual records
-    if autoLoad:
-        loadImportedCSVdata()
+    if auto_load:
+        load_imported_csv_data()
 
 
 # load imported csv data: call geocropper for individual records
-def loadImportedCSVdata(lowerBoundary=None, upperBoundary=None):
+def load_imported_csv_data(lower_boundary=None, upper_boundary=None):
 
     # get imported and not yet loaded data
-    data = db.getImportedCSVdata()
+    data = db.get_imported_csv_data()
 
-    if upperBoundary > 0 and len(data) > upperBoundary:
-        data = data[0:upperBoundary]
+    if upper_boundary > 0 and len(data) > upper_boundary:
+        data = data[0:upper_boundary]
 
-    if lowerBoundary > 0:
-        if len(data) > lowerBoundary:
-            data = data[lowerBoundary:]
+    if lower_boundary > 0:
+        if len(data) > lower_boundary:
+            data = data[lower_boundary:]
         else:
             print("Lower boundary higher than number of elements left")
             exit()
@@ -135,12 +135,9 @@ def loadImportedCSVdata(lowerBoundary=None, upperBoundary=None):
             print("\n############################################################")
             print("\n[ Load imported data... %d/%d ]" % (i, len(data)))
             logger.info("[ ##### Load imported data... %d/%d ##### ]" % (i, len(data)))
-            if lowerBoundary != None or upperBoundary != None:
-                print(f"\n[ Boundaries: {lowerBoundary}:{upperBoundary} ]")
-                logger.info(f"\n[ Boundaries: {lowerBoundary}:{upperBoundary} ]")
-
-            # initialize geocropper instance
-            geoc = geocropper.init(item["lat"], item["lon"])
+            if lower_boundary != None or upper_boundary != None:
+                print(f"\n[ Boundaries: {lower_boundary}:{upper_boundary} ]")
+                logger.info(f"\n[ Boundaries: {lower_boundary}:{upper_boundary} ]")
 
             # create arguments out of imported content
             kwargs = {}
@@ -149,14 +146,12 @@ def loadImportedCSVdata(lowerBoundary=None, upperBoundary=None):
                     kwargs[key] = item[key]
 
             # download and crop with geocropper module
-            geoc.downloadAndCrop(groupname = item["groupname"], dateFrom = item["dateFrom"], dateTo = item["dateTo"], platform = item["platform"], \
-                width = item["width"], height = item["height"], tileLimit = item["tileLimit"], **kwargs)
+            geocropper.download_and_crop(item["lat"], item["lon"], groupname = item["groupname"], date_from = item["dateFrom"], date_to = item["dateTo"], platform = item["platform"], \
+                width = item["width"], height = item["height"], tile_limit = item["tileLimit"], **kwargs)
 
-            # cleanup
-            del geoc
 
             # move database record to archive table
-            db.moveCSVItemToArchive(item["rowid"])
+            db.move_csv_item_to_archive(item["rowid"])
 
     
 
@@ -170,5 +165,5 @@ def loadImportedCSVdata(lowerBoundary=None, upperBoundary=None):
     
 
     logger.info("[ ##### Load imported data... %d/%d ...done! ##### ]" % (i, len(data)))
-    if lowerBoundary != None or upperBoundary != None:
-        logger.info(f"\n[ Boundaries: {lowerBoundary}:{upperBoundary} ]")    
+    if lower_boundary != None or upper_boundary != None:
+        logger.info(f"\n[ Boundaries: {lower_boundary}:{upper_boundary} ]")    

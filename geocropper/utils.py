@@ -23,13 +23,14 @@ import sys
 from datetime import datetime
 
 import geocropper.config as config
-from geocropper.database import database
+from geocropper.database import Database
 import geocropper.sentinelWrapper as sentinelWrapper
 import geocropper.asfWrapper as asfWrapper
 
 import logging
 
 from osgeo import gdal
+
 # gdal library distributed by conda destroys PATH environment variable
 # see -> https://github.com/OSGeo/gdal/issues/1231
 # workaround: remove first entry...
@@ -37,15 +38,17 @@ os.environ["PATH"] = os.environ["PATH"].split(';')[1]
 
 # get logger object
 logger = logging.getLogger('root')
-db = database()
+db = Database()
 
 
-def convertDate(date, newFormat="%Y-%m-%d"):
+def convert_date(date, new_format="%Y-%m-%d"):
+    """Converts a date object to a string of a given format. Default is %Y-%m-%d.
+    """
     temp = parse(date)
-    return temp.strftime(newFormat)
+    return temp.strftime(new_format)
 
 
-def dateOlderThan24h(date):
+def date_older_than_24h(date):
     then = datetime.fromisoformat(date)
     now = datetime.now()
     duration = now - then 
@@ -57,22 +60,26 @@ def dateOlderThan24h(date):
         return False
 
 
-def minutesSinceLastDownloadRequest():
-    now = datetime.now()
-    then = db.getLatestDownloadRequest()
+def minutes_since_last_download_request():
+    then = db.get_latest_download_request()
     if then != None:
-        then = datetime.fromisoformat(str(then))
-        duration = now - then
-        duration_in_s = duration.total_seconds()
-        minutes = divmod(duration_in_s, 60)[0]
-        return int(minutes)
+        return minutes_since_timestamp(then)
     else:
-        return None        
+        return None  
 
 
-def getXYCornerCoordinates(path, lat, lon, width, height):
+def minutes_since_timestamp(timestamp):
+    now = datetime.now()
+    then = datetime.fromisoformat(str(timestamp))
+    duration = now - then
+    duration_in_s = duration.total_seconds()
+    minutes = divmod(duration_in_s, 60)[0]
+    return int(minutes)
 
-    poi_transformed = transformPointLatLonToXY(path, Point(lon, lat))
+
+def get_xy_corner_coordinates(path, lat, lon, width, height):
+
+    poi_transformed = transform_latlon_to_xy(path, Point(lon, lat))
     poi_x = poi_transformed.x
     poi_y = poi_transformed.y
 
@@ -91,50 +98,55 @@ def getXYCornerCoordinates(path, lat, lon, width, height):
     return({ "top_left": Point(top_left_x, top_left_y), "bottom_right": Point(bottom_right_x, bottom_right_y)})    
 
 
-def transformPointLatLonToXY(path, point):
+def transform_latlon_to_xy(path, point):
+
+    # TODO: this function should not require a path, it should transform from WGS84 to UTM
 
     # open raster image file
     img = rasterio.open(str(path))
 
     # prepare parameters for coordinate system transform function
-    toTargetCRS = partial(pyproj.transform,
+    to_target_crs = partial(pyproj.transform,
         pyproj.Proj('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs '), pyproj.Proj(img.crs))
 
     # transform corner coordinates for cropping
-    point = transform(toTargetCRS, point)
+    point = transform(to_target_crs, point)
 
     return(point)
 
 
-def transformPointXYToLatLon(path, point):
+def transform_xy_to_latlon(path, point):
+
+    # TODO: this function should not require a path, it should transform from UTM to WGS84
+
     img = rasterio.open(str(path))
-    inProj = pyproj.Proj(img.crs)
-    lat, lon = inProj(point.x, point.y, inverse=True)
+    in_proj = pyproj.Proj(img.crs)
+    lat, lon = in_proj(point.x, point.y, inverse=True)
     return({"lat": lat, "lon": lon})
 
 
-def cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat, isLatLon = True):
+def crop_image(path, item, top_left, bottom_right, target_dir, file_format, is_latlon = True):
 
-    if (isLatLon):
-        topLeft = transformPointLatLonToXY(path, topLeft)
-        bottomRight = transformPointLatLonToXY(path, bottomRight)
+    if (is_latlon):
+        top_left = transform_latlon_to_xy(path, top_left)
+        bottom_right = transform_latlon_to_xy(path, bottom_right)
 
     # open image with GDAL
     ds = gdal.Open(str(path))
 
     # make sure that target directory exists
-    if not os.path.isdir(str(targetDir)):
-        os.makedirs(str(targetDir))
+    if not os.path.isdir(str(target_dir)):
+        os.makedirs(str(target_dir))
 
     # CROP IMAGE
-    ds = gdal.Translate(str(targetDir / item), ds, format=fileFormat,
-                        projWin=[topLeft.x, topLeft.y,
-                                 bottomRight.x, bottomRight.y])
+    ds = gdal.Translate(str(target_dir / item), ds, format=file_format,
+                        projWin=[top_left.x, top_left.y,
+                                 bottom_right.x, bottom_right.y])
 
     ds = None
 
 
-def createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir,
+def create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir,
                           target_dir, max_scale=4095, exponential_scale=0.5):
 
     search_result = list(source_dir.glob(r_band_search_pattern))
@@ -199,7 +211,7 @@ def createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_s
         small_image.save(str(target_dir / preview_file_small))
 
 
-def createPreviewRGImage(file, target_dir, min_scale=-30, max_scale=30, exponential_scale=0.5):
+def create_preview_rg_image(file, target_dir, min_scale=-30, max_scale=30, exponential_scale=0.5):
     """Creates a RGB preview file out of an db scaled image with only 2 bands.
     """
 
@@ -380,7 +392,7 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
                 file.write("\r\n")
 
 
-def createCombinedImages(source_folder):
+def create_combined_images(source_folder):
 
     counter = 0
     image_path_list = []
@@ -419,7 +431,7 @@ def createCombinedImages(source_folder):
             # lower_label_list = []
 
 
-def combineImages(folder="", has_subdir=True):
+def combine_images(folder="", has_subdir=True):
 
     for group in config.croppedTilesDir.glob("*"):
 
@@ -427,9 +439,9 @@ def combineImages(folder="", has_subdir=True):
 
             if has_subdir:
                 for request in group.glob("*"):
-                    createCombinedImages(request)
+                    create_combined_images(request)
             else:
-                createCombinedImages(group)
+                create_combined_images(group)
 
 
 def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1000, height=1000):
@@ -463,22 +475,22 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
 
         # Sentinel-2 img data are in jp2-format
         # set appropriate format for GDAL lib
-        fileFormat = "JP2OpenJPEG"
+        file_format = "JP2OpenJPEG"
 
         # go through "SAFE"-directory structure of Sentinel-2
 
-        pathGranule = big_tile / "GRANULE"
-        for mainFolder in os.listdir(pathGranule):
+        path_granule = big_tile / "GRANULE"
+        for main_folder in os.listdir(path_granule):
 
-            pathImgData = pathGranule / mainFolder / "IMG_DATA"
+            path_image_data = path_granule / main_folder / "IMG_DATA"
 
-            HQ_dir = pathImgData / "R10m"
+            hq_dir = path_image_data / "R10m"
             # Level-1 currently not supported
-            # HQ_dir only exists on Level-2 data
-            if HQ_dir.exists():
+            # hq_dir only exists on Level-2 data
+            if hq_dir.exists():
 
                 # open image with GDAL
-                file = list(HQ_dir.glob("*_B02_10m.jp2"))[0]
+                file = list(hq_dir.glob("*_B02_10m.jp2"))[0]
                 dataset = gdal.Open(str(file))
 
                 # yres is negative!
@@ -518,7 +530,7 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
 
                     has_values = False
 
-                    for file in HQ_dir.glob("*_B*_10m.jp2"):
+                    for file in hq_dir.glob("*_B*_10m.jp2"):
                         dataset = gdal.Open(str(file))
                         x_index = (random_x - lower_left_x) / xres
                         y_index = (random_y - lower_left_y) / ( yres * -1 )
@@ -538,61 +550,61 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
                         bottom_right_y = random_y - (height/2) + (width/2) / xres * yskew
 
                         # convert to Point object (shapely)
-                        topLeft = Point(top_left_x, top_left_y)
-                        bottomRight = Point(bottom_right_x, bottom_right_y)
+                        top_left = Point(top_left_x, top_left_y)
+                        bottom_right = Point(bottom_right_x, bottom_right_y)
 
-                        file = list(HQ_dir.glob("*_B02_10m.jp2"))[0]
-                        point = transformPointXYToLatLon(file, Point(random_x, random_y))
+                        file = list(hq_dir.glob("*_B02_10m.jp2"))[0]
+                        point = transform_xy_to_latlon(file, Point(random_x, random_y))
 
-                        mainTargetFolder = output_path / ("%s_%s_%s" % (j, point["lat"], point["lon"]))
+                        main_target_folder = output_path / ("%s_%s_%s" % (j, point["lat"], point["lon"]))
 
                         # target directory for cropped image
-                        targetDir = mainTargetFolder / "sensordata"
-                        targetDir.mkdir(parents=True, exist_ok=True)
+                        target_dir = main_target_folder / "sensordata"
+                        target_dir.mkdir(parents=True, exist_ok=True)
 
                         # target directory for meta information
-                        metaDir = mainTargetFolder / "original-metadata"
+                        meta_dir = main_target_folder / "original-metadata"
 
                         # target directory for preview image
-                        previewDir = mainTargetFolder
+                        preview_dir = main_target_folder
 
-                        for imgDataItem in os.listdir(pathImgData):
+                        for image_data_item in os.listdir(path_image_data):
 
-                            pathImgDataItem = pathImgData / imgDataItem
+                            path_image_data_item = path_image_data / image_data_item
 
-                            targetSubDir = targetDir / imgDataItem
+                            target_sub_dir = target_dir / image_data_item
 
-                            if os.path.isdir(pathImgDataItem):
+                            if os.path.isdir(path_image_data_item):
 
-                                for item in os.listdir(pathImgDataItem):
+                                for item in os.listdir(path_image_data_item):
 
                                     # set path of img file
-                                    path = pathImgDataItem / item
+                                    path = path_image_data_item / item
 
                                     # CROP IMAGE
-                                    cropImg(path, item, topLeft, bottomRight, targetSubDir, fileFormat, isLatLon=False)
+                                    crop_image(path, item, top_left, bottom_right, target_sub_dir, file_format, is_latlon=False)
 
-                        createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", targetSubDir, previewDir)
+                        create_preview_rgb_image("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", target_sub_dir, preview_dir)
 
                         if config.copyMetadata:
-                            metaDir.mkdir(parents=True)
-                            tileDir = big_tile
-                            for item in tileDir.rglob('*'):
+                            meta_dir.mkdir(parents=True)
+                            tile_dir = big_tile
+                            for item in tile_dir.rglob('*'):
                                 if item.is_file() and item.suffix.lower() != ".jp2":
-                                    targetDir = metaDir / item.parent.relative_to(tileDir)
-                                    if not targetDir.exists():
-                                        targetDir.mkdir(parents=True)
-                                    shutil.copy(item, targetDir)
+                                    target_dir = meta_dir / item.parent.relative_to(tile_dir)
+                                    if not target_dir.exists():
+                                        target_dir.mkdir(parents=True)
+                                    shutil.copy(item, target_dir)
 
                         if config.createSymlink:
-                            tileDir = big_tile
+                            tile_dir = big_tile
                             # TODO: set config parameter for realpath or relpath for symlink
-                            metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
+                            meta_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_dir.parent.resolve()))
 
                         print(f"random crop {j} done.\n")
 
     print("### Generate combined preview images...")
-    combineImages(str(output_path.name), has_subdir=False)
+    combine_images(str(output_path.name), has_subdir=False)
     print("done.")
 
 
@@ -670,7 +682,7 @@ def trim_crops(source_dir, target_dir, width, height):
 
                         # Sentinel-2 img data are in jp2-format
                         # set appropriate format for GDAL lib
-                        fileFormat = "JP2OpenJPEG"                        
+                        file_format = "JP2OpenJPEG"                        
 
                         # open image with GDAL
                         img = gdal.Open(str(file))
@@ -702,7 +714,7 @@ def trim_crops(source_dir, target_dir, width, height):
                         bottom_right_y = center_pixel_y - (height/2) + (width/2) / xres * yskew                        
 
                         # trim image
-                        img = gdal.Translate(str(file) + "_new", img, format=fileFormat,
+                        img = gdal.Translate(str(file) + "_new", img, format=file_format,
                                             projWin=[top_left_x, top_left_y,
                                                      bottom_right_x, bottom_right_y])                      
 
@@ -723,14 +735,14 @@ def trim_crops(source_dir, target_dir, width, height):
                             file.unlink()  
 
             # create preview image
-            createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", folder_out / "sensordata" / "R10m", folder_out)   
+            create_preview_rgb_image("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", folder_out / "sensordata" / "R10m", folder_out)   
 
 
     # create combined previews
-    createCombinedImages(target_dir)
+    create_combined_images(target_dir)
 
 
-def moveLatLon(lat, lon, azimuth, distance):
+def move_latlon(lat, lon, azimuth, distance):
     """Move on WGS84 ellipsoid from a given point (lat/lon) in certain direction and distance.
 
     Parameters
@@ -758,7 +770,7 @@ def moveLatLon(lat, lon, azimuth, distance):
     return lat_new, lon_new
 
 
-def getLatLonCornerCoordinates(lat, lon, width, height):
+def get_latlon_corner_coordinates(lat, lon, width, height):
     """Get corner coordinates for crop on WGS84 ellipsoid given the center point and width and height of the crop.
 
     Parameters
@@ -789,20 +801,20 @@ def getLatLonCornerCoordinates(lat, lon, width, height):
     """
     
     # determine top left corner
-    lat_temp, lon_temp = moveLatLon(lat, lon, 270, (width / 2))
-    top_left_lat, top_left_lon = moveLatLon(lat_temp, lon_temp, 0, (height / 2))
+    lat_temp, lon_temp = move_latlon(lat, lon, 270, (width / 2))
+    top_left_lat, top_left_lon = move_latlon(lat_temp, lon_temp, 0, (height / 2))
 
     # determine top right corner
-    lat_temp, lon_temp = moveLatLon(lat, lon, 90, (width / 2))
-    top_right_lat, top_right_lon = moveLatLon(lat_temp, lon_temp, 0, (height / 2))    
+    lat_temp, lon_temp = move_latlon(lat, lon, 90, (width / 2))
+    top_right_lat, top_right_lon = move_latlon(lat_temp, lon_temp, 0, (height / 2))    
 
     # determine bottom right corner
-    lat_temp, lon_temp = moveLatLon(lat, lon, 90, (width / 2))
-    bottom_right_lat, bottom_right_lon = moveLatLon(lat_temp, lon_temp, 180, (height / 2))
+    lat_temp, lon_temp = move_latlon(lat, lon, 90, (width / 2))
+    bottom_right_lat, bottom_right_lon = move_latlon(lat_temp, lon_temp, 180, (height / 2))
 
     # determine bottom right corner
-    lat_temp, lon_temp = moveLatLon(lat, lon, 270, (width / 2))
-    bottom_left_lat, bottom_left_lon = moveLatLon(lat_temp, lon_temp, 180, (height / 2))    
+    lat_temp, lon_temp = move_latlon(lat, lon, 270, (width / 2))
+    bottom_left_lat, bottom_left_lon = move_latlon(lat_temp, lon_temp, 180, (height / 2))    
 
     return ([ Point(top_left_lon, top_left_lat), 
               Point(top_right_lon, top_right_lat),
@@ -812,7 +824,66 @@ def getLatLonCornerCoordinates(lat, lon, width, height):
               ])
 
 
-def unpackBigTiles():
+def unpack_big_tile(file_name, tile=None):
+
+    if file_name.endswith(".zip") or file_name.endswith(".tar.gz"):
+    
+        # get path of the packed file
+        file_path = config.bigTilesDir / item
+
+        # unpack zip file if zip
+        if file_name.endswith(".zip"):
+
+            if tile == None:
+
+                # TODO: dirty... (is maybe first entry of zip_ref)
+                # get tile by folder name
+                new_folder_name = item[:-4] + ".SAFE"
+                tile = db.get_tile(folder_name = new_folder_name)              
+
+            # unzip
+            with zipfile.ZipFile(file=file_path) as zip_ref:
+                
+                # show progress bar based on number of files in archive
+                print("Unpack file: " + file_name)
+                for file in tqdm(iterable=zip_ref.namelist(), total=len(zip_ref.namelist())):
+                    zip_ref.extract(member=file, path=config.bigTilesDir)
+
+            zip_ref.close()
+
+
+        # unpack tar file if tar
+        if file_name.endswith(".tar.gz"):
+
+            if tile == None:
+
+                # get tile by folder name
+                tile = db.get_tile(folder_name = file_name[:-7])
+
+            # create target directory, since there is no root dir in tar package
+            target_dir = config.bigTilesDir / tile["folderName"]
+            if not os.path.isdir(target_dir):
+                os.makedirs(target_dir)                    
+
+            # untar
+            with tarfile.open(name=file_path, mode="r:gz") as tar_ref:
+
+                # show progress bar based on number of files in archive
+                print("Unpack file: " + file_name)
+                for file in tqdm(iterable=tar_ref.getmembers(), total=len(tar_ref.getmembers())):
+                    tar_ref.extract(member=file, path=target_dir)
+
+            tar_ref.close()
+
+
+        # remove packed file
+        os.remove(file_path)
+
+        # set unpacked date in database
+        db.set_unzipped_for_tile(tile["rowid"])
+
+
+def unpack_big_tiles():
 
     logger.info("start of unpacking tile zip/tar files")
     
@@ -820,200 +891,32 @@ def unpackBigTiles():
     print("-----------------\n")
 
     # determine number of zip files        
-    filesNumZip = len([f for f in os.listdir(config.bigTilesDir) 
+    files_num_zip = len([f for f in os.listdir(config.bigTilesDir) 
          if f.endswith('.zip') and os.path.isfile(os.path.join(config.bigTilesDir, f))])
 
     # determine number of tar files
-    filesNumTar = len([f for f in os.listdir(config.bigTilesDir) 
+    files_num_tar = len([f for f in os.listdir(config.bigTilesDir) 
          if f.endswith('.tar.gz') and os.path.isfile(os.path.join(config.bigTilesDir, f))])
 
     # calculate number of total packed files
-    filesNum = filesNumZip + filesNumTar
-
-    # index i serves as a counter
-    i = 1
-    
+    files_num = files_num_zip + files_num_tar
 
     # start unpacking
 
     for item in os.listdir(config.bigTilesDir):
 
         if item.endswith(".zip") or item.endswith(".tar.gz"):
-        
-            print("[%d/%d] %s:" % (i, filesNum, item))
-
-            # get path of the packed file
-            filePath = config.bigTilesDir / item
-
-            # unpack zip file if zip
-            if item.endswith(".zip"):
-
-                # TODO: dirty... (is maybe first entry of zipRef)
-                # get tile by folder name
-                newFolderName = item[:-4] + ".SAFE"
-                tile = db.getTile(folderName = newFolderName)              
-
-                # unzip
-                with zipfile.ZipFile(file=filePath) as zipRef:
-                    
-                    # show progress bar based on number of files in archive
-                    for file in tqdm(iterable=zipRef.namelist(), total=len(zipRef.namelist())):
-                        zipRef.extract(member=file, path=config.bigTilesDir)
-
-                zipRef.close()
-
-
-            # unpack tar file if tar
-            if item.endswith(".tar.gz"):
-
-                # get tile by folder name
-                tile = db.getTile(folderName = item[:-7])
-
-                # create target directory, since there is no root dir in tar package
-                targetDir = config.bigTilesDir / tile["folderName"]
-                if not os.path.isdir(targetDir):
-                    os.makedirs(targetDir)                    
-
-                # untar
-                with tarfile.open(name=filePath, mode="r:gz") as tarRef:
-
-                    # show progress bar based on number of files in archive
-                    for file in tqdm(iterable=tarRef.getmembers(), total=len(tarRef.getmembers())):
-                        tarRef.extract(member=file, path=targetDir)
-
-                tarRef.close()
-
-
-            # remove packed file
-            os.remove(filePath)
-
-            # set unpacked date in database
-            db.setUnzippedForTile(tile["rowid"])
-
-            i += 1
-
+            unpack_big_tile(item)
 
     logger.info("tile zip/tar files extracted")
 
 
-def startAndCropRequestedDownloads():
-
-    print("\nStart requested downloads:")
-    print("--------------------------------")
-
-    tiles = db.getRequestedTiles()
-
-    if not tiles == None:
-
-        sentinel = sentinelWrapper.sentinelWrapper()
-        asf = asfWrapper.asfWrapper()
-
-        for tile in tiles:
-
-            if tile["platform"].startswith("Sentinel"):
-
-                print(f"\nSentinel tile: {tile['folderName']}")
-                print(f"Product ID: {tile['productId']}")
-                print(f"First download request: {convertDate(tile['firstDownloadRequest'], newFormat='%Y-%m-%d %H:%M:%S')}")
-                if tile['lastDownloadRequest'] == None:
-                    print(f"Last download request: None\n")
-                else:
-                    print(f"Last download request: {convertDate(tile['lastDownloadRequest'], newFormat='%Y-%m-%d %H:%M:%S')}\n")
-
-                granule = tile['folderName'].split(".")[0]
-
-                if sentinel.readyForDownload(tile['productId']):
-
-                    print("Product ready for download!\n")
-
-                    # download sentinel product
-                    # sentinel wrapper has a resume function for incomplete downloads
-                    logger.info("Download started.")
-                    download_complete = sentinel.downloadSentinelProduct(tile['productId'])
-
-                    if download_complete:
-
-                        # if downloaded zip-file could be detected set download complete date in database
-                        if pathlib.Path(config.bigTilesDir / (granule + ".zip") ).is_file():
-
-                            unpackBigTiles()
-                            db.setDownloadCompleteForTile(tile['rowid'])
-
-                else:
-                    
-                    print("Product not available for download yet.")
-
-                    if granule.startswith("S1") and asf.downloadS1Tile(granule, config.bigTilesDir):
-
-                        unpackBigTiles()
-                        db.setDownloadCompleteForTile(tile['rowid'])
-                        print(f"Tile {granule} downloaded from Alaska Satellite Facility")
-
-                    else:                    
-
-                        if tile['lastDownloadRequest'] == None or dateOlderThan24h(tile['lastDownloadRequest']):
-
-                            print("Last successful download request older than 24h or non-existing.")
-                            print("Repeat download request...")
-
-                            lastRequest = minutesSinceLastDownloadRequest()
-
-                            if lastRequest == None or lastRequest > config.copernicusRequestDelay:
-
-                                if sentinel.requestOfflineTile(tile['productId']) == True:
-
-                                    # Request successful
-                                    db.setLastDownloadRequestForTile(tile["rowid"])
-                                    print("Download of archived tile triggered. Please try again between 24 hours and 3 days later.")
-
-                                else:
-
-                                    # Request error
-                                    db.clearLastDownloadRequestForTile(tile["rowid"])
-                                    print("Download request failed! Please try again later.")                        
-
-                            else:
-
-                                print(f"There has been already a download requested in the last {config.copernicusRequestDelay} minutes! Please try later.")
-
-                        else:
-
-                            print("Last successful download request not older than 24h. Please try again later.")
-
-
-    # unpack new big tiles
-    unpackBigTiles()
-    logger.info("Big tiles unpacked.")
-
-    # get projections of new downloaded tiles
-    saveMissingTileProjections()
-
-    # crop outstanding points                    
-
-    pois = db.getUncroppedPoisForDownloadedTiles()
-
-    if not pois == None:
-
-        print("\nCrop outstanding points:")
-        print("------------------------------")
-
-        for poi in pois:
-
-            if poi['tileCropped'] == None and poi['cancelled'] == None:
-
-                print(f"Crop outstanding point: lat:{poi['lat']} lon:{poi['lon']} \
-                        groupname:{poi['groupname']} width:{poi['width']} height:{poi['height']}")
-                cropTiles(poi['rowid'])
-    
-        print("\nCropped all outstanding points!")
-
-
-def cropTiles(poiId):
+def crop_tiles(poi_id):
     
     print("\nCrop tiles:")
     print("-----------------")
 
-    poi = db.getPoiFromId(poiId)
+    poi = db.get_poi_from_id(poi_id)
 
     print("(w: %d, h: %d)\n" % (poi["width"], poi["height"]))
 
@@ -1022,7 +925,7 @@ def cropTiles(poiId):
     if not poi == None and poi["width"] > 0 and poi["height"] > 0:
 
         # get tiles that need to be cropped
-        tiles = db.getTilesForPoi(poiId)
+        tiles = db.get_tiles_for_poi(poi_id)
         
         # go through the tiles
         for tile in tiles:
@@ -1033,24 +936,24 @@ def cropTiles(poiId):
                 print("Cropping %s ..." % tile["folderName"])
 
                 if poi["platform"] == "Sentinel-1" or poi["platform"] == "Sentinel-2":
-                    beginposition = convertDate(tile["beginposition"], newFormat="%Y%m%d-%H%M")
+                    beginposition = convert_date(tile["beginposition"], new_format="%Y%m%d-%H%M")
                 else:
-                    beginposition = convertDate(tile["beginposition"], newFormat="%Y%m%d")
+                    beginposition = convert_date(tile["beginposition"], new_format="%Y%m%d")
 
-                poiParameters = getPoiParametersForOutputFolder(poi)
-                connectionId = db.getTilePoiConnectionId(poiId, tile["rowid"])
-                mainTargetFolder = config.croppedTilesDir / poi["groupname"] / poiParameters / ( "%s_%s_%s_%s" % (connectionId, poi["lon"], poi["lat"], beginposition) )
+                poi_parameters = get_poi_parameters_for_output_folder(poi)
+                connection_id = db.get_tile_poi_connection_id(poi_id, tile["rowid"])
+                main_target_folder = config.croppedTilesDir / poi["groupname"] / poi_parameters / ( "%s_%s_%s_%s" % (connection_id, poi["lon"], poi["lat"], beginposition) )
 
                 # target directory for cropped image
-                targetDir = mainTargetFolder / "sensordata"
-                targetDir.mkdir(parents = True, exist_ok = True)               
+                sensor_target_dir = main_target_folder / "sensordata"
+                sensor_target_dir.mkdir(parents = True, exist_ok = True)               
 
                 # target directory for meta information
-                metaDir = mainTargetFolder / "original-metadata"
+                meta_target_dir = main_target_folder / "original-metadata"
 
                 # target directory for preview image
-                previewDir = mainTargetFolder 
-                # previewDir.mkdir(parents = True, exist_ok = True)   
+                preview_dir = main_target_folder 
+                # preview_dir.mkdir(parents = True, exist_ok = True)   
 
 
                 # SENTINEL 1 CROPPING
@@ -1059,7 +962,7 @@ def cropTiles(poiId):
 
                     if config.gptSnap.exists():
 
-                        corner_coordinates = getLatLonCornerCoordinates(poi["lat"], poi["lon"], poi["width"], poi["height"])
+                        corner_coordinates = get_latlon_corner_coordinates(poi["lat"], poi["lon"], poi["width"], poi["height"])
 
                         # convert S1 crops to UTM projection or leave it in WGS84
                         if config.covertS1CropsToUTM == True:
@@ -1067,58 +970,58 @@ def cropTiles(poiId):
                         else:
                             projection = "EPSG:4326"
 
-                        targetFile = targetDir / "s1_cropped.tif"
+                        target_file = sensor_target_dir / "s1_cropped.tif"
 
                         # preprocess and crop using SNAP GPT
                         poly = Polygon([[p.x, p.y] for p in corner_coordinates])
                         command = [str(config.gptSnap), os.path.realpath(str(config.xmlSnap)), 
                                    ("-PinDir=" + os.path.realpath(str(config.bigTilesDir / tile["folderName"]))),
                                    ("-Psubset=" + poly.wkt),
-                                   ("-PoutFile=" + os.path.realpath(str(targetFile))),
+                                   ("-PoutFile=" + os.path.realpath(str(target_file))),
                                    ("-PmapProjection=" + projection)]
                         subprocess.call(command)
 
-                        if targetFile.exists():
+                        if target_file.exists():
 
                             print("done.\n")
 
                             # create preview image
-                            createPreviewRGImage(str(targetFile), mainTargetFolder, exponential_scale=None)
+                            create_preview_rg_image(str(target_file), main_target_folder, exponential_scale=None)
 
                             # set date for tile cropped 
-                            db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
+                            db.set_tile_cropped(poi_id, tile["rowid"], main_target_folder)
 
                         else:
 
                             print("Sentinel-1 crop could not be created!")
 
                             # cancel crop
-                            db.setCancelledTileForPoi(poiId, tile["rowid"])
+                            db.set_cancelled_tile_for_poi(poi_id, tile["rowid"])
 
 
                         # copy or link metadata
                         if config.copyMetadata:                            
                             print("Copy metadata...")
-                            metaDir.mkdir(parents = True)
-                            tileDir = config.bigTilesDir / tile["folderName"]
-                            for item in tileDir.rglob('*'):
+                            meta_target_dir.mkdir(parents = True)
+                            tile_dir = config.bigTilesDir / tile["folderName"]
+                            for item in tile_dir.rglob('*'):
                                 if item.is_file() and item.suffix.lower() != ".tiff" and item.suffix.lower() != ".safe":
-                                    targetDir = metaDir / item.parent.relative_to(tileDir)
-                                    if not targetDir.exists():
-                                        targetDir.mkdir(parents = True)
-                                    shutil.copy(item, targetDir)
+                                    sensor_target_dir = meta_target_dir / item.parent.relative_to(tile_dir)
+                                    if not sensor_target_dir.exists():
+                                        sensor_target_dir.mkdir(parents = True)
+                                    shutil.copy(item, sensor_target_dir)
                             print("done.\n")    
 
                         if config.createSymlink:
-                            tileDir = config.bigTilesDir / tile["folderName"]
-                            if not metaDir.exists():
+                            tile_dir = config.bigTilesDir / tile["folderName"]
+                            if not meta_target_dir.exists():
                                 # TODO: set config parameter for realpath or relpath for symlinks
-                                metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
+                                meta_target_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_target_dir.parent.resolve()))
                                 print("Symlink created.")                        
 
                     else:
                         print("SNAP GPT not configured. Sentinel-1 tiles cannot be cropped.\n")
-                        db.setCancelledTileForPoi(poiId, tile["rowid"])  
+                        db.set_cancelled_tile_for_poi(poi_id, tile["rowid"])  
 
 
                 # SENTINEL 2 CROPPING
@@ -1129,85 +1032,85 @@ def cropTiles(poiId):
 
                     # Sentinel-2 img data are in jp2-format
                     # set appropriate format for GDAL lib
-                    fileFormat="JP2OpenJPEG"
+                    file_format="JP2OpenJPEG"
 
                     # go through "SAFE"-directory structure of Sentinel-2
 
-                    is_S2L1 = True
+                    is_s2l1 = True
 
-                    pathGranule = config.bigTilesDir / tile["folderName"] / "GRANULE"
-                    for mainFolder in os.listdir(pathGranule):
+                    path_granule = config.bigTilesDir / tile["folderName"] / "GRANULE"
+                    for main_folder in os.listdir(path_granule):
 
-                        pathImgData = pathGranule / mainFolder / "IMG_DATA"
-                        for imgDataItem in os.listdir(pathImgData):
+                        path_image_data = path_granule / main_folder / "IMG_DATA"
+                        for image_data_item in os.listdir(path_image_data):
 
-                            pathImgDataItem = pathImgData / imgDataItem
+                            path_image_data_item = path_image_data / image_data_item
 
-                            # if Level-1 data pathImgDataItem is already an image file
-                            # if Level-2 data pathImgDataItem is a directory with image files
+                            # if Level-1 data path_image_data_item is already an image file
+                            # if Level-2 data path_image_data_item is a directory with image files
 
-                            if os.path.isdir(pathImgDataItem):
+                            if os.path.isdir(path_image_data_item):
 
                                 # Level-2 data
 
-                                is_S2L1 = False
+                                is_s2l1 = False
 
-                                targetSubDir = targetDir / imgDataItem
+                                target_sub_dir = sensor_target_dir / image_data_item
                             
-                                for item in os.listdir(pathImgDataItem):
+                                for item in os.listdir(path_image_data_item):
 
                                     # set path of img file
-                                    path = pathImgDataItem / item
+                                    path = path_image_data_item / item
 
                                     if corner_coordinates == None:
-                                        corner_coordinates = getXYCornerCoordinates(path, poi["lat"], poi["lon"], poi["width"], poi["height"])
+                                        corner_coordinates = get_xy_corner_coordinates(path, poi["lat"], poi["lon"], poi["width"], poi["height"])
 
                                     # CROP IMAGE
-                                    cropImg(path, item, corner_coordinates["top_left"], corner_coordinates["bottom_right"], 
-                                                  targetSubDir, fileFormat, isLatLon=False)
+                                    crop_image(path, item, corner_coordinates["top_left"], corner_coordinates["bottom_right"], 
+                                                  target_sub_dir, file_format, is_latlon=False)
 
-                                createPreviewRGBImage("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", targetSubDir, previewDir)
+                                create_preview_rgb_image("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", target_sub_dir, preview_dir)
                             
                             else:
 
                                 # Level-1 data
 
                                 # set path of image file
-                                path = pathImgDataItem
+                                path = path_image_data_item
 
                                 if corner_coordinates == None:
-                                    corner_coordinates = getXYCornerCoordinates(path, poi["lat"], poi["lon"], poi["width"], poi["height"])
+                                    corner_coordinates = get_xy_corner_coordinates(path, poi["lat"], poi["lon"], poi["width"], poi["height"])
 
                                 # CROP IMAGE
-                                cropImg(path, imgDataItem, corner_coordinates["top_left"], corner_coordinates["bottom_right"], 
-                                              targetDir, fileFormat, isLatLon=False)
+                                crop_image(path, image_data_item, corner_coordinates["top_left"], corner_coordinates["bottom_right"], 
+                                              sensor_target_dir, file_format, is_latlon=False)
 
-                        if is_S2L1:
-                            createPreviewRGBImage("*B04.jp2", "*B03.jp2", "*B02.jp2", targetDir, previewDir)                                
+                        if is_s2l1:
+                            create_preview_rgb_image("*B04.jp2", "*B03.jp2", "*B02.jp2", sensor_target_dir, preview_dir)                                
 
                     print("done.\n")        
 
                     if config.copyMetadata:                            
                         print("Copy metadata...")
-                        metaDir.mkdir(parents = True)
-                        tileDir = config.bigTilesDir / tile["folderName"]
-                        for item in tileDir.rglob('*'):
+                        meta_target_dir.mkdir(parents = True)
+                        tile_dir = config.bigTilesDir / tile["folderName"]
+                        for item in tile_dir.rglob('*'):
                             if item.is_file() and item.suffix.lower() != ".jp2":
-                                targetDir = metaDir / item.parent.relative_to(tileDir)
-                                if not targetDir.exists():
-                                    targetDir.mkdir(parents = True)
-                                shutil.copy(item, targetDir)
+                                sensor_target_dir = meta_target_dir / item.parent.relative_to(tile_dir)
+                                if not sensor_target_dir.exists():
+                                    sensor_target_dir.mkdir(parents = True)
+                                shutil.copy(item, sensor_target_dir)
                         print("done.\n")
 
                     if config.createSymlink:
-                        tileDir = config.bigTilesDir / tile["folderName"]
-                        if not metaDir.exists():
+                        tile_dir = config.bigTilesDir / tile["folderName"]
+                        if not meta_target_dir.exists():
                             # TODO: set config parameter for realpath or relpath for symlinks
-                            metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
+                            meta_target_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_target_dir.parent.resolve()))
                             print("Symlink created.")
 
                     # set date for tile cropped 
-                    db.setTileCropped(poiId, tile["rowid"], mainTargetFolder)
+                    db.set_tile_cropped(poi_id, tile["rowid"], main_target_folder)
 
 
                 # LANDSAT CROPPING
@@ -1215,29 +1118,29 @@ def cropTiles(poiId):
                 if poi["platform"].startswith("LANDSAT"):
                 
                     print("Cropping of Landsat data not yet supported.\n")
-                    db.setCancelledTileForPoi(poiId, tile["rowid"])
+                    db.set_cancelled_tile_for_poi(poi_id, tile["rowid"])
 
                     # # Landsat img data are in GeoTiff-format
                     # # set appropriate format for GDAL lib
-                    # fileFormat="GTiff"
+                    # file_format="GTiff"
 
                     # # all images are in root dir of tile
 
                     # # set path of root dir of tile
-                    # pathImgData = config.bigTilesDir / tile["folderName"]
+                    # path_image_data = config.bigTilesDir / tile["folderName"]
 
-                    # # TODO: switch to pathlib (for item in pathImgData)
+                    # # TODO: switch to pathlib (for item in path_image_data)
                     # # go through all files in root dir of tile
-                    # for item in os.listdir(pathImgData):
+                    # for item in os.listdir(path_image_data):
 
                     #     # if file ends with tif then crop
                     #     if item.lower().endswith(".tif"):
 
                     #         # set path of image file
-                    #         path = pathImgData / item
+                    #         path = path_image_data / item
 
                     #         # CROP IMAGE
-                    #         cropImg(path, item, topLeft, bottomRight, targetDir, fileFormat)
+                    #         crop_image(path, item, topLeft, bottomRight, sensor_target_dir, file_format)
 
                     # if poi["platform"] == "LANDSAT_8_C1":
                     #     r_band_search_pattern = "*B4.TIF"
@@ -1247,152 +1150,158 @@ def cropTiles(poiId):
                     #     r_band_search_pattern = "*B3.TIF"
                     #     g_band_search_pattern = "*B2.TIF"
                     #     b_band_search_pattern = "*B1.TIF"                           
-                    # createPreviewRGBImage(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, targetDir, previewDir)                         
+                    # create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, sensor_target_dir, preview_dir)                         
 
                     # print("done.")
 
                     # if config.copyMetadata:
                     #     print("Copy metadata...")
-                    #     metaDir.mkdir(parents = True)
-                    #     for item in pathImgData.glob('*'):
+                    #     meta_target_dir.mkdir(parents = True)
+                    #     for item in path_image_data.glob('*'):
                     #         if item.is_file():
                     #             if item.suffix.lower() != ".tif":
-                    #                 shutil.copy(item, metaDir)
+                    #                 shutil.copy(item, meta_target_dir)
                     #         if item.is_dir():
-                    #             shutil.copytree(item, (metaDir / item.name))
+                    #             shutil.copytree(item, (meta_target_dir / item.name))
                     #     print("done.\n")
 
                     # if config.createSymlink:
-                    #     tileDir = pathImgData
+                    #     tile_dir = path_image_data
                     #     # TODO: set config parameter for realpath or relpath for symlink
-                    #     metaDir.symlink_to(os.path.realpath(str(tileDir.resolve())), str(metaDir.parent.resolve()))
+                    #     meta_target_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_target_dir.parent.resolve()))
                     #     print("Symlink created.")                            
 
                     # # set date for tile cropped 
-                    # db.setTileCropped(poiId, tile["rowid"], mainTargetFolder) 
+                    # db.set_tile_cropped(poi_id, tile["rowid"], main_target_folder) 
 
 
-def getPoiParametersForOutputFolder(poi):
+def get_poi_parameters_for_output_folder(poi):
     
-    folderElements = []
-    folderName = ""
+    folder_elements = []
+    folder_name = ""
 
     try:
-        folderElements.append("df" + convertDate(poi["dateFrom"], "%Y%m%d"))
+        folder_elements.append("df" + convert_date(poi["dateFrom"], "%Y%m%d"))
     except:
         pass
 
     try:
-        folderElements.append("dt" + convertDate(poi["dateTo"], "%Y%m%d"))
+        folder_elements.append("dt" + convert_date(poi["dateTo"], "%Y%m%d"))
     except:
         pass
         
     try:
         if poi["platform"] == "Sentinel-1":
-            folderElements.append("pfS1")
+            folder_elements.append("pfS1")
         if poi["platform"] == "Sentinel-2":
-            folderElements.append("pfS2")
+            folder_elements.append("pfS2")
         if poi["platform"] == "LANDSAT_TM_C1":
-            folderElements.append("pfLTM")
+            folder_elements.append("pfLTM")
         if poi["platform"] == "LANDSAT_ETM_C1":
-            folderElements.append("pfLETM")
+            folder_elements.append("pfLETM")
         if poi["platform"] == "LANDSAT_8_C1":
-            folderElements.append("pfL8")
+            folder_elements.append("pfL8")
     except:
         pass
         
     try:
-        folderElements.append("tl" + str(poi["tileLimit"]))
+        folder_elements.append("tl" + str(poi["tileLimit"]))
     except:
         pass
         
     try:
-        folderElements.append("cc" + str(poi["cloudcoverpercentage"]))
+        folder_elements.append("cc" + str(poi["cloudcoverpercentage"]))
     except:
         pass
         
     try:
-        folderElements.append("pm" + str(poi["polarisatiomode"]))
+        folder_elements.append("pm" + str(poi["polarisatiomode"]))
     except:
         pass
         
     try:
-        folderElements.append("pt" + str(poi["producttype"]))
+        folder_elements.append("pt" + str(poi["producttype"]))
     except:
         pass
         
     try:
-        folderElements.append("som" + str(poi["sensoroperationalmode"]))
+        folder_elements.append("som" + str(poi["sensoroperationalmode"]))
     except:
         pass
         
     try:
-        folderElements.append("si" + str(poi["swathidentifier"]))
+        folder_elements.append("si" + str(poi["swathidentifier"]))
     except:
         pass
         
     try:
-        folderElements.append("tls" + str(poi["timeliness"]))
+        folder_elements.append("tls" + str(poi["timeliness"]))
     except:
         pass
         
     try:
-        folderElements.append("w" + str(poi["width"]))
+        folder_elements.append("w" + str(poi["width"]))
     except:
         pass
         
     try:
-        folderElements.append("h" + str(poi["height"]))
+        folder_elements.append("h" + str(poi["height"]))
     except:
         pass
 
-    for item in folderElements:
+    for item in folder_elements:
         if not item.endswith("None"):            
-            if len(folderName) > 0:
-                folderName = folderName + "_"
-            folderName = folderName + item
+            if len(folder_name) > 0:
+                folder_name = folder_name + "_"
+            folder_name = folder_name + item
 
-    return folderName    
+    return folder_name    
 
 
-def saveMissingTileProjections():
+def save_missing_tile_projections():
 
-    tiles = db.getTilesWithoutProjectionInfo()
+    tiles = db.get_tiles_without_projection_info()
     for tile in tiles:
-        saveTileProjection(tile["productId"])
+        save_tile_projection(tile=tile)
 
 
-def saveTileProjection(productId):
+def save_tile_projection(product_id=None, tile=None):
 
-    tile = db.getTile(productId)
+    if tile == None and product_id == None:
+        return None
+
+    if tile == None:
+        tile = db.get_tile(product_id)
 
     if tile != None and tile["downloadComplete"] != None:
 
-        mainFolder = config.bigTilesDir / tile["folderName"]
+        main_folder = config.bigTilesDir / tile["folderName"]
         projection = None
 
         if tile["platform"] == "Sentinel-1":
 
-            imageFolder = mainFolder / "measurement"
+            image_folder = main_folder / "measurement"
 
-            image = list(imageFolder.glob("*.tiff"))[0]
+            image = list(image_folder.glob("*.tiff"))[0]
 
-            projection = getProjectionFromFile(image, tile["platform"])
+            projection = get_projection_from_file(image, tile["platform"])
 
         if tile["platform"] == "Sentinel-2":
 
-            imageFolder = mainFolder / "GRANULE"
+            image_folder = main_folder / "GRANULE"
 
-            image = list(imageFolder.rglob("*_B02*.jp2"))[0]
+            image = list(image_folder.rglob("*_B02*.jp2"))[0]
 
-            projection = getProjectionFromFile(image, tile["platform"])
+            projection = get_projection_from_file(image, tile["platform"])
+
+        # TODO: save tile projection of Landsat product
 
         # save projection to database
         if projection != None:
-            db.updateTileProjection(tile["rowid"], projection)
+            db.update_tile_projection(tile["rowid"], projection)
 
 
-def getProjectionFromFile(path, platform):
+def get_projection_from_file(path, platform):
 
     if path != None and path.exists():
 
