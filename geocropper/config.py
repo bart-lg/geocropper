@@ -1,76 +1,93 @@
 from configparser import ConfigParser
 import pathlib
+import logging
 
-config = ConfigParser()
-config.read([
-	pathlib.Path(__file__).parent.parent / "default-config.ini",
-	pathlib.Path(__file__).parent.parent / "user-config.ini"
-])
+# get logger object
+logger = logging.getLogger('root')
 
-# used for download of Sentinel data
-copernicusUser = config["Credentials"]["copernicusUser"]
-copernicusPW = config["Credentials"]["copernicusPW"]
-copernicusURL = config["URLs"]["copernicusURL"]
+try: 
 
-usgsUser = config["Credentials"]["usgsUser"]
-usgsPW = config["Credentials"]["usgsPW"]
+	logger.debug("Start loading config")
 
-# used for download of Sentinel-1 data from the Alaska Satellite Facility
-asfUser = config["Credentials"]["asfUser"]
-asfPW = config["Credentials"]["asfPW"]
+	config = ConfigParser()
+	config.read([
+		pathlib.Path(__file__).parent.parent / "default-config.ini",
+		pathlib.Path(__file__).parent.parent / "user-config.ini"
+	])
 
-# miscellaneous variables
-copernicusRequestDelay = config["Misc"].getint("copernicusRequestDelay")
-copernicusRepeatRequestAfterMin = config["Misc"].getint("copernicusRepeatRequestAfterMin")
-covertS1CropsToUTM = config["Misc"].getboolean("covertS1CropsToUTM")
+	# used for download of Sentinel data
+	copernicusUser = config["Credentials"]["copernicusUser"]
+	copernicusPW = config["Credentials"]["copernicusPW"]
+	copernicusURL = config["URLs"]["copernicusURL"]
 
-# various data paths
-dataDir = pathlib.Path(config["Paths"]["data"])
-bigTilesDir = pathlib.Path(config["Paths"]["bigTiles"])
-croppedTilesDir = pathlib.Path(config["Paths"]["croppedTiles"])
-csvInputDir = pathlib.Path(config["Paths"]["csvInput"])
-csvArchiveDir = pathlib.Path(config["Paths"]["csvArchive"])
-logFile = pathlib.Path(config["Paths"]["logFile"])
+	usgsUser = config["Credentials"]["usgsUser"]
+	usgsPW = config["Credentials"]["usgsPW"]
 
-# shape file used to determine country for geolocation
-worldBordersShapeFile = str(pathlib.Path(config["Paths"]["worldBordersShapeFile"]))
+	# used for download of Sentinel-1 data from the Alaska Satellite Facility
+	asfUser = config["Credentials"]["asfUser"]
+	asfPW = config["Credentials"]["asfPW"]
 
-# path and filename of sqlite database file
-dbFile = pathlib.Path(config["Paths"]["dbFile"])
+	# miscellaneous variables
+	copernicusRequestDelay = config["Misc"].getint("copernicusRequestDelay")
+	copernicusRepeatRequestAfterMin = config["Misc"].getint("copernicusRepeatRequestAfterMin")
+	covertS1CropsToUTM = config["Misc"].getboolean("covertS1CropsToUTM")
 
-# path and filename of SNAP Graph Processing Tool (GPT)
-gptSnap = pathlib.Path(config["Paths"]["gptSnap"])
+	# various data paths
+	dataDir = pathlib.Path(config["Paths"]["data"])
+	bigTilesDir = pathlib.Path(config["Paths"]["bigTiles"])
+	croppedTilesDir = pathlib.Path(config["Paths"]["croppedTiles"])
+	csvInputDir = pathlib.Path(config["Paths"]["csvInput"])
+	csvArchiveDir = pathlib.Path(config["Paths"]["csvArchive"])
+	logFile = pathlib.Path(config["Paths"]["logFile"])
 
-# path and filename of XML file for SNAP Graph Processing Tool (GPT)
-xmlSnap = pathlib.Path(config["Paths"]["xmlSnap"])
+	# shape file used to determine country for geolocation
+	worldBordersShapeFile = str(pathlib.Path(config["Paths"]["worldBordersShapeFile"]))
+
+	# path and filename of sqlite database file
+	dbFile = pathlib.Path(config["Paths"]["dbFile"])
+
+	# path and filename of SNAP Graph Processing Tool (GPT)
+	gptSnap = pathlib.Path(config["Paths"]["gptSnap"])
+
+	# path and filename of XML file for SNAP Graph Processing Tool (GPT)
+	xmlSnap = pathlib.Path(config["Paths"]["xmlSnap"])
 
 
-# logging modes: DEBUG, INFO, WARNING, ERROR, CRITICAL
-loggingMode = config["Logging"]["loggingMode"]
+	# logging modes: DEBUG, INFO, WARNING, ERROR, CRITICAL
+	loggingMode = config["Logging"]["loggingMode"]
 
 
-# copy metadata from bigTiles to croppedTiles
-copyMetadata = config["Meta Data"].getboolean("copyMetadata")
+	# copy metadata from bigTiles to croppedTiles
+	copyMetadata = config["Meta Data"].getboolean("copyMetadata")
 
-# creates symlink within croppedTiles to bigTiles
-createSymlink = config["Meta Data"].getboolean("createSymlink")
+	# creates symlink within croppedTiles to bigTiles
+	createSymlink = config["Meta Data"].getboolean("createSymlink")
 
-# optional landsat parameters => max_cloud_cover (value in db stored as cloudcoverpercentage)
-optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", "swathidentifier", "cloudcoverpercentage", "timeliness"]
+	# optional landsat parameters => max_cloud_cover (value in db stored as cloudcoverpercentage)
+	optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", "swathidentifier", "cloudcoverpercentage", "timeliness"]
 
-# small preview image
-resizePreviewImage = config["Small Preview Image"].getboolean("resizePreviewImage")
-widthPreviewImageSmall = config["Small Preview Image"].getint("widthPreviewImageSmall")
-heightPreviewImageSmall = config["Small Preview Image"].getint("heightPreviewImageSmall")
+	# small preview image
+	resizePreviewImage = config["Small Preview Image"].getboolean("resizePreviewImage")
+	widthPreviewImageSmall = config["Small Preview Image"].getint("widthPreviewImageSmall")
+	heightPreviewImageSmall = config["Small Preview Image"].getint("heightPreviewImageSmall")
 
-# combined preview images
-combinedPreview = config["Combined Preview Images"].getboolean("combinedPreview")
-previewBorder = config["Combined Preview Images"].getint("previewBorder")
-red = config["Combined Preview Images"].getint("previewBackgroundR")
-green = config["Combined Preview Images"].getint("previewBackgroundG")
-blue = config["Combined Preview Images"].getint("previewBackgroundB")
-previewBackground = (red,green,blue)
-previewTextOnImage = config["Combined Preview Images"].getboolean("previewTextOnImage")
-previewImageFontSize = config["Combined Preview Images"].getint("previewImageFontSize")
-previewImagesCombined = config["Combined Preview Images"].getint("previewImagesCombined")
-previewCenterDot = config["Combined Preview Images"].getboolean("previewCenterDot")
+	# combined preview images
+	combinedPreview = config["Combined Preview Images"].getboolean("combinedPreview")
+	previewBorder = config["Combined Preview Images"].getint("previewBorder")
+	red = config["Combined Preview Images"].getint("previewBackgroundR")
+	green = config["Combined Preview Images"].getint("previewBackgroundG")
+	blue = config["Combined Preview Images"].getint("previewBackgroundB")
+	previewBackground = (red,green,blue)
+	previewTextOnImage = config["Combined Preview Images"].getboolean("previewTextOnImage")
+	previewImageFontSize = config["Combined Preview Images"].getint("previewImageFontSize")
+	previewImagesCombined = config["Combined Preview Images"].getint("previewImagesCombined")
+	previewCenterDot = config["Combined Preview Images"].getboolean("previewCenterDot")
+
+	logger.info("Config loaded")
+
+except Exception as e:
+
+	print(str(e))
+	logger.critical(f"Error in loading config: {repr(e)}")
+	raise SystemExit  
+	
