@@ -31,6 +31,7 @@ try:
 	copernicusRequestDelay = config["Misc"].getint("copernicusRequestDelay")
 	copernicusRepeatRequestAfterMin = config["Misc"].getint("copernicusRepeatRequestAfterMin")
 	covertS1CropsToUTM = config["Misc"].getboolean("covertS1CropsToUTM")
+	databaseTimeout = config["Misc"].getint("databaseTimeout")
 
 	# various data paths
 	dataDir = pathlib.Path(config["Paths"]["data"])
@@ -90,4 +91,3 @@ except Exception as e:
 	print(str(e))
 	logger.critical(f"Error in loading config: {repr(e)}")
 	raise SystemExit  
-	

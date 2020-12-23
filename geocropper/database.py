@@ -197,7 +197,7 @@ class Database:
             logger.debug("[database] start DB connection")
 
             # open or create sqlite database file
-            self.connection = sqlite3.connect(config.dbFile)
+            self.connection = sqlite3.connect(config.dbFile, timeout=config.databaseTimeout)
 
             # provide index-based and case-insensitive name-based access to columns
             self.connection.row_factory = sqlite3.Row
