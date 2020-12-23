@@ -32,6 +32,7 @@ try:
 	copernicusRepeatRequestAfterMin = config["Misc"].getint("copernicusRepeatRequestAfterMin")
 	covertS1CropsToUTM = config["Misc"].getboolean("covertS1CropsToUTM")
 	databaseTimeout = config["Misc"].getint("databaseTimeout")
+	databaseRetryQueries = config["Misc"].getint("databaseRetryQueries")
 
 	# various data paths
 	dataDir = pathlib.Path(config["Paths"]["data"])

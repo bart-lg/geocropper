@@ -1,6 +1,7 @@
 import sqlite3
 import geocropper.config as config
 
+import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.realpath('.'), "lib"))
@@ -133,6 +134,16 @@ tables = {
 }
 
 
+class DatabaseLockedError(Exception):
+    """Exception raised for errors while quering the database.
+    """
+
+    def __init__(self):
+        self.message = f"Database locked. Could not query database. \
+            Timeout:{config.databaseTimeout} Retries:{databaseRetryQueries}"
+        super().__init__(self.message)
+
+
 ### DB class
 
 class Database:
@@ -234,69 +245,135 @@ class Database:
 
         try:
 
-            logger.debug(f"[database] DB query: [{query}] [values: {values}]")
-            
-            if values == None:
-                self.cursor.execute(query)
-            else:
-                self.cursor.execute(query, values)
-            
-            # save changes
-            self.connection.commit()
-            new_id = self.cursor.lastrowid
-            
-            logger.debug(f"[database] DB query: new_id: {new_id}")
+            attempt = 0
+            query_done = False
+
+            while attempt < config.databaseRetryQueries and not query_done:
+
+                try:
+
+                    attempt = attempt + 1
+
+                    logger.debug(f"[database] DB query: [{query}] [values: {values}]")
+                    
+                    if values == None:
+                        self.cursor.execute(query)
+                    else:
+                        self.cursor.execute(query, values)
+                    
+                    # save changes
+                    self.connection.commit()
+                    new_id = self.cursor.lastrowid
+                    
+                    query_done = True
+
+                    logger.debug(f"[database] DB query: new_id: {new_id}")
+
+                except Exception as e:
+
+                    logger.warning(f"[database] Could not query database. \
+                        Attempt:{attempt} Error: {repr(e)}")
+                    time.sleep(5)
+
+            if not query_done:
+
+                raise DatabaseLockedError()
 
         except Exception as e:
 
             print(str(e))
-            logger.error(f"Error in query [{query}] [values: {values}]: {repr(e)}") 
+            logger.critical(f"Error in query [{query}] [values: {values}]: {repr(e)}") 
+            raise SystemExit
 
         return new_id
 
     # query function used for selects returning all rows of result
     def fetch_all_rows_query(self, query, values=None):
-
+        
         try:
 
-            logger.debug(f"[database] DB query: [{query}] [values: {values}]")
+            attempt = 0
+            query_done = False
 
-            if values == None:
-                self.cursor.execute(query)
-            else:
-                self.cursor.execute(query, values)
+            while attempt < config.databaseRetryQueries and not query_done:
 
-            result = self.cursor.fetchall()
+                try:
 
-            logger.debug(f"[database] DB query: result: {result}")
+                    attempt = attempt + 1
+
+                    logger.debug(f"[database] DB query: [{query}] [values: {values}]")
+
+                    if values == None:
+                        self.cursor.execute(query)
+                    else:
+                        self.cursor.execute(query, values)
+
+                    result = self.cursor.fetchall()
+
+                    query_done = True
+
+                    logger.debug(f"[database] DB query: result: {result}")
+
+                except Exception as e:
+
+                    logger.warning(f"[database] Could not query database. \
+                        Attempt:{attempt} Error: {repr(e)}")
+                    time.sleep(5)   
+
+            if not query_done:
+
+                raise DatabaseLockedError()                                     
 
         except Exception as e:
 
             print(str(e))
-            logger.error(f"Error in query [{query}] [values: {values}]: {repr(e)}")            
+            logger.error(f"Error in query [{query}] [values: {values}]: {repr(e)}") 
+            raise SystemExit          
 
         return result
 
     # query function used for selects returning only first row of result
     def fetch_first_row_query(self, query, values=None):
-
+        
         try:
 
-            logger.debug(f"[database] DB query: [{query}] [values: {values}]")
+            attempt = 0
+            query_done = False
 
-            if values == None:
-                self.cursor.execute(query)
-            else:
-                self.cursor.execute(query, values)
+            while attempt < config.databaseRetryQueries and not query_done:
 
-            result = self.cursor.fetchone()
+                try:
 
-            logger.debug(f"[database] DB query: result: {result}")
+                    attempt = attempt + 1
+
+                    logger.debug(f"[database] DB query: [{query}] [values: {values}]")
+
+                    if values == None:
+                        self.cursor.execute(query)
+                    else:
+                        self.cursor.execute(query, values)
+
+                    result = self.cursor.fetchone()
+
+                    query_done = True
+
+                    logger.debug(f"[database] DB query: result: {result}")
+
+                except Exception as e:
+
+                    logger.warning(f"[database] Could not query database. \
+                        Attempt:{attempt} Error: {repr(e)}")
+                    time.sleep(5)    
+                    
+            if not query_done:
+
+                raise DatabaseLockedError()                                       
 
         except Exception as e:
 
             print(str(e))
-            logger.error(f"Error in query [{query}] [values: {values}]: {repr(e)}")            
+            logger.error(f"Error in query [{query}] [values: {values}]: {repr(e)}") 
+            raise SystemExit  
 
         return result
         
