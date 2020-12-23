@@ -141,47 +141,55 @@ class Database:
 
         self.open_connection()
 
-        logger.debug("[database] DB: start creating new tables")
+        try:
 
-        # create new tables if not existing
-        for table_name, table_content in tables.items():
+            logger.debug("[database] DB: start creating new tables")
 
-            elements = ""
-            for column_name, data_type in table_content.items():
-                if elements == "":
-                    elements = "%s %s" % (column_name, data_type)
-                else:
-                    elements = "%s, %s %s" % (elements, column_name, data_type)
+            # create new tables if not existing
+            for table_name, table_content in tables.items():
 
-            query = "CREATE TABLE IF NOT EXISTS " + table_name + " (" + elements + ")"
-            logger.debug(f"[database] SQL query: {query}")
+                elements = ""
+                for column_name, data_type in table_content.items():
+                    if elements == "":
+                        elements = "%s %s" % (column_name, data_type)
+                    else:
+                        elements = "%s, %s %s" % (elements, column_name, data_type)
 
-            self.cursor.execute(query)
+                query = "CREATE TABLE IF NOT EXISTS " + table_name + " (" + elements + ")"
+                logger.debug(f"[database] SQL query: {query}")
 
-        # save changes to database
-        self.connection.commit()
+                self.cursor.execute(query)
 
-        logger.info("[database] tables created if non existing")
+            # save changes to database
+            self.connection.commit()
+
+            logger.info("[database] tables created if non existing")
 
 
-        # check tables for missing columns (e.g. new columns in newer versions)
-        logger.debug("[database] start checking for missing columns in DB tables")
+            # check tables for missing columns (e.g. new columns in newer versions)
+            logger.debug("[database] start checking for missing columns in DB tables")
 
-        for table_name, table_content in tables.items():
-            
-            for column_name, data_type in table_content.items():
-            
-                result = self.fetch_first_row_query(f"SELECT COUNT(*) AS num FROM \
-                                                    pragma_table_info('{table_name}') \
-                                                    WHERE name='{column_name}'")
-            
-                if result == None or result["num"] == 0:
+            for table_name, table_content in tables.items():
+                
+                for column_name, data_type in table_content.items():
+                
+                    result = self.fetch_first_row_query(f"SELECT COUNT(*) AS num FROM \
+                                                        pragma_table_info('{table_name}') \
+                                                        WHERE name='{column_name}'")
+                
+                    if result == None or result["num"] == 0:
 
-                    # column is missing and needs to be appended
-                    self.query(f"ALTER TABLE {table_name} ADD {column_name} {data_type};")
-                    logger.info(f"[database] db: column {column_name} added to table {table_name}")
+                        # column is missing and needs to be appended
+                        self.query(f"ALTER TABLE {table_name} ADD {column_name} {data_type};")
+                        logger.info(f"[database] db: column {column_name} added to table {table_name}")
 
-        logger.info("[database] columns checked in DB tables")
+            logger.info("[database] columns checked in DB tables")
+
+        except Exception as e:
+
+            print(str(e))
+            logger.critical(f"[database] Error in initial queries: {repr(e)}")
+            raise SystemExit              
 
 
     def __del__(self):
