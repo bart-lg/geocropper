@@ -829,7 +829,7 @@ def unpack_big_tile(file_name, tile=None):
     if file_name.endswith(".zip") or file_name.endswith(".tar.gz"):
     
         # get path of the packed file
-        file_path = config.bigTilesDir / item
+        file_path = config.bigTilesDir / file_name
 
         # unpack zip file if zip
         if file_name.endswith(".zip"):
@@ -838,7 +838,7 @@ def unpack_big_tile(file_name, tile=None):
 
                 # TODO: dirty... (is maybe first entry of zip_ref)
                 # get tile by folder name
-                new_folder_name = item[:-4] + ".SAFE"
+                new_folder_name = file_name[:-4] + ".SAFE"
                 tile = db.get_tile(folder_name = new_folder_name)              
 
             # unzip

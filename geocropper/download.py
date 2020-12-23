@@ -1,4 +1,7 @@
+import pathlib
+
 import geocropper.config as config
+import geocropper.utils as utils
 from geocropper.database import Database
 from geocropper.sentinelWrapper import SentinelWrapper
 from geocropper.landsatWrapper import LandsatWrapper
@@ -214,6 +217,8 @@ def download_product(tile_id=None, tile=None):
 
         if tile['platform'].lower().startswith("sentinel"):
 
+            sentinel = SentinelWrapper()
+
             # check if tile ready for download
             if sentinel.ready_for_download(tile['productId']):
 
@@ -252,6 +257,8 @@ def download_product(tile_id=None, tile=None):
                     db.set_last_download_request_for_tile(tile['rowid'])
 
         if tile['platform'].lower().startswith("landsat"):
+
+            landsat = LandsatWrapper()
 
             logger.info("Download started.")
             db.set_last_download_request_for_tile(tile['rowid'])

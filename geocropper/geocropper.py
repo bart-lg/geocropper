@@ -175,9 +175,11 @@ def download_satellite_data(lat, lon, date_from, date_to, platform,
 
         # add tile information to database
 
-        for key, item in products:
+        for key in products:
 
-            tile_id = download.save_product_key(platform, key, meta_data=item)
+            meta_data = products[key]
+
+            tile_id = download.save_product_key(platform, key, meta_data=meta_data)
 
             # if there is a point of interest (POI) then create connection between tile and POI in database
 
@@ -203,7 +205,7 @@ def download_satellite_data(lat, lon, date_from, date_to, platform,
             for i, (key, item) in enumerate(products.items()):
 
                 tile = db.get_tile(product_id = key)
-                download.download_product(tile)
+                download.download_product(tile=tile)
 
     return products
 
@@ -328,7 +330,7 @@ def start_and_crop_requested_downloads():
             else:
                 print(f"Last download request: {convert_date(tile['lastDownloadRequest'], new_format='%Y-%m-%d %H:%M:%S')}\n")
 
-            download.download_product(tile)
+            download.download_product(tile=tile)
 
     # crop outstanding points                    
 

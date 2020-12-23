@@ -139,8 +139,8 @@ class DatabaseLockedError(Exception):
     """
 
     def __init__(self):
-        self.message = f"Database locked. Could not query database. \
-            Timeout:{config.databaseTimeout} Retries:{databaseRetryQueries}"
+        self.message = f"Database locked or other error. Please see the log-file for details. \
+            Timeout:{config.databaseTimeout} Retries:{config.databaseRetryQueries}"
         super().__init__(self.message)
 
 
@@ -206,7 +206,6 @@ class Database:
     def __del__(self):
 
         self.close_connection()
-        logger.debug("[database] DB connection closed")
 
 
     def open_connection(self):
@@ -403,7 +402,7 @@ class Database:
 
     def get_tile_by_rowid(self, row_id):
         logger.debug(f"[database] get_tile_by_rowid: {row_id}")
-        result = self.fetch_first_row_query(f"SELECT rowid, * FROM tiles WHERE rowid = {rowid}")
+        result = self.fetch_first_row_query(f"SELECT rowid, * FROM tiles WHERE rowid = {row_id}")
         logger.debug(f"[database] get_tile_by_rowid result: {repr(result)}")
         return result
 
