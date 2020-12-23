@@ -141,6 +141,7 @@ class Database:
 
         self.open_connection()
 
+        logger.debug("start creating new tables")
 
         # create new tables if not existing
         for table_name, table_content in tables.items():
@@ -153,6 +154,7 @@ class Database:
                     elements = "%s, %s %s" % (elements, column_name, data_type)
 
             query = "CREATE TABLE IF NOT EXISTS " + table_name + " (" + elements + ")"
+            logger.debug(f"SQL query: {query}")
 
             self.cursor.execute(query)
 
@@ -163,12 +165,15 @@ class Database:
 
 
         # check tables for missing columns (e.g. new columns in newer versions)
+        logger.debug("start checking for missing columns in DB tables")
+
         for table_name, table_content in tables.items():
             
             for column_name, data_type in table_content.items():
             
-                result = self.fetch_first_row_query(f"SELECT COUNT(*) AS num FROM pragma_table_info('{table_name}') \
-                                                   WHERE name='{column_name}'")
+                result = self.fetch_first_row_query(f"SELECT COUNT(*) AS num FROM \
+                                                    pragma_table_info('{table_name}') \
+                                                    WHERE name='{column_name}'")
             
                 if result == None or result["num"] == 0:
 
@@ -176,26 +181,37 @@ class Database:
                     self.query(f"ALTER TABLE {table_name} ADD {column_name} {data_type};")
                     logger.info(f"db: column {column_name} added to table {table_name}")
 
+        logger.info("columns checked in DB tables")
+
 
     def __del__(self):
 
         self.close_connection()
+        logger.debug("DB connection closed")
 
 
     def open_connection(self):
 
-        logger.info("start DB connection")
+        try:
 
-        # open or create sqlite database file
-        self.connection = sqlite3.connect(config.dbFile)
+            logger.debug("start DB connection")
 
-        # provide index-based and case-insensitive name-based access to columns
-        self.connection.row_factory = sqlite3.Row
+            # open or create sqlite database file
+            self.connection = sqlite3.connect(config.dbFile)
 
-        # create sqlite cursor object to execute SQL commands
-        self.cursor = self.connection.cursor()
+            # provide index-based and case-insensitive name-based access to columns
+            self.connection.row_factory = sqlite3.Row
 
-        logger.info("DB connected")
+            # create sqlite cursor object to execute SQL commands
+            self.cursor = self.connection.cursor()
+
+            logger.info("DB connected")
+
+        except Exception as e:
+
+            print(str(e))
+            logger.critical(f"Error in connecting DB: {repr(e)}")
+            raise SystemExit      
 
 
     def close_connection(self):
@@ -207,105 +223,192 @@ class Database:
         
     # query function used for inserts and updates
     def query(self, query, values=None):
-        logger.info("DB query: [%s] [values: %s]" % (query, values))
-        if values == None:
-            self.cursor.execute(query)
-        else:
-            self.cursor.execute(query, values)
-        # save changes
-        self.connection.commit()
-        new_id = self.cursor.lastrowid
+
+        try:
+
+            logger.debug(f"DB query: [{query}] [values: {values}]")
+            
+            if values == None:
+                self.cursor.execute(query)
+            else:
+                self.cursor.execute(query, values)
+            
+            # save changes
+            self.connection.commit()
+            new_id = self.cursor.lastrowid
+            
+            logger.debug(f"DB query: new_id: {new_id}")
+
+        except Exception as e:
+
+            print(str(e))
+            logger.error(f"Error in query [{query}] [values: {values}]: {repr(e)}") 
+
         return new_id
 
     # query function used for selects returning all rows of result
     def fetch_all_rows_query(self, query, values=None):
-        if values == None:
-            self.cursor.execute(query)
-        else:
-            self.cursor.execute(query, values)
-        return self.cursor.fetchall()
+
+        try:
+
+            logger.debug(f"DB query: [{query}] [values: {values}]")
+
+            if values == None:
+                self.cursor.execute(query)
+            else:
+                self.cursor.execute(query, values)
+
+            result = self.cursor.fetchall()
+
+            logger.debug(f"DB query: result: {result}")
+
+        except Exception as e:
+
+            print(str(e))
+            logger.error(f"Error in query [{query}] [values: {values}]: {repr(e)}")            
+
+        return result
 
     # query function used for selects returning only first row of result
     def fetch_first_row_query(self, query, values=None):
-        if values == None:
-            self.cursor.execute(query)
-        else:
-            self.cursor.execute(query, values)
-        return self.cursor.fetchone()
+
+        try:
+
+            logger.debug(f"DB query: [{query}] [values: {values}]")
+
+            if values == None:
+                self.cursor.execute(query)
+            else:
+                self.cursor.execute(query, values)
+
+            result = self.cursor.fetchone()
+
+            logger.debug(f"DB query: result: {result}")
+
+        except Exception as e:
+
+            print(str(e))
+            logger.error(f"Error in query [{query}] [values: {values}]: {repr(e)}")            
+
+        return result
         
 
     ### TILES ###
         
     def get_tile(self, product_id = None, folder_name = None):
+
+        logger.debug(f"get tile for product_id: {product_id} folder_name: {folder_name}")
+
         if not product_id == None and not folder_name == None:
-            qresult = self.fetch_first_row_query("SELECT rowid, * FROM Tiles WHERE productId = '?' AND folderName = '?'", \
-                (product_id, folder_name))
+            qresult = self.fetch_first_row_query(f"SELECT rowid, * FROM Tiles WHERE \
+                                                 productId = '{product_id}' \
+                                                 AND folderName = '{folder_name}'")
         else:
             if not product_id == None:
-                qresult = self.fetch_first_row_query("SELECT rowid, * FROM Tiles WHERE productId = '%s'" % product_id)
+                qresult = self.fetch_first_row_query(f"SELECT rowid, * FROM Tiles WHERE \
+                                                     productId = '{product_id}'")
             if not folder_name == None:
-                qresult = self.fetch_first_row_query("SELECT rowid, * FROM Tiles WHERE folderName = '%s'" % folder_name)            
+                qresult = self.fetch_first_row_query(f"SELECT rowid, * FROM Tiles WHERE \
+                                                     folderName = '{folder_name}'")            
+
+        logger.debug(f"get tile result: {qresult}")
+
         return qresult
 
+
     def get_tile_by_rowid(self, row_id):
-        return self.fetch_first_row_query("SELECT rowid, * FROM tiles WHERE rowid = %d" % rowid)
+        logger.debug(f"get_tile_by_rowid: {row_id}")
+        result = self.fetch_first_row_query(f"SELECT rowid, * FROM tiles WHERE rowid = {rowid}")
+        logger.debug(f"get_tile_by_rowid result: {repr(result)}")
+        return result
+
         
     def add_tile(self, platform, product_id, beginposition, endposition, folder_name = ""):
-        newId = self.query("INSERT INTO Tiles (platform, folderName, productId, beginposition, endposition, \
-            firstDownloadRequest) \
+        logger.debug(f"add_tile: platform:{platform} product_id:{product_id} \
+                     beginposition:{beginposition} endposition:{endposition}")
+        newId = self.query("INSERT INTO Tiles (platform, folderName, productId, \
+            beginposition, endposition, firstDownloadRequest) \
             VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))", 
             (platform, folder_name, product_id, beginposition, endposition))
-        logger.info("new tile inserted into database")
+        logger.info(f"new tile inserted into database: [{newId}] {platform} {product_id}")
         return newId
 
     def get_requested_tiles(self):
-        return self.fetch_all_rows_query("SELECT rowid, * FROM Tiles WHERE downloadComplete IS NULL AND cancelled IS NULL ")
+        logger.debug("get_requested_tiles")
+        result = self.fetch_all_rows_query("SELECT rowid, * FROM Tiles WHERE \
+            downloadComplete IS NULL AND cancelled IS NULL ")
+        logger.debug(f"get_requested_tiles: {repr(result)}")
+        return result
         
     def set_unzipped_for_tile(self, rowid):
-        self.query("UPDATE Tiles SET unzipped = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
-        logger.info("tile updated in database (unzipped)")
+        logger.debug(f"set_unzipped_for_tile {rowid}")
+        self.query("UPDATE Tiles SET unzipped = datetime('now', 'localtime') \
+            WHERE rowid = %d" % rowid)
+        logger.debug(f"tile updated in database (unzipped): {rowid}")
      
     def set_last_download_request_for_tile(self, rowid):
-        self.query("UPDATE Tiles SET lastDownloadRequest = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
-        logger.info("tile updated in database (lastDownloadRequest)")
+        logger.debug(f"set_last_download_request_for_tile {rowid}")
+        self.query("UPDATE Tiles SET lastDownloadRequest = datetime('now', 'localtime') \
+            WHERE rowid = %d" % rowid)
+        logger.debug(f"tile updated in database (lastDownloadRequest): {rowid}")
         
     def set_download_complete_for_tile(self, rowid):
-        self.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
-        logger.info("tile updated in database (downloadComplete)")
+        logger.debug(f"set_download_complete_for_tile {rowid}")
+        self.query("UPDATE Tiles SET downloadComplete = datetime('now', 'localtime') \
+            WHERE rowid = %d" % rowid)
+        logger.info(f"tile updated in database (downloadComplete): {rowid}")
 
     def clear_download_complete_for_tile(self, rowid):
+        logger.debug(f"clear_download_complete_for_tile {rowid}")
         self.query("UPDATE Tiles SET downloadComplete = null WHERE rowid = %d" % rowid)
-        logger.info("tile updated in database (downloadComplete cleared)")        
+        logger.info(f"tile updated in database (downloadComplete cleared): {rowid}")        
 
     def clear_last_download_request_for_tile(self, rowid):
+        logger.debug(f"clear_last_download_request_for_tile {rowid}")
         self.query("UPDATE Tiles SET lastDownloadRequest = NULL WHERE rowid = %d" % rowid)
-        logger.info("tile updated in database (lastDownloadRequest cleared due to failed request)")
+        logger.info(f"tile updated in database \
+            (lastDownloadRequest cleared due to failed request): {rowid}")
 
     def set_cancelled_tile(self, rowid):
-        self.query("UPDATE Tiles SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
-        logger.info("tile updated in database (cancelled)")  
+        logger.debug(f"set_cancelled_tile {rowid}")
+        self.query("UPDATE Tiles SET cancelled = datetime('now', 'localtime') \
+            WHERE rowid = %d" % rowid)
+        logger.info(f"tile updated in database (cancelled): {rowid}")  
 
     def get_latest_download_request(self):
-        result = self.fetch_first_row_query("SELECT MAX(lastDownloadRequest) as latest FROM Tiles WHERE downloadComplete IS NULL")
+        logger.debug("get_latest_download_request")
+        result = self.fetch_first_row_query("SELECT MAX(lastDownloadRequest) as latest FROM Tiles \
+            WHERE downloadComplete IS NULL")
+        logger.debug(f"latest download request: {result}")
         if result == None:
             return None
         else:
             return result["latest"]
 
     def update_tile_projection(self, rowid, projection):
+        logger.debug(f"update_tile_projection {rowid} {projection}")
         self.query("UPDATE Tiles SET projection = '%s' WHERE rowid = %d" % (projection, rowid))
-        logger.info("projection updated for tileId " + str(rowid))
+        logger.debug(f"projection updated for tile {rowid} [{projection}] ")
 
     def get_tiles_without_projection_info(self):
-        return self.fetch_all_rows_query("SELECT rowid, * FROM Tiles WHERE projection IS NULL AND downloadComplete IS NOT NULL")
+        logger.debug(f"get_tiles_without_projection_info")
+        result = self.fetch_all_rows_query("SELECT rowid, * FROM Tiles WHERE \
+            projection IS NULL AND downloadComplete IS NOT NULL")
+        logger.debug(f"tiles without projection info: {result}")
+        return result
 
 
     ### POIS ###
     
     def get_poi(self, groupname, lat, lon, date_from, date_to, platform, width, height, tile_limit = 0, **kwargs):
 
-        query = "SELECT rowid, * FROM PointOfInterests WHERE groupname = '" + str(groupname)  + "' AND lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + date_from + "'" \
-            + " AND dateTo = '" + date_to + "' AND platform = '" + platform + "' AND width = " + str(width) + " AND height = " + str(height) \
+        logger.debug(f"get_poi {groupname}, {lat}, {lon}, {date_from}, {date_to}, \
+                     {platform}, {width}, {height}, {tile_limit}, {repr(kwargs)}")
+
+        query = "SELECT rowid, * FROM PointOfInterests WHERE groupname = '" + str(groupname) \
+            + "' AND lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + date_from + "'" \
+            + " AND dateTo = '" + date_to + "' AND platform = '" + platform \
+            + "' AND width = " + str(width) + " AND height = " + str(height) \
             + " AND tileLimit = " + str(tile_limit)
 
         used_keys = []
@@ -321,10 +424,19 @@ class Database:
             if not ( item in used_keys ):
                 query = "%s AND %s IS NULL" % (query, item)
 
+        logger.debug(f"get_poi query: {query}")
+
         qresult = self.fetch_first_row_query(query)
+
+        logger.debug(f"get_poi result: {repr(qresult)}")
+
         return qresult
         
     def add_poi(self, groupname, lat, lon, date_from, date_to, platform, width, height, tile_limit = 0, **kwargs):
+
+        logger.debug(f"add_poi {groupname}, {lat}, {lon}, {date_from}, {date_to}, \
+                     {platform}, {width}, {height}, {tile_limit}, {repr(kwargs)}")
+
         query = "INSERT INTO PointOfInterests (groupname, lat, lon"
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
@@ -334,29 +446,45 @@ class Database:
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = query + ", '" + str(value) + "'"
-        query = query + ", '" + self.get_country(lat, lon) + "', '" + date_from + "', '" + date_to + "', '" + platform + "', " + str(width) + ", " + str(height) \
+        query = query + ", '" + self.get_country(lat, lon) + "', '" + date_from + "', '" + date_to + "', '" \
+            + platform + "', " + str(width) + ", " + str(height) \
             + ", " + str(tile_limit) + ", " + "'', datetime('now', 'localtime'))"
+
+        logger.debug(f"add_poi query: {query}")
+
         poi_id = self.query(query)
 
-        logger.info("new PointOfInterest inserted into database")    
+        logger.info(f"new PointOfInterest inserted into database: {poi_id} [lat:{lat} lon:{lon}]")  
+
         return poi_id
         
     def get_country(self, lat, lon):
-        cc = countries.CountryChecker(config.worldBordersShapeFile)
-        country = cc.getCountry(countries.Point(lat, lon))
+        logger.debug(f"get_country lat:{lat} lon:{lon}")
+        country = None
+        try:
+            cc = countries.CountryChecker(config.worldBordersShapeFile)
+            country = cc.getCountry(countries.Point(lat, lon))
+        except Exception as e:
+            logger.error(f"Error in get_country: {repr(e)}")
+        logger.debug(f"country for lat:{lat} lon:{lon}: {country}")
         if country == None:
             return "None"
         else:
             return country.iso
         
     def get_poi_from_id(self, poi_id):
-        return self.fetch_first_row_query("SELECT rowid, * FROM PointOfInterests WHERE rowid = %d" % poi_id)
+        logger.debug(f"get_poi_from_id {poi_id}")
+        result = self.fetch_first_row_query("SELECT rowid, * FROM PointOfInterests WHERE rowid = %d" % poi_id)
+        logger.debug(f"get_poi result: {repr(result)}")
+        return result
         
     def set_tiles_identified_for_poi(self, poi_id):
+        logger.debug(f"set_tiles_identified_for_poi {poi_id}")
         self.query("UPDATE PointOfInterests SET tilesIdentified = datetime('now', 'localtime') WHERE rowid = %d" % poi_id)
-        logger.info("PointOfInterest updated in database (tilesIdentified)")
+        logger.info(f"PointOfInterest updated in database (tilesIdentified): {poi_id}")
 
     def set_cancelled_poi(self, rowid):
+        logger.debug(f"set_cancelled_poi {poi_id}")
         self.query("UPDATE PointOfInterests SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("PointOfInterest updated in database (cancelled)")        
         
@@ -364,41 +492,64 @@ class Database:
     ### TILE-POI-CONNECTION ###
         
     def get_tile_for_poi(self, poi_id, tile_id):
-        return self.fetch_first_row_query("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
+        logger.debug(f"get_tile_for_poi poi:{poi_id} tile:{tile_id}")
+        result = self.fetch_first_row_query("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles \
+            INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
             WHERE TilesForPOIs.poiId = %d AND TilesForPOIs.tileId = %d" % (poi_id, tile_id))
+        logger.debug(f"get_tile_for_poi result: {repr(result)}")
+        return result
         
     def get_tiles_for_poi(self, poi_id):
-        return self.fetch_all_rows_query("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
+        logger.debug(f"get_tiles_for_poi poi:{poi_id}")
+        result = self.fetch_all_rows_query("SELECT Tiles.rowid, Tiles.*, TilesForPOIs.tileCropped FROM Tiles \
+            INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
             WHERE TilesForPOIs.poiId = %d" % poi_id)
+        logger.debug(f"get_tiles_for_poi result: {repr(result)}")
+        return result
 
     def get_pois_for_tile(self, tile_id):
-        return self.fetch_all_rows_query("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, TilesForPOIs.cancelled \
-                                       FROM PointOfInterests INNER JOIN TilesForPOIs ON PointOfInterests.rowid = TilesForPOIs.poiId \
-                                       WHERE TilesForPOIs.tileId = %d" % tile_id)
+        logger.debug(f"get_pois_for_tile tile:{tile_id}")
+        result = self.fetch_all_rows_query("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, \
+                                            TilesForPOIs.cancelled FROM PointOfInterests INNER JOIN TilesForPOIs \
+                                            ON PointOfInterests.rowid = TilesForPOIs.poiId \
+                                            WHERE TilesForPOIs.tileId = %d" % tile_id)
+        logger.debug(f"get_pois_for_tile result: {repr(result)}")
+        return result
 
     def get_uncropped_pois_for_downloaded_tiles(self):
-        return self.fetch_all_rows_query("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, TilesForPOIs.cancelled \
-                                       FROM PointOfInterests INNER JOIN TilesForPOIs ON PointOfInterests.rowid = TilesForPOIs.poiId \
-                                       INNER JOIN Tiles ON TilesForPOIs.tileId = Tiles.rowid \
-                                       WHERE Tiles.downloadComplete IS NOT NULL AND TilesForPOIs.tileCropped IS NULL AND TilesForPOIs.cancelled IS NULL")
+        logger.debug("get_uncropped_pois_for_downloaded_tiles")
+        result = self.fetch_all_rows_query("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, \
+                                            TilesForPOIs.cancelled FROM PointOfInterests INNER JOIN TilesForPOIs \
+                                            ON PointOfInterests.rowid = TilesForPOIs.poiId \
+                                            INNER JOIN Tiles ON TilesForPOIs.tileId = Tiles.rowid \
+                                            WHERE Tiles.downloadComplete IS NOT NULL AND TilesForPOIs.tileCropped IS NULL \
+                                            AND TilesForPOIs.cancelled IS NULL")
+        logger.debug(f"get_uncropped_pois_for_downloaded_tiles result: {repr(result)}")
+        return result
 
     def get_tile_poi_connection_id(self, poi_id, tile_id):
+        logger.debug(f"get_tile_poi_connection_id poi:{poi_id} tile:{tile_id}")
         data = self.fetch_first_row_query("SELECT rowid FROM TilesForPOIs WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
+        logger.debug(f"get_tile_poi_connection_id id:{data['rowid']} dataset:{repr(data)}")
         if data == None:
             return 0
         else:
             return data["rowid"]   
         
     def add_tile_for_poi(self, poi_id, tile_id):
+        logger.debug(f"add_tile_for_poi poi:{poi_id} tile:{tile_id}")
         newId = self.query("INSERT INTO TilesForPOIs (poiId, tileId) VALUES ( %d, %d)" % (poi_id, tile_id))
-        logger.info("new tile-poi connection inserted into database")
+        logger.info(f"new tile-poi connection inserted into database poi:{poi_id} tile:{tile_id}")
         return newId
 
     def set_tile_cropped(self, poi_id, tile_id, path):
-        self.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime'), path = '%s' WHERE poiId = %d AND tileId = %d" % (path, poi_id, tile_id))
+        logger.debug(f"set_tile_cropped poi:{poi_id}, tile:{tile_id}, path:{path}")
+        self.query("UPDATE TilesForPOIs SET tileCropped = datetime('now', 'localtime'), path = '%s' WHERE poiId = %d \
+                    AND tileId = %d" % (path, poi_id, tile_id))
         logger.info("tile-poi updated in database (tileCropped): poiId:%d tileId:%d" % (poi_id, tile_id))
 
     def set_cancelled_tile_for_poi(self, poi_id, tile_id):
+        logger.debug(f"set_cancelled_tile_for_poi poi:{poi_id}, tile:{tile_id}")
         self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
         logger.info("tile-poi updated in database (cancelled): poiId:%d tileId:%d" % (poi_id, tile_id))          
         
@@ -406,11 +557,13 @@ class Database:
     ### CSV ###
 
     def import_csv_row(self, file_name, row):
+        logger.debug(f"import_csv_row {file_name} {row}")
         if not row == None:
             optional_fields = ["width", "height", "tileLimit", "description"]
             num_fields = ["width", "height", "tileLimit"]
             keys = "fileName, groupname, lat, lon, dateFrom, dateTo, platform"
-            values = "'%s', '%s', %s, %s, '%s', '%s', '%s'" % (file_name, row["groupname"], row["lat"], row["lon"], row["dateFrom"], row["dateTo"], row["platform"])
+            values = "'%s', '%s', %s, %s, '%s', '%s', '%s'" % (file_name, row["groupname"], 
+                row["lat"], row["lon"], row["dateFrom"], row["dateTo"], row["platform"])
             for key, value in row.items():
                 if key in config.optionalSentinelParameters or key in optional_fields:
                     if len(str(value)) > 0:
@@ -422,18 +575,27 @@ class Database:
             keys = keys + ", csvImported"
             values = values + ", datetime('now', 'localtime')"
             query = "INSERT INTO CSVInput (%s) VALUES (%s)" % (keys, values)
+            logger.debug(f"import_csv_row query: {query}")
             csv_import_row_id = self.query(query)
+            logger.info(f"csv row imported file:{file_name} row:{row} db row_id:{csv_import_row_id}")
             return csv_import_row_id
 
     def get_imported_csv_data(self):
-        return self.fetch_all_rows_query("SELECT rowid, * FROM CSVInput")
+        logger.debug("get_imported_csv_data")
+        result = self.fetch_all_rows_query("SELECT rowid, * FROM CSVInput")
+        logger.debug(f"get_imported_csv_data result: {repr(result)}")
+        return result
 
     def move_csv_item_to_archive(self, rowid):
-        new_id = self.query("INSERT INTO CSVLoaded SELECT *, datetime('now', 'localtime') as csvLoaded FROM CSVInput WHERE CSVInput.rowid = %d" % rowid)
+        logger.debug(f"move_csv_item_to_archive rowid:{rowid}")
+        new_id = self.query("INSERT INTO CSVLoaded SELECT *, datetime('now', 'localtime') \
+                             as csvLoaded FROM CSVInput WHERE CSVInput.rowid = %d" % rowid)
         self.query("DELETE FROM CSVInput WHERE rowid = %d" % rowid)
+        logger.debug(f"move_csv_item_to_archive dataset moved [new_id:{new_id}]")
         return new_id
 
     def set_cancelled_import(self, rowid):
+        logger.debug(f"set_cancelled_import {rowid}")
         self.query("UPDATE CSVInput SET cancelled = datetime('now', 'localtime') WHERE rowid = %d" % rowid)
         logger.info("import updated in database (cancelled)")
         self.move_csv_item_to_archive(rowid)
