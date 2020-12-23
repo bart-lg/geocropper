@@ -600,7 +600,14 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
                         if config.createSymlink:
                             tile_dir = big_tile
                             # TODO: set config parameter for realpath or relpath for symlink
-                            meta_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_dir.parent.resolve()))
+                            try:
+                                meta_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_dir.parent.resolve()))
+                            except PermissionError as e:
+                                logger.error(f"Could not create symlink due to permission error!\n \
+                                             source: {os.path.realpath(str(tile_dir.resolve()))}\n \
+                                             symlink: {str(meta_dir.parent.resolve())}\n \
+                                             {repr(e)}")
+                                print(f"Could not create symlink to meta dir due to permission error!\n{str(e)}\n")
 
                         print(f"random crop {j} done.\n")
 
@@ -1012,8 +1019,15 @@ def crop_tiles(poi_id):
                             tile_dir = config.bigTilesDir / tile["folderName"]
                             if not meta_target_dir.exists():
                                 # TODO: set config parameter for realpath or relpath for symlinks
-                                meta_target_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_target_dir.parent.resolve()))
-                                print("Symlink created.")                        
+                                try:
+                                    meta_target_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_target_dir.parent.resolve()))
+                                    print("Symlink created.")                        
+                                except PermissionError as e:
+                                    logger.error(f"Could not create symlink due to permission error!\n \
+                                                 source: {os.path.realpath(str(tile_dir.resolve()))}\n \
+                                                 symlink: {str(meta_target_dir.parent.resolve())}\n \
+                                                 {repr(e)}")
+                                    print(f"Could not create symlink to meta dir due to permission error!\n{str(e)}\n")                                
 
                     else:
                         print("SNAP GPT not configured. Sentinel-1 tiles cannot be cropped.\n")
@@ -1101,9 +1115,16 @@ def crop_tiles(poi_id):
                     if config.createSymlink:
                         tile_dir = config.bigTilesDir / tile["folderName"]
                         if not meta_target_dir.exists():
-                            # TODO: set config parameter for realpath or relpath for symlinks
-                            meta_target_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_target_dir.parent.resolve()))
-                            print("Symlink created.")
+                            try:
+                                # TODO: set config parameter for realpath or relpath for symlinks
+                                meta_target_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_target_dir.parent.resolve()))
+                                print("Symlink created.")
+                            except PermissionError as e:
+                                logger.error(f"Could not create symlink due to permission error!\n \
+                                             source: {os.path.realpath(str(tile_dir.resolve()))}\n \
+                                             symlink: {str(meta_target_dir.parent.resolve())}\n \
+                                             {repr(e)}")
+                                print(f"Could not create symlink to meta dir due to permission error!\n{str(e)}\n")                                
 
                     # set date for tile cropped 
                     db.set_tile_cropped(poi_id, tile["rowid"], main_target_folder)
@@ -1163,9 +1184,13 @@ def crop_tiles(poi_id):
 
                     # if config.createSymlink:
                     #     tile_dir = path_image_data
-                    #     # TODO: set config parameter for realpath or relpath for symlink
-                    #     meta_target_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_target_dir.parent.resolve()))
-                    #     print("Symlink created.")                            
+                    #     try:
+                        #     # TODO: set config parameter for realpath or relpath for symlink
+                        #     meta_target_dir.symlink_to(os.path.realpath(str(tile_dir.resolve())), str(meta_target_dir.parent.resolve()))
+                        #     print("Symlink created.")                            
+                        # except PermissionError as e:
+                        #     logger.error(f"Could not create symlink due to permission error! {repr(e)}")
+                        #     print(f"Could not create symlink to meta dir due to permission error!\n{str(e)}\n")                        
 
                     # # set date for tile cropped 
                     # db.set_tile_cropped(poi_id, tile["rowid"], main_target_folder) 
