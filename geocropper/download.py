@@ -2,16 +2,16 @@ import pathlib
 
 import geocropper.config as config
 import geocropper.utils as utils
-from geocropper.database import Database
-from geocropper.sentinelWrapper import SentinelWrapper
-from geocropper.landsatWrapper import LandsatWrapper
-from geocropper.asfWrapper import AsfWrapper
+import geocropper.database as database
+import geocropper.sentinelWrapper as sentinelWrapper
+import geocropper.landsatWrapper as landsatWrapper
+import geocropper.asfWrapper as asfWrapper
 
 import logging
 
 # get logger object
 logger = logging.getLogger('root')
-db = Database()
+db = database.Database()
 
 def search_satellite_products(lat, lon, date_from, date_to, platform, tile_limit=0, tile_start=1, **kwargs):
     """Search for satellite products
@@ -83,7 +83,7 @@ def search_satellite_products(lat, lon, date_from, date_to, platform, tile_limit
 
     if platform.lower().startswith("sentinel"):
         
-        sentinel = SentinelWrapper()
+        sentinel = sentinelWrapper.SentinelWrapper()
 
         if int(tile_limit) > 0:
             products = sentinel.get_sentinel_products(lat, lon, date_from, date_to, platform, 
@@ -103,7 +103,7 @@ def search_satellite_products(lat, lon, date_from, date_to, platform, tile_limit
 
     if platform.lower().startswith("landsat"):
 
-        landsat = LandsatWrapper()
+        landsat = landsatWrapper.LandsatWrapper()
 
         date_from = utils.convert_date(date_from, "%Y-%m-%d")
         date_to = utils.convert_date(date_to, "%Y-%m-%d")
@@ -151,13 +151,13 @@ def save_product_key(platform, key, meta_data=None):
         if platform.lower().startswith("sentinel"):
 
             # load sentinel wrapper and fetch meta data
-            sentinel = SentinelWrapper()
+            sentinel = sentinelWrapper.SentinelWrapper()
             meta_data = sentinel.get_product_data(key)
 
         if platform.lower().startswith("landsat"):
 
             # load landsat wrapper and fetch meta data
-            landsat = LandsatWrapper()
+            landsat = landsatWrapper.LandsatWrapper()
             meta_data = landsat.get_product_data(platform, key)
 
 
@@ -213,11 +213,11 @@ def download_product(tile_id=None, tile=None):
     if tile == None:
         tile = db.get_tile_by_rowid(row_id = tile_id)
 
-    if check_for_existing_big_tiles(tile) == False:
+    if check_for_existing_big_tile(tile) == False:
 
         if tile['platform'].lower().startswith("sentinel"):
 
-            sentinel = SentinelWrapper()
+            sentinel = sentinelWrapper.SentinelWrapper()
 
             # check if tile ready for download
             if sentinel.ready_for_download(tile['productId']):
@@ -228,9 +228,9 @@ def download_product(tile_id=None, tile=None):
                 db.set_last_download_request_for_tile(tile['rowid'])
                 download_complete = sentinel.download_sentinel_product(tile['productId'])
 
-                if download_complete and check_for_existing_big_tiles(tile):
+                if download_complete and check_for_existing_big_tile(tile):
 
-                    # download complete timestamp gets set in check_for_existing_big_tiles
+                    # download complete timestamp gets set in check_for_existing_big_tile
                     utils.unpack_big_tile(file_name=(tile['folderName'][:-5] + ".zip"), tile=tile)
                     utils.save_tile_projection(tile=tile)
                     return True
@@ -239,13 +239,15 @@ def download_product(tile_id=None, tile=None):
 
                 if tile['folderName'].startswith("S1"):
 
+                    asf = asfWrapper.AsfWrapper()
+
                     # try ASF as alternative source
                     granule = tile['folderName'][:-5]
                     download_complete = asf.download_S1_tile(granule + ".zip", config.bigTilesDir)
 
-                    if download_complete and check_for_existing_big_tiles(tile):
+                    if download_complete and check_for_existing_big_tile(tile):
 
-                        # download complete timestamp gets set in check_for_existing_big_tiles
+                        # download complete timestamp gets set in check_for_existing_big_tile
                         utils.unpack_big_tile(file_name=(tile['folderName'][:-5] + ".zip"), tile=tile)
                         utils.save_tile_projection(tile=tile)
                         return True
@@ -258,22 +260,55 @@ def download_product(tile_id=None, tile=None):
 
         if tile['platform'].lower().startswith("landsat"):
 
-            landsat = LandsatWrapper()
+            landsat = landsatWrapper.LandsatWrapper()
 
             logger.info("Download started.")
             db.set_last_download_request_for_tile(tile['rowid'])
 
             landsat.download_landsat_product(tile["productId"])
 
-            if check_for_existing_big_tiles(tile):
+            if check_for_existing_big_tile(tile):
 
-                # download complete timestamp gets set in check_for_existing_big_tiles
+                # download complete timestamp gets set in check_for_existing_big_tile
                 utils.unpack_big_tile(file_name=(tile['folderName'] + ".tar.gz"), tile=tile)
                 utils.save_tile_projection(tile=tile)
                 return True            
 
 
-def check_for_existing_big_tiles(tile):
+def check_for_existing_big_tile_archive(tile):
+
+    if tile['platform'].lower().startswith("sentinel"):
+
+        if pathlib.Path(config.bigTilesDir / (tile['folderName'][:-5] + ".zip") ).is_file():
+            return True
+        else:
+            return False
+
+    if tile['platform'].lower().startswith("landsat"):
+
+        if pathlib.Path(config.bigTilesDir / (tile['folderName'] + ".tar.gz") ).is_file():
+            return True
+        else:
+            return False
+
+def check_for_existing_big_tile_folder(tile):
+
+    if tile['platform'].lower().startswith("sentinel"):
+
+        if pathlib.Path(config.bigTilesDir / tile['folderName']).is_dir():
+            return True
+        else:
+            return False
+
+    if tile['platform'].lower().startswith("landsat"):
+
+        if pathlib.Path(config.bigTilesDir / tile['folderName']).is_dir():
+            return True
+        else:
+            return False
+
+
+def check_for_existing_big_tile(tile):
     """Checks if big tile is already downloaded.
 
     Parameters
@@ -288,8 +323,8 @@ def check_for_existing_big_tiles(tile):
 
     if tile['platform'].lower().startswith("sentinel"):
 
-        if not pathlib.Path(config.bigTilesDir / tile['folderName']).is_dir() and \
-           not pathlib.Path(config.bigTilesDir / (tile['folderName'][:-5] + ".zip") ).is_file():
+        if not check_for_existing_big_tile_folder(tile) and \
+           not check_for_existing_big_tile_archive(tile):
 
             if tile['downloadComplete'] != None:
             
@@ -309,7 +344,7 @@ def check_for_existing_big_tiles(tile):
 
         # TODO: check if existing tar file is complete => needs to be deleted and re-downloaded
 
-        if not pathlib.Path(config.bigTilesDir / tile['folderName']).is_dir():
+        if not check_for_existing_big_tile_folder(tile):
 
             if tile['downloadComplete'] != None:
             

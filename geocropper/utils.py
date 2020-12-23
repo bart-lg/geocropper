@@ -23,6 +23,7 @@ import sys
 from datetime import datetime
 
 import geocropper.config as config
+import geocropper.download as download
 from geocropper.database import Database
 import geocropper.sentinelWrapper as sentinelWrapper
 import geocropper.asfWrapper as asfWrapper
@@ -880,35 +881,7 @@ def unpack_big_tile(file_name, tile=None):
         os.remove(file_path)
 
         # set unpacked date in database
-        db.set_unzipped_for_tile(tile["rowid"])
-
-
-def unpack_big_tiles():
-
-    logger.info("start of unpacking tile zip/tar files")
-    
-    print("\nUnpack big tiles:")
-    print("-----------------\n")
-
-    # determine number of zip files        
-    files_num_zip = len([f for f in os.listdir(config.bigTilesDir) 
-         if f.endswith('.zip') and os.path.isfile(os.path.join(config.bigTilesDir, f))])
-
-    # determine number of tar files
-    files_num_tar = len([f for f in os.listdir(config.bigTilesDir) 
-         if f.endswith('.tar.gz') and os.path.isfile(os.path.join(config.bigTilesDir, f))])
-
-    # calculate number of total packed files
-    files_num = files_num_zip + files_num_tar
-
-    # start unpacking
-
-    for item in os.listdir(config.bigTilesDir):
-
-        if item.endswith(".zip") or item.endswith(".tar.gz"):
-            unpack_big_tile(item)
-
-    logger.info("tile zip/tar files extracted")
+        db.set_unpacked_for_tile(tile["rowid"])
 
 
 def crop_tiles(poi_id):
@@ -934,6 +907,29 @@ def crop_tiles(poi_id):
             if tile["tileCropped"] == None and not (tile["downloadComplete"] == None):
 
                 print("Cropping %s ..." % tile["folderName"])
+
+                if download.check_for_existing_big_tile_folder(tile) == False:
+
+                    print("Big tile folder missing!")
+                    print("Cropping not possible.")
+
+                    if download.check_for_existing_big_tile_archive(tile) == False:
+
+                        logger.warning("Big tile missing although marked as downloaded in database.")
+                        db.clear_download_complete_for_tile(tile['rowid'])
+                        print("Big tile archive missing!")
+                        print("The internal database got updated (missing download).")
+                        print("Please start the download process again.")
+
+                    else:
+
+                        logger.warning("Big tile not unpacked, but crop function started.")
+                        print("Big tile archive found!")
+                        print("Since download processes are maybe running, no automatic unpacking is performed at this point.")
+                        print("Please unpack big tiles using the function unpack_big_tiles() or unpack manually and start again.\n")
+
+                    # skip this tile
+                    continue
 
                 if poi["platform"] == "Sentinel-1" or poi["platform"] == "Sentinel-2":
                     beginposition = convert_date(tile["beginposition"], new_format="%Y%m%d-%H%M")

@@ -301,7 +301,6 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
     if not products == None and len(products) > 0:
         
         utils.crop_tiles(poi_id)
-        logger.info("Tiles cropped.")
 
     
     if products == None:
@@ -350,3 +349,33 @@ def start_and_crop_requested_downloads():
                 crop_tiles(poi['rowid'])
     
         print("\nCropped all outstanding points!")
+
+
+def unpack_big_tiles():
+    """Unpacks all big tile archives in big tile directory
+    """
+
+    logger.info("start of unpacking tile zip/tar files")
+    
+    print("\nUnpack big tiles:")
+    print("-----------------\n")
+
+    # determine number of zip files        
+    files_num_zip = len([f for f in os.listdir(config.bigTilesDir) 
+         if f.endswith('.zip') and os.path.isfile(os.path.join(config.bigTilesDir, f))])
+
+    # determine number of tar files
+    files_num_tar = len([f for f in os.listdir(config.bigTilesDir) 
+         if f.endswith('.tar.gz') and os.path.isfile(os.path.join(config.bigTilesDir, f))])
+
+    # calculate number of total packed files
+    files_num = files_num_zip + files_num_tar
+
+    # start unpacking
+
+    for item in os.listdir(config.bigTilesDir):
+
+        if item.endswith(".zip") or item.endswith(".tar.gz"):
+            utils.unpack_big_tile(item)
+
+    logger.info("tile zip/tar files extracted")        

@@ -424,8 +424,8 @@ class Database:
         logger.debug(f"[database] get_requested_tiles: {repr(result)}")
         return result
         
-    def set_unzipped_for_tile(self, rowid):
-        logger.debug(f"[database] set_unzipped_for_tile {rowid}")
+    def set_unpacked_for_tile(self, rowid):
+        logger.debug(f"[database] set_unpacked_for_tile {rowid}")
         self.query("UPDATE Tiles SET unzipped = datetime('now', 'localtime') \
             WHERE rowid = %d" % rowid)
         logger.debug(f"[database] tile updated in database (unzipped): {rowid}")
