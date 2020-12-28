@@ -50,6 +50,109 @@ def import_all_csvs(delimiter=',', quotechar='"'):
     csvImport.import_all_csvs(delimiter, quotechar)
 
 
+def show_satellite_data(lat, lon, date_from, date_to, platform, 
+    tile_limit=0, tile_start=1, **kwargs):
+    """Shows satellite products for given search parameters.
+
+    Parameters
+    ----------
+    lat : float
+        Latitude of the geolocation (WGS84 decimal).
+    lon : float
+        Longitude of the geolocation (WGS84 decimal).
+    date_from : str
+        Start date for search request in a chosen format.
+        The format must be recognizable by the dateutil lib.
+        In case of doubt use the format 'YYYY-MM-DD'.
+    date_to : str
+        End date for search request in a chosen format.
+        The format must be recognizable by the dateutil lib.
+        In case of doubt use the format 'YYYY-MM-DD'.
+    platform : str
+        Choose between 
+        - 'Sentinel-1' 
+        - 'Sentinel-2'
+        - 'LANDSAT_TM_C1'
+        - 'LANDSAT_ETM_C1'
+        - 'LANDSAT_8_C1'
+    tile_limit : int, optional
+        Maximum number of tiles to be downloaded.
+        Default is no limit.
+    tile_start : int, optional
+        A tile_start parameter greater than 1 omits the first found tiles.
+        Default is 1.
+    cloudcoverpercentage : int, optional
+        Parameter for Sentinel-2 products.
+        Value between 0 and 100 for maximum cloud cover percentage.
+    producttype : str, optional
+        Sentinel-1 products: RAW, SLC, GRD, OCN
+            SLC: Single Look Complex
+            GRD: Ground Range Detected
+            OCN: Ocean
+        Sentinel-2 products: S2MSI1C, S2MSI2A, S2MSI2Ap
+    polarisationmode : str, optional
+        Parameter for Sentinel-1 products.
+        Accepted entries are: HH, VV, HV, VH, HH+HV, VV+VH
+    sensoroperationalmode : str, optional
+        Parameter for Sentinel-1 products.
+        Accepted entries are: SM, IW, EW, WV
+            SM: Stripmap
+            IW: Interferometric Wide Swath 
+            EW: Extra Wide Swath
+            WV: Wave
+    swathidentifier : str, optional
+        Parameter for Sentinel-1 products.
+        Accepted entries are: S1, S2, S3, S4, S5, S6, IW, IW1, IW2, IW3, EW, EW1, EW2, EW3, EW4, EW5
+    timeliness : str, optional
+        Parameter for Sentinel-1 products.
+            NRT: NRT-3h (Near Real Time)
+            NTC: Fast-24h          
+    """
+
+    # convert date to required format
+    date_from = utils.convert_date(date_from, "%Y%m%d")
+    date_to = utils.convert_date(date_to, "%Y%m%d")
+
+    # print search info
+    # TODO: move to a utils function (redundand code)
+
+    if platform.lower().startswith("sentinel"):
+        print("Search for Sentinel data:")
+    if platform.lower().startswith("landsat"):
+        print("Search for Landsat data:")
+    print("lat: " + str(lat))
+    print("lon: " + str(lon))
+    print("From: " + utils.convert_date(date_from, "%d.%m.%Y"))
+    print("To: " + utils.convert_date(date_to, "%d.%m.%Y"))
+    print("Platform: " + platform)
+    if tile_limit > 0:
+        print("Tile-limit: %d" % tile_limit)
+    if tile_start > 1:
+        print("Tile-start: %d" % tile_start)
+    for key, value in kwargs.items():
+        if key in config.optionalSentinelParameters:
+            print("%s: %s" % (key, str(value)))
+    print("----------------------------\n")
+
+    # search for sentinel data
+    
+    products = download.search_satellite_products(lat, lon, date_from, date_to, platform, 
+        tile_limit=tile_limit, tile_start=tile_start, **kwargs)
+
+    print("Found tiles: %d\n" % len(products))
+    logger.info("Found tiles: %d\n" % len(products))
+
+    if len(products) > 0:
+
+        for key in products:
+
+            print(f"\nKEY: {key}")
+
+            for item_key, item in products[key].items():
+
+                print(f"{item_key}: {item}")
+
+
 def download_satellite_data(lat, lon, date_from, date_to, platform, 
     no_product_download=False, poi_id=0, tile_limit=0, tile_start=1, **kwargs):
     """Download Sentinel tiles to directory specified in the config file.
