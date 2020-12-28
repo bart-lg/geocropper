@@ -146,10 +146,10 @@ def show_satellite_data(lat, lon, date_from, date_to, platform,
     products = download.search_satellite_products(lat, lon, date_from, date_to, platform, 
         tile_limit=tile_limit, tile_start=tile_start, **kwargs)
 
-    print("Found tiles: %d\n" % len(products))
-    logger.info("Found tiles: %d\n" % len(products))
+    if products != None and len(products) > 0:
 
-    if len(products) > 0:
+        print("Found tiles: %d\n" % len(products))
+        logger.info("Found tiles: %d\n" % len(products))        
 
         for key in products:
 
@@ -158,6 +158,10 @@ def show_satellite_data(lat, lon, date_from, date_to, platform,
             for item_key, item in products[key].items():
 
                 print(f"{item_key}: {item}")
+
+    else:
+
+        print("No tiles found.")
 
 
 def download_satellite_data(lat, lon, date_from, date_to, platform, 
@@ -285,10 +289,10 @@ def download_satellite_data(lat, lon, date_from, date_to, platform,
     products = download.search_satellite_products(lat, lon, date_from, date_to, platform, 
         tile_limit=tile_limit, tile_start=tile_start, **kwargs)
 
-    print("Found tiles: %d\n" % len(products))
-    logger.info("Found tiles: %d\n" % len(products))
+    if products != None and len(products) > 0:
 
-    if len(products) > 0:
+        print("Found tiles: %d\n" % len(products))
+        logger.info("Found tiles: %d\n" % len(products))        
 
         # add tile information to database
 
@@ -323,6 +327,10 @@ def download_satellite_data(lat, lon, date_from, date_to, platform,
 
                 tile = db.get_tile(product_id = key)
                 download.download_product(tile=tile)
+
+    else:
+
+        print("No tiles found.")                
 
     return products
 
@@ -422,7 +430,7 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
 
     # if tiles found, crop them
 
-    if not products == None and len(products) > 0:
+    if products != None and len(products) > 0:
         
         utils.crop_tiles(poi_id)
 
