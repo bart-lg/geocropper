@@ -511,3 +511,18 @@ def unpack_big_tiles():
             utils.unpack_big_tile(item)
 
     logger.info("tile zip/tar files extracted")        
+
+
+def combine_preview_images(folder, has_subdir=True):
+    """Creates combined previews in a subdirectory of the cropped tiles folder.
+
+    Parameters
+    ----------
+    folder : string
+        Name of the subdirectory.
+    has_subdir : boolean, optional
+        Default is True.
+        The cropped tiles directory can have two different structures.
+        This parameter defines, if the passed directory has a further subdirectory.
+    """
+    utils.combine_images(folder, has_subdir)    
