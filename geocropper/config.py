@@ -66,7 +66,8 @@ try:
 	createSymlink = config["Meta Data"].getboolean("createSymlink")
 
 	# optional landsat parameters => max_cloud_cover (value in db stored as cloudcoverpercentage)
-	optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", "swathidentifier", "cloudcoverpercentage", "timeliness"]
+	optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", 
+		"swathidentifier", "cloudcoverpercentage", "timeliness", "orbitdirection"]
 
 	# small preview image
 	resizePreviewImage = config["Small Preview Image"].getboolean("resizePreviewImage")

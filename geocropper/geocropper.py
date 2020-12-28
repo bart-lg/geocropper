@@ -106,7 +106,9 @@ def show_satellite_data(lat, lon, date_from, date_to, platform,
     timeliness : str, optional
         Parameter for Sentinel-1 products.
             NRT: NRT-3h (Near Real Time)
-            NTC: Fast-24h          
+            NTC: Fast-24h    
+    orbitdirection : str, optional
+        Parameter for Sentinel-1 products (ASCENDING, DESCENDING).      
     """
 
     # convert date to required format
@@ -216,6 +218,8 @@ def download_satellite_data(lat, lon, date_from, date_to, platform,
         Parameter for Sentinel-1 products.
             NRT: NRT-3h (Near Real Time)
             NTC: Fast-24h
+    orbitdirection : str, optional
+        Parameter for Sentinel-1 products (ASCENDING, DESCENDING).             
 
     Returns
     -------
@@ -368,6 +372,8 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
         Used for Sentinel-1 products:
             NRT: NRT-3h (Near Real Time)
             NTC: Fast-24h
+    orbitdirection : str, optional
+        Parameter for Sentinel-1 products (ASCENDING, DESCENDING).             
 
     Returns
     -------
