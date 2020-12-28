@@ -109,6 +109,11 @@ def show_satellite_data(lat, lon, date_from, date_to, platform,
             NTC: Fast-24h    
     orbitdirection : str, optional
         Parameter for Sentinel-1 products (ASCENDING, DESCENDING).      
+    filename : str, optional
+        Parameter for Sentinel products.
+        Wildcards are allowed. 
+        Therefore, data can be searched for the serial identifier (A, B, C, ...) of the satellites.
+        Example: "S1A_" for satellite A of the Sentinel-1 programme.        
     """
 
     # convert date to required format
@@ -220,6 +225,11 @@ def download_satellite_data(lat, lon, date_from, date_to, platform,
             NTC: Fast-24h
     orbitdirection : str, optional
         Parameter for Sentinel-1 products (ASCENDING, DESCENDING).             
+    filename : str, optional
+        Parameter for Sentinel products.
+        Wildcards are allowed. 
+        Therefore, data can be searched for the serial identifier (A, B, C, ...) of the satellites.
+        Example: "S1A_" for satellite A of the Sentinel-1 programme.
 
     Returns
     -------
@@ -373,7 +383,12 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
             NRT: NRT-3h (Near Real Time)
             NTC: Fast-24h
     orbitdirection : str, optional
-        Parameter for Sentinel-1 products (ASCENDING, DESCENDING).             
+        Parameter for Sentinel-1 products (ASCENDING, DESCENDING).
+    filename : str, optional
+        Parameter for Sentinel products.
+        Wildcards are allowed. 
+        Therefore, data can be searched for the serial identifier (A, B, C, ...) of the satellites.
+        Example: "S1A_" for satellite A of the Sentinel-1 programme.                     
 
     Returns
     -------

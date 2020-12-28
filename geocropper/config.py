@@ -67,7 +67,7 @@ try:
 
 	# optional landsat parameters => max_cloud_cover (value in db stored as cloudcoverpercentage)
 	optionalSentinelParameters = ["polarisationmode", "producttype", "sensoroperationalmode", 
-		"swathidentifier", "cloudcoverpercentage", "timeliness", "orbitdirection"]
+		"swathidentifier", "cloudcoverpercentage", "timeliness", "orbitdirection", "filename"]
 
 	# small preview image
 	resizePreviewImage = config["Small Preview Image"].getboolean("resizePreviewImage")

@@ -42,6 +42,7 @@ tables = {
         "cloudcoverpercentage":     "TEXT",
         "timeliness":               "TEXT",
         "orbitdirection":           "TEXT",
+        "filename":                 "TEXT",
         "width":                    "INTEGER",
         "height":                   "INTEGER",
         "tileLimit":                "INTEGER",
@@ -86,7 +87,7 @@ tables = {
     # table CSVInput
     # holds imported records which have not yet been processed (loaded)
     "CSVInput": {
-        "fileName":                 "TEXT",
+        "csvFileName":              "TEXT",
         "groupname":                "TEXT",
         "lat":                      "REAL",
         "lon":                      "REAL",
@@ -100,6 +101,7 @@ tables = {
         "cloudcoverpercentage":     "TEXT",
         "timeliness":               "TEXT",
         "orbitdirection":           "TEXT",
+        "filename":                 "TEXT",
         "width":                    "INTEGER",
         "height":                   "INTEGER",
         "tileLimit":                "INTEGER",
@@ -111,7 +113,7 @@ tables = {
     # table CSVLoaded
     # holds imported and processed/loaded records
     "CSVLoaded": {
-        "fileName":                 "TEXT",
+        "csvFileName":              "TEXT",
         "groupname":                "TEXT",
         "lat":                      "REAL",
         "lon":                      "REAL",
@@ -125,6 +127,7 @@ tables = {
         "cloudcoverpercentage":     "TEXT",
         "timeliness":               "TEXT",
         "orbitdirection":           "TEXT",
+        "filename":                 "TEXT",
         "width":                    "INTEGER",
         "height":                   "INTEGER",
         "tileLimit":                "INTEGER",
@@ -648,7 +651,7 @@ class Database:
         if not row == None:
             optional_fields = ["width", "height", "tileLimit", "description"]
             num_fields = ["width", "height", "tileLimit"]
-            keys = "fileName, groupname, lat, lon, dateFrom, dateTo, platform"
+            keys = "csvFileName, groupname, lat, lon, dateFrom, dateTo, platform"
             values = "'%s', '%s', %s, %s, '%s', '%s', '%s'" % (file_name, row["groupname"], 
                 row["lat"], row["lon"], row["dateFrom"], row["dateTo"], row["platform"])
             for key, value in row.items():
