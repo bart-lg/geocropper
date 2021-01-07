@@ -444,7 +444,7 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
         return len(products)
 
 
-def start_and_crop_requested_downloads():
+def download_and_crop_outstanding():
 
     print("\nStart requested downloads:")
     print("--------------------------------")

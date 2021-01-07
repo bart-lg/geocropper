@@ -7,4 +7,4 @@ sys.path.append(os.getcwd())
 
 from geocropper import *
 
-geocropper.utils.start_and_crop_requested_downloads()
+geocropper.utils.download_and_crop_outstanding()
