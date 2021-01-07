@@ -335,7 +335,7 @@ def download_satellite_data(lat, lon, date_from, date_to, platform,
     return products
 
 
-def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, height, tile_limit = 0, tile_start=1, **kwargs):
+def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, height, tile_limit = 0, tile_start=1, auto_crop=True, **kwargs):
     """Download and crop/clip Sentinel or Landsat tiles to directories specified in the config file.
 
     Parameters
@@ -364,7 +364,10 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
         Maximum number of tiles to be downloaded.
     tile_start : int, optional
         A tile_start parameter greater than 1 omits the first found tiles.
-        Default is 1.        
+        Default is 1.      
+    auto_crop: boolean, optional
+        Crops tile immediately, if true. Otherwise an outstanding crop will be added to the database only.
+        Default is true.
     cloudcoverpercentage : int, optional
         Value between 0 and 100 for maximum cloud cover percentage.
     producttype : str, optional
@@ -430,7 +433,7 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
 
     # if tiles found, crop them
 
-    if products != None and len(products) > 0:
+    if products != None and len(products) > 0 and auto_crop:
         
         utils.crop_tiles(poi_id)
 
