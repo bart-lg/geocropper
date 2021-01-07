@@ -32,7 +32,7 @@ logger = log.setup_custom_logger('main')
 db = Database()
 
 
-def import_all_csvs(delimiter=',', quotechar='"'):
+def import_all_csvs(delimiter=',', quotechar='"', auto_load=True):
     """Import of all CSVs
 
     Place your CSV files in the inputCSV directory defined in the config file.
@@ -45,9 +45,13 @@ def import_all_csvs(delimiter=',', quotechar='"'):
         Used delimiter in CSV file. Default is ','
     quotechar : str, optional
         Used quote character in CSV file. Default is '"'
+    auto_load : boolean, optional
+        Loads (download and crop) data automatically if true, 
+        otherwise data gets only imported into internal database.
+        Default is true.
 
     """
-    csvImport.import_all_csvs(delimiter, quotechar)
+    csvImport.import_all_csvs(delimiter, quotechar, auto_load)
 
 
 def show_satellite_data(lat, lon, date_from, date_to, platform, 
