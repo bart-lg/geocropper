@@ -113,10 +113,10 @@ def load_imported_csv_data(lower_boundary=None, upper_boundary=None, auto_crop=T
     # get imported and not yet loaded data
     data = db.get_imported_csv_data()
 
-    if upper_boundary > 0 and len(data) > upper_boundary:
+    if upper_boundary != None and upper_boundary > 0 and len(data) > upper_boundary:
         data = data[0:upper_boundary]
 
-    if lower_boundary > 0:
+    if lower_boundary != None and lower_boundary > 0:
         if len(data) > lower_boundary:
             data = data[lower_boundary:]
         else:
