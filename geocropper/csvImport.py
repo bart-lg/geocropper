@@ -28,7 +28,7 @@ db = database.Database()
 
 
 # import all csv files in import directory
-def import_all_csvs(delimiter=',', quotechar='"'):
+def import_all_csvs(delimiter=',', quotechar='"', auto_load=True):
 
     # go through all files in import directory
     for item in os.listdir(config.csvInputDir):
@@ -39,7 +39,8 @@ def import_all_csvs(delimiter=',', quotechar='"'):
             importcsv(file_path = file_path, delimiter = delimiter, quotechar = quotechar, auto_load = False)
     
     # load imported csv data: call geocropper for individual records
-    load_imported_csv_data()
+    if auto_load:
+        load_imported_csv_data()
 
 
 # import specific csv file
