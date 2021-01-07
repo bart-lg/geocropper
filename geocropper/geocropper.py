@@ -528,4 +528,9 @@ def combine_preview_images(folder, has_subdir=True):
         The cropped tiles directory can have two different structures.
         This parameter defines, if the passed directory has a further subdirectory.
     """
-    utils.combine_images(folder, has_subdir)    
+    utils.combine_images(folder, has_subdir)   
+
+
+def load_imported_csv_data(lower_boundary=None, upper_boundary=None, auto_crop=True):
+    csvImport.load_imported_csv_data(lower_boundary, upper_boundary, auto_crop)
+    

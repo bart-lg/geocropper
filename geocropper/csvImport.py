@@ -108,7 +108,7 @@ def importcsv(file_path, delimiter=',', quotechar='"', auto_load = True):
 
 
 # load imported csv data: call geocropper for individual records
-def load_imported_csv_data(lower_boundary=None, upper_boundary=None):
+def load_imported_csv_data(lower_boundary=None, upper_boundary=None, auto_crop=True):
 
     # get imported and not yet loaded data
     data = db.get_imported_csv_data()
@@ -148,7 +148,7 @@ def load_imported_csv_data(lower_boundary=None, upper_boundary=None):
 
             # download and crop with geocropper module
             geocropper.download_and_crop(item["lat"], item["lon"], groupname = item["groupname"], date_from = item["dateFrom"], date_to = item["dateTo"], platform = item["platform"], \
-                width = item["width"], height = item["height"], tile_limit = item["tileLimit"], **kwargs)
+                width = item["width"], height = item["height"], tile_limit = item["tileLimit"], auto_crop=auto_crop, **kwargs)
 
 
             # move database record to archive table
