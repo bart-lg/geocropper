@@ -148,7 +148,7 @@ def load_imported_csv_data(lower_boundary=None, upper_boundary=None, auto_crop=T
 
             # download and crop with geocropper module
             geocropper.download_and_crop(item["lat"], item["lon"], groupname = item["groupname"], date_from = item["dateFrom"], date_to = item["dateTo"], platform = item["platform"], \
-                width = item["width"], height = item["height"], tile_limit = item["tileLimit"], auto_crop=auto_crop, **kwargs)
+                width = item["width"], height = item["height"], tile_limit = item["tileLimit"], tile_start = item["tileStart"], auto_crop=auto_crop, **kwargs)
 
 
             # move database record to archive table
