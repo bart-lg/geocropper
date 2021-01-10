@@ -429,7 +429,7 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
 
     if poi == None:     
         poi_id = db.add_poi(groupname, lat, lon, date_from, date_to, platform, 
-            width, height, description=description, tile_limit=tile_limit, tile_start=tile_start **kwargs)
+            width, height, description=description, tile_limit=tile_limit, tile_start=tile_start, **kwargs)
     else:
         poi_id = poi["rowid"]
 
