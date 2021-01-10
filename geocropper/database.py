@@ -46,6 +46,7 @@ tables = {
         "width":                    "INTEGER",
         "height":                   "INTEGER",
         "tileLimit":                "INTEGER",
+        "tileStart":                "INTEGER",
         "description":              "TEXT",
         "tilesIdentified":          "TEXT",
         "poicreated":               "TEXT",
@@ -105,6 +106,7 @@ tables = {
         "width":                    "INTEGER",
         "height":                   "INTEGER",
         "tileLimit":                "INTEGER",
+        "tileStart":                "INTEGER",
         "description":              "TEXT",
         "csvImported":              "TEXT",
         "cancelled":                "TEXT"
@@ -131,6 +133,7 @@ tables = {
         "width":                    "INTEGER",
         "height":                   "INTEGER",
         "tileLimit":                "INTEGER",
+        "tileStart":                "INTEGER",
         "description":              "TEXT",
         "csvImported":              "TEXT",
         "cancelled":                "TEXT",
@@ -490,16 +493,19 @@ class Database:
 
     ### POIS ###
     
-    def get_poi(self, groupname, lat, lon, date_from, date_to, platform, width, height, tile_limit = 0, **kwargs):
+    def get_poi(self, groupname, lat, lon, date_from, date_to, platform, width, height, 
+                description = "", tile_limit = 0, tile_start = 1, **kwargs):
 
         logger.debug(f"[database] get_poi {groupname}, {lat}, {lon}, {date_from}, {date_to}, \
-                     {platform}, {width}, {height}, {tile_limit}, {repr(kwargs)}")
+                     {platform}, {width}, {height}, {description}, {tile_limit}, {tile_start}, {repr(kwargs)}")
 
         query = "SELECT rowid, * FROM PointOfInterests WHERE groupname = '" + str(groupname) \
             + "' AND lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + date_from + "'" \
             + " AND dateTo = '" + date_to + "' AND platform = '" + platform \
             + "' AND width = " + str(width) + " AND height = " + str(height) \
-            + " AND tileLimit = " + str(tile_limit)
+            + " AND description = '" + str(description) + "' AND tileLimit = " + str(tile_limit)
+        if tile_start > 1:
+            query = query + " AND tileStart = " + str(tile_start)
 
         used_keys = []
 
@@ -522,23 +528,25 @@ class Database:
 
         return qresult
         
-    def add_poi(self, groupname, lat, lon, date_from, date_to, platform, width, height, tile_limit = 0, **kwargs):
+    def add_poi(self, groupname, lat, lon, date_from, date_to, platform, width, height, 
+                description = "", tile_limit = 0, tile_start = 1, **kwargs):
 
         logger.debug(f"[database] add_poi {groupname}, {lat}, {lon}, {date_from}, {date_to}, \
-                     {platform}, {width}, {height}, {tile_limit}, {repr(kwargs)}")
+                     {platform}, {width}, {height}, {description}, {tile_limit}, {tile_start}, {repr(kwargs)}")
 
         query = "INSERT INTO PointOfInterests (groupname, lat, lon"
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = query + ", " + key
-        query = query + ", country, dateFrom, dateTo, platform, width, height, tileLimit, description, poicreated) "
+        query = query + ", country, dateFrom, dateTo, platform, width, height, tileLimit, tileStart, description, poicreated) "
         query = query + " VALUES ('" + str(groupname) + "'," + str(lat) + ", " + str(lon)
         for key, value in kwargs.items():
             if key in config.optionalSentinelParameters:
                 query = query + ", '" + str(value) + "'"
         query = query + ", '" + self.get_country(lat, lon) + "', '" + date_from + "', '" + date_to + "', '" \
             + platform + "', " + str(width) + ", " + str(height) \
-            + ", " + str(tile_limit) + ", " + "'', datetime('now', 'localtime'))"
+            + ", " + str(tile_limit) + ", " + str(tile_start) + ", '" \
+            + description + "', datetime('now', 'localtime'))"
 
         logger.debug(f"[database] add_poi query: {query}")
 
@@ -649,8 +657,8 @@ class Database:
     def import_csv_row(self, file_name, row):
         logger.debug(f"[database] import_csv_row {file_name} {row}")
         if not row == None:
-            optional_fields = ["width", "height", "tileLimit", "description"]
-            num_fields = ["width", "height", "tileLimit"]
+            optional_fields = ["width", "height", "tileLimit", "tileStart", "description"]
+            num_fields = ["width", "height", "tileLimit", "tileStart"]
             keys = "csvFileName, groupname, lat, lon, dateFrom, dateTo, platform"
             values = "'%s', '%s', %s, %s, '%s', '%s', '%s'" % (file_name, row["groupname"], 
                 row["lat"], row["lon"], row["dateFrom"], row["dateTo"], row["platform"])

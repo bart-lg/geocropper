@@ -339,7 +339,8 @@ def download_satellite_data(lat, lon, date_from, date_to, platform,
     return products
 
 
-def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, height, tile_limit = 0, tile_start=1, auto_crop=True, **kwargs):
+def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, height, 
+                      description = "", tile_limit = 0, tile_start=1, auto_crop=True, **kwargs):
     """Download and crop/clip Sentinel or Landsat tiles to directories specified in the config file.
 
     Parameters
@@ -364,6 +365,8 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
         Width of cropped rectangle. The rectangle surrounds the given geolocation (center point).
     height : int
         Heigth of cropped rectangle. The rectangle surrounds the given geolocation (center point).
+    description : str, optional
+        Description of the point of interest.
     tile_limit : int, optional
         Maximum number of tiles to be downloaded.
     tile_start : int, optional
@@ -421,10 +424,12 @@ def download_and_crop(lat, lon, groupname, date_from, date_to, platform, width, 
     # check if point of interest (POI) exists in database
     # if not, create new POI record
 
-    poi = db.get_poi(groupname, lat, lon, date_from, date_to, platform, width, height, tile_limit=tile_limit, **kwargs)
+    poi = db.get_poi(groupname, lat, lon, date_from, date_to, platform, width, height, 
+        description=description, tile_limit=tile_limit, tile_start=tile_start, **kwargs)
 
     if poi == None:     
-        poi_id = db.add_poi(groupname, lat, lon, date_from, date_to, platform, width, height, tile_limit, **kwargs)
+        poi_id = db.add_poi(groupname, lat, lon, date_from, date_to, platform, 
+            width, height, description=description, tile_limit=tile_limit, tile_start=tile_start **kwargs)
     else:
         poi_id = poi["rowid"]
 
