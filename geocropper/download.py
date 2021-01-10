@@ -95,6 +95,8 @@ def search_satellite_products(lat, lon, date_from, date_to, platform, tile_limit
             if tile_start > 1:
                 for i, (key, item) in enumerate(products.items()):
                     if i >= (tile_start - 1):
+                        if results == None:
+                            results = []
                         results[key] = item
             else:
                 results = products
