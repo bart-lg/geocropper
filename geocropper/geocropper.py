@@ -490,7 +490,7 @@ def download_and_crop_outstanding():
 
                 print(f"Crop outstanding point: lat:{poi['lat']} lon:{poi['lon']} \
                         groupname:{poi['groupname']} width:{poi['width']} height:{poi['height']}")
-                crop_tiles(poi['rowid'])
+                utils.crop_tiles(poi['rowid'])
     
         print("\nCropped all outstanding points!")
 
@@ -543,7 +543,7 @@ def crop_outstanding(lower_boundary=None, upper_boundary=None):
 
             print(f"Crop outstanding point: lat:{poi['lat']} lon:{poi['lon']} \
                     groupname:{poi['groupname']} width:{poi['width']} height:{poi['height']}")
-            crop_tiles(poi['rowid'])
+            utils.crop_tiles(poi['rowid'])
 
     print(f"\nCropped all outstanding points! (lower_boundary:{lower_boundary} upper_boundary:{upper_boundary})")            
 
