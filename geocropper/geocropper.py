@@ -495,6 +495,11 @@ def download_and_crop_outstanding():
         print("\nCropped all outstanding points!")
 
 
+def get_number_of_outstanding_crops():
+    pois = db.get_uncropped_pois_for_downloaded_tiles()
+    return(len(pois))
+
+
 def crop_outstanding(lower_boundary=None, upper_boundary=None):
     """Crops outstanding images. To easily run multiple processes boundaries can be set.
     """
