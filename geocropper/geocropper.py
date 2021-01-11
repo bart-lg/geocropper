@@ -495,6 +495,54 @@ def download_and_crop_outstanding():
         print("\nCropped all outstanding points!")
 
 
+def crop_outstanding(lower_boundary=None, upper_boundary=None):
+    """Crops outstanding images. To easily run multiple processes boundaries can be set.
+    """
+
+    logger.info(f"Start of crop outstanding images lower_boundary:{lower_boundary} upper_boundary:{upper_boundary}")
+
+    print("\nCropping outstanding images:")
+    print("----------------------------\n")
+    print(f"lower_boundary: {lower_boundary}")
+    print(f"upper_boundary: {upper_boundary}\n")
+
+    # get uncropped locations
+    pois = db.get_uncropped_pois_for_downloaded_tiles()
+
+    if upper_boundary != None and upper_boundary > 0 and len(pois) > upper_boundary:
+        pois = pois[0:upper_boundary]
+
+    if lower_boundary != None and lower_boundary > 0:
+        if len(pois) > lower_boundary:
+            pois = pois[lower_boundary:]
+        else:
+            print("Lower boundary higher than number of elements left")
+            logger.warning("Lower boundary higher than number of uncropped elements left")
+            exit()
+
+    # index i serves as a counter
+    i = 0    
+
+    for poi in pois:
+
+        i += 1
+
+        print("\n############################################################")
+        print("\n[ Crop outstanding pois... %d/%d ]" % (i, len(pois)))
+        logger.info("[ ##### Crop outstanding pois... %d/%d ##### ]" % (i, len(pois)))
+        if lower_boundary != None or upper_boundary != None:
+            print(f"\n[ Boundaries: {lower_boundary}:{upper_boundary} ]")
+            logger.info(f"\n[ Boundaries: {lower_boundary}:{upper_boundary} ]")
+
+        if poi['tileCropped'] == None and poi['cancelled'] == None:
+
+            print(f"Crop outstanding point: lat:{poi['lat']} lon:{poi['lon']} \
+                    groupname:{poi['groupname']} width:{poi['width']} height:{poi['height']}")
+            crop_tiles(poi['rowid'])
+
+    print(f"\nCropped all outstanding points! (lower_boundary:{lower_boundary} upper_boundary:{upper_boundary})")            
+
+
 def unpack_big_tiles():
     """Unpacks all big tile archives in big tile directory
     """
