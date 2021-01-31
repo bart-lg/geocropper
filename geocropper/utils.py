@@ -152,17 +152,17 @@ def create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_ban
 
     search_result = list(source_dir.glob(r_band_search_pattern))
     if len(search_result) == 0:
-        return
+        return False
     r_band = search_result[0]
 
     search_result = list(source_dir.glob(g_band_search_pattern))
     if len(search_result) == 0:
-        return
+        return False
     g_band = search_result[0]
 
     search_result = list(source_dir.glob(b_band_search_pattern))
     if len(search_result) == 0:
-        return
+        return False
     b_band = search_result[0]
 
     preview_file = "preview.tif"
@@ -210,6 +210,8 @@ def create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_ban
         image = Image.open(str(target_dir / preview_file))
         small_image = image.resize((config.widthPreviewImageSmall, config.heightPreviewImageSmall), Image.ANTIALIAS)
         small_image.save(str(target_dir / preview_file_small))
+
+    return True
 
 
 def create_preview_rg_image(file, target_dir, min_scale=-30, max_scale=30, exponential_scale=0.5):
@@ -616,12 +618,12 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
     print("done.")
 
 
-def trim_crops(source_dir, target_dir, width, height):
+def trim_crops(source_dir, target_dir, width, height, has_subdir=True):
     """Trim crops to smaller size. Reference point is the center of the image. 
     
     All directories in source_dir will be copied to target_dir 
-    and all .jp2 files within that directories will be trimmed to new size. 
-    The preview images will be deleted and new preview images will be created.
+    and all .jp2/.tif files within that directories will be trimmed to new size. 
+    The preview images (preview.tif) will be deleted and new preview images will be created.
     Also new combined previews will be created.
 
     Parameters
@@ -637,6 +639,19 @@ def trim_crops(source_dir, target_dir, width, height):
 
     """
 
+    # convert to pathlib objects
+    source_dir = pathlib.Path(source_dir)
+    target_dir = pathlib.Path(target_dir)
+
+    if has_subdir:
+        for request in source_dir.glob("*"):
+            create_trimmed_crops(request, target_dir, width, height)
+    else:
+        create_trimmed_crops(source_dir, target_dir, width, height)
+
+
+def create_trimmed_crops(source_dir, target_dir, width, height):
+
     # check if source_dir exists, exit if no
     if not os.path.isdir(str(source_dir)):
         sys.exit("ERROR trim_crops: source_dir is not a directory!")
@@ -647,10 +662,6 @@ def trim_crops(source_dir, target_dir, width, height):
 
     # create target_dir
     os.makedirs(str(target_dir))
-
-    # convert to pathlib objects
-    source_dir = pathlib.Path(source_dir)
-    target_dir = pathlib.Path(target_dir)
 
     # set file types to trim
     file_types = [".tif", ".jp2"]
@@ -686,11 +697,19 @@ def trim_crops(source_dir, target_dir, width, height):
                 # trim files with matching suffix
                 if file.suffix in file_types:
 
-                    if file.suffix == ".jp2":
+                    # remove old preview files
+                    if file.name == "preview.tif":
+                        # remove file
+                        file.unlink()                      
 
-                        # Sentinel-2 img data are in jp2-format
-                        # set appropriate format for GDAL lib
-                        file_format = "JP2OpenJPEG"                        
+                    elif file.suffix == ".jp2" or file.suffix == ".tif":
+
+                        if file.suffix == ".jp2":
+                            # Sentinel-2 img data are in jp2-format
+                            # set appropriate format for GDAL lib
+                            file_format = "JP2OpenJPEG"
+                        else:
+                            file_format = "GTiff"
 
                         # open image with GDAL
                         img = gdal.Open(str(file))
@@ -734,18 +753,13 @@ def trim_crops(source_dir, target_dir, width, height):
                         file_new = pathlib.Path(str(file) + "_new")
                         file_new.rename(file)
 
-
-                    # remove old preview files
-                    if file.suffix == ".tif":
-
-                        if file.name == "preview.tif":
-                            # remove file
-                            file.unlink()  
-
             # create preview image
-            create_preview_rgb_image("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", folder_out / "sensordata" / "R10m", folder_out)   
-
-
+            s1_image = folder_out / "sensordata" / "s1_cropped.tif"
+            if s1_image.exists():
+                create_preview_rg_image(s1_image, folder_out, exponential_scale=None)
+            else:
+                create_preview_rgb_image("*B04_10m.jp2", "*B03_10m.jp2", "*B02_10m.jp2", folder_out / "sensordata" / "R10m", folder_out)
+                
     # create combined previews
     create_combined_images(target_dir)
 
