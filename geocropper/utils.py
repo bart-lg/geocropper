@@ -402,12 +402,15 @@ def create_combined_images(source_folder):
     upper_label_list = []
     lower_label_list = []
 
-    item_list = list(source_folder.glob("*"))
-
     combined_preview_folder = source_folder / "0_combined-preview"
     combined_preview_folder.mkdir(exist_ok=True)
 
+    item_list = list(source_folder.glob("*"))
+    print(f"item_list: {len(item_list)}")
+
     for i, item in enumerate(source_folder.glob("*"), 1):
+
+        print(f"i: {i} item: {item}")
 
         preview_file = item / "preview.tif"
 
@@ -434,17 +437,25 @@ def create_combined_images(source_folder):
             # lower_label_list = []
 
 
-def combine_images(folder="", has_subdir=True):
+def combine_images(folder="", outside_cropped_tiles_dir=False, has_subdir=True):
 
-    for group in config.croppedTilesDir.glob("*"):
+    if outside_cropped_tiles_dir:
+        source_dir = pathlib.Path(folder)
+        if has_subdir:
+            for request in source_dir.glob("*"):
+                create_combined_images(request)
+        else:
+            create_combined_images(source_dir)        
+    else:
+        for group in config.croppedTilesDir.glob("*"):
 
-        if len(folder) == 0 or (len(folder) > 0 and folder == str(group.name)):
+            if len(folder) == 0 or (len(folder) > 0 and folder == str(group.name)):
 
-            if has_subdir:
-                for request in group.glob("*"):
-                    create_combined_images(request)
-            else:
-                create_combined_images(group)
+                if has_subdir:
+                    for request in group.glob("*"):
+                        create_combined_images(request)
+                else:
+                    create_combined_images(group)
 
 
 def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1000, height=1000):
