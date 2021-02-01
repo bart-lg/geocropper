@@ -406,11 +406,8 @@ def create_combined_images(source_folder):
     combined_preview_folder.mkdir(exist_ok=True)
 
     item_list = list(source_folder.glob("*"))
-    print(f"item_list: {len(item_list)}")
 
     for i, item in enumerate(source_folder.glob("*"), 1):
-
-        print(f"i: {i} item: {item}")
 
         preview_file = item / "preview.tif"
 
@@ -693,14 +690,18 @@ def create_trimmed_crops(source_dir, target_dir, width, height):
             shutil.copytree(folder_in, folder_out, symlinks = True, copy_function=shutil.copy)
 
             # chmod to 664 for files and 775 for dirs
-            dir_mod = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
-            file_mod = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH
-            os.chmod(folder_out, dir_mod)
-            for item in folder_out.rglob("*"):
-                if item.is_dir():
-                    os.chmod(item, dir_mod)                    
-                else:
-                    os.chmod(item, file_mod)                    
+            try:
+                dir_mod = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
+                file_mod = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH
+                os.chmod(folder_out, dir_mod)
+                for item in folder_out.rglob("*"):
+                    if item.is_dir():
+                        os.chmod(item, dir_mod)                    
+                    else:
+                        os.chmod(item, file_mod)                    
+            except:
+                logger.warning("Could not change file or folder permissions with chmod!")
+                logger.warning(sys.exc_info()[0])
 
             # get all files of subfolder
             for file in folder_out.rglob("*"):
