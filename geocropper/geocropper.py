@@ -250,6 +250,10 @@ def download_satellite_data(lat, lon, date_from, date_to, platform,
     date_from = utils.convert_date(date_from, "%Y%m%d")
     date_to = utils.convert_date(date_to, "%Y%m%d")
     
+    if tile_limit == None:
+        tile_limit = 0
+    if tile_start == None:
+        tile_start = 1
 
     # print search info
 
