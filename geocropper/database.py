@@ -504,7 +504,7 @@ class Database:
             + " AND dateTo = '" + date_to + "' AND platform = '" + platform \
             + "' AND width = " + str(width) + " AND height = " + str(height) \
             + " AND description = '" + str(description) + "' AND tileLimit = " + str(tile_limit)
-        if tile_start > 1:
+        if not (tile_start == None) and tile_start > 1:
             query = query + " AND tileStart = " + str(tile_start)
 
         used_keys = []
