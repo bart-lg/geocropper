@@ -531,6 +531,11 @@ class Database:
     def add_poi(self, groupname, lat, lon, date_from, date_to, platform, width, height, 
                 description = "", tile_limit = 0, tile_start = 1, **kwargs):
 
+        if tile_limit == None:
+            tile_limit = 0
+        if tile_start == None:
+            tile_start = 1
+
         logger.debug(f"[database] add_poi {groupname}, {lat}, {lon}, {date_from}, {date_to}, \
                      {platform}, {width}, {height}, {description}, {tile_limit}, {tile_start}, {repr(kwargs)}")
 
