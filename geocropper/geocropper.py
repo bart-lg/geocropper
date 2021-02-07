@@ -609,3 +609,9 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
 
 def trim_crops(source_dir, target_dir, width, height):
     utils.trim_crops(source_dir, target_dir, width, height)
+
+def retrieve_scene_classes(groupname):
+    input_dir = config.croppedTilesDir / "groupname"
+    for crops_dir in input_dir.glob("*"):
+        if crops_dir.is_dir():
+            utils.retrieve_scene_classes(crops_dir)

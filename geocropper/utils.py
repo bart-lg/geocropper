@@ -1365,3 +1365,67 @@ def get_projection_from_file(path, platform):
             projection = img.crs
     
         return str(projection)
+
+
+def retrieve_scene_classes(crops_path):
+    """Retrieves the ratio of the Sentinel scene classification values within the crop
+    and stores the result to the database.
+
+    Retrieves the ratio of the Sentinel scene classification values within the crop
+    and stores the result to the database.
+    Classifications (obtained from https://dragon3.esa.int/web/sentinel/technical-guides/sentinel-2-msi/level-2a/algorithm):
+    0: NO_DATA
+    1: SATURATED_OR_DEFECTIVE    
+    2: DARK_AREA_PIXELS
+    3: CLOUD_SHADOWS
+    4: VEGETATION
+    5: NOT_VEGETATED
+    6: WATER
+    7: UNCLASSIFIED
+    8: CLOUD_MEDIUM_PROBABILITY
+    9: CLOUD_HIGH_PROBABILITY
+    10: THIN_CIRRUS
+    11: SNOW
+
+    Parameters
+    ----------
+    crops_path : Path
+        Path of crops. Crops must match with database entries (especially crop id).
+    """
+
+    # file containing information (Sentinel-2 only)
+    filename_postfix = "_SCL_20m.jp2"
+
+    for crop in tqdm(crops_path.glob("*"), desc="Retrieving scene classes: "):
+
+        if crop.is_dir() and crop.name != "0_combined-preview":
+
+            crop_id = crop.name.split("_")[0]
+
+            # TODO: check coordinates in database
+
+            scl_folder = crop / "sensordata" / "R20m"
+
+            if scl_folder.is_dir():
+
+                ratios = None
+
+                for scl_image_path in scl_folder(f"*{filename_postfix}"):
+
+                    if ratios == None:
+
+                        scl_image = pyplot.imread(scl_image_path)[:, :, :1]
+                        pixels = scl_image.shape[0] * scl_image.shape[1]
+
+                        ratios = {}
+
+                        unique, counts = numpy.unique(scl_image, return_counts=True)
+                        occurences = dict(zip(unique, counts))
+
+                        for key in occurences:
+                            ratios[key] = occurences[key] / pixels
+
+                db.set_scence_class_ratios_for_crop(crop_id, ratios)
+
+
+

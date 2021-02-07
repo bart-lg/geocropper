@@ -77,12 +77,19 @@ tables = {
         "tileId":                   "INTEGER",
         "path":                     "TEXT",
         "tileCropped":              "TEXT",
-        "cancelled":                "TEXT"
-        #"projection":               "TEXT",
-        #"leftTopCorner":            "TEXT",
-        #"rightBottomCorner":        "TEXT",
-        #"pixelWidth":               "INTEGER",
-        #"pixelHeight":              "INTEGER"
+        "cancelled":                "TEXT",
+        "sceneClass0":              "REAL",
+        "sceneClass1":              "REAL",
+        "sceneClass2":              "REAL",
+        "sceneClass3":              "REAL",
+        "sceneClass4":              "REAL",
+        "sceneClass5":              "REAL",
+        "sceneClass6":              "REAL",
+        "sceneClass7":              "REAL",
+        "sceneClass8":              "REAL",
+        "sceneClass9":              "REAL",
+        "sceneClass10":              "REAL",
+        "sceneClass11":              "REAL"        
     },
 
     # table CSVInput
@@ -655,6 +662,16 @@ class Database:
         logger.debug(f"[database] set_cancelled_tile_for_poi poi:{poi_id}, tile:{tile_id}")
         self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
         logger.info("[database] tile-poi updated in database (cancelled): poiId:%d tileId:%d" % (poi_id, tile_id))          
+
+    def set_scence_class_ratios_for_crop(self, connection_id, ratios):
+        logger.debug(f"[database] set_scence_class_ratios_for_crop connection_id:{connection_id}, ratios:{ratios}")
+        if isinstance(ratios, dict) and len(rations) > 0 and connection_id > 0:
+            query = "UPDATE TilesForPOIs SET "
+            for key in ratios:
+                query = query + f"sceneClass{key}={ratios[key]} "
+            query = query + f"WHERE rowid = {connection_id}"
+            self.query(query)
+        logger.info("[database] tile-poi updated in database (scene ratios): connection_id:{connection_id}, ratios:{ratios}")
         
 
     ### CSV ###
