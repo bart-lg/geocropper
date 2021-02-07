@@ -686,7 +686,7 @@ class Database:
                     query = query + f"sceneClass{key}={numpy.format_float_positional(ratios[key])} "
             query = query + f"WHERE rowid = {connection_id}"
             self.query(query)
-        logger.info("[database] tile-poi updated in database (scene ratios): connection_id:{connection_id}, ratios:{ratios}")
+        logger.info(f"[database] tile-poi updated in database (scene ratios): connection_id:{connection_id}, ratios:{ratios}")
         
 
     ### CSV ###
