@@ -1,4 +1,5 @@
 import sqlite3
+import numpy
 import geocropper.config as config
 
 import time
@@ -668,7 +669,8 @@ class Database:
         if isinstance(ratios, dict) and len(ratios) > 0:
             query = "UPDATE TilesForPOIs SET "
             for key in ratios:
-                query = query + f"sceneClass{key}={ratios[key]} "
+                # numpy.format_float_positional returns a float without scientific notation
+                query = query + f"sceneClass{key}={numpy.format_float_positional(ratios[key])} "
             query = query + f"WHERE rowid = {connection_id}"
             self.query(query)
         logger.info("[database] tile-poi updated in database (scene ratios): connection_id:{connection_id}, ratios:{ratios}")
