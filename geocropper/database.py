@@ -675,7 +675,7 @@ class Database:
             for key in ratios:
                 if int(key) >= scene_classes:
                     db.warning(f"[database] Higher scene class provided than expected! max:{scene_classes} provided:{key}")
-                    db.warning("[database] Scene class information could not be stored!")
+                    db.warning(f"[database] Scene class information could not be stored! connection_id:{connection_id}")
                 else:
                     if first:
                         query = query + "SET "
