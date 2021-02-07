@@ -612,6 +612,8 @@ def trim_crops(source_dir, target_dir, width, height):
 
 def retrieve_scene_classes(groupname):
     input_dir = config.croppedTilesDir / "groupname"
+    print(f"Retrieve scene classes for {input_dir}...")
     for crops_dir in input_dir.glob("*"):
         if crops_dir.is_dir():
+            print(f"Retrieve scene classes for subdir {crops_dir}")
             utils.retrieve_scene_classes(crops_dir)

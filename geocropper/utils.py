@@ -1402,7 +1402,7 @@ def retrieve_scene_classes(crops_path):
 
             crop_id = crop.name.split("_")[0]
 
-            # TODO: check coordinates in database
+            # TODO: check path and coordinates in database (the abs path [better would be rel] is stored for each crop)
 
             scl_folder = crop / "sensordata" / "R20m"
 
