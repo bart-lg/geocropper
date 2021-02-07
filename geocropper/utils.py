@@ -1414,6 +1414,7 @@ def retrieve_scene_classes(crops_path):
 
                     if ratios == None:
 
+                        print(f"SCL_Image: {scl_image_path}")
                         scl_image = pyplot.imread(scl_image_path)
                         print(scl_image.shape)
                         pixels = scl_image.shape[0] * scl_image.shape[1]
