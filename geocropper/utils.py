@@ -1410,7 +1410,7 @@ def retrieve_scene_classes(crops_path):
 
                 ratios = None
 
-                for scl_image_path in scl_folder(f"*{filename_postfix}"):
+                for scl_image_path in scl_folder.glob(f"*{filename_postfix}"):
 
                     if ratios == None:
 
