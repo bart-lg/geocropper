@@ -1414,7 +1414,7 @@ def retrieve_scene_classes(crops_path):
 
                     if ratios == None:
 
-                        scl_image_obj = gdal.Open(scl_image_path)
+                        scl_image_obj = gdal.Open(str(scl_image_path))
                         scl_image = numpy.array(scl_image_obj.GetRasterBand(1).ReadAsArray())
                         pixels = scl_image.shape[0] * scl_image.shape[1]
 
