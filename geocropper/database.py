@@ -674,7 +674,7 @@ class Database:
             first = True
             for key in ratios:
                 if int(key) >= scene_classes:
-                    logger.warning(f"[database] Higher scene class provided than expected! max:{scene_classes} provided:{key}")
+                    logger.warning(f"[database] Higher scene class provided than expected! max:{scene_classes-1} provided:{key}")
                     logger.warning(f"[database] Scene class information could not be stored! connection_id:{connection_id}")
                 else:
                     if first:
