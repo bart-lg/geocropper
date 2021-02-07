@@ -150,6 +150,9 @@ tables = {
 
 }
 
+# Number of Sentinel-2 scene classes
+scene_classes = 12
+
 
 class DatabaseLockedError(Exception):
     """Exception raised for errors while quering the database.
@@ -670,13 +673,17 @@ class Database:
             query = "UPDATE TilesForPOIs "
             first = True
             for key in ratios:
-                if first:
-                    query = query + "SET "
-                    first = False
+                if int(key) >= scene_classes:
+                    db.warning(f"[database] Higher scene class provided than expected! max:{scene_classes} provided:{key}")
+                    db.warning("[database] Scene class information could not be stored!")
                 else:
-                    query = query + ", "
-                # numpy.format_float_positional returns a float without scientific notation
-                query = query + f"sceneClass{key}={numpy.format_float_positional(ratios[key])} "
+                    if first:
+                        query = query + "SET "
+                        first = False
+                    else:
+                        query = query + ", "
+                    # numpy.format_float_positional returns a float without scientific notation
+                    query = query + f"sceneClass{key}={numpy.format_float_positional(ratios[key])} "
             query = query + f"WHERE rowid = {connection_id}"
             self.query(query)
         logger.info("[database] tile-poi updated in database (scene ratios): connection_id:{connection_id}, ratios:{ratios}")
