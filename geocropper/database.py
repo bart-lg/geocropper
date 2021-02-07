@@ -89,8 +89,8 @@ tables = {
         "sceneClass7":              "REAL",
         "sceneClass8":              "REAL",
         "sceneClass9":              "REAL",
-        "sceneClass10":              "REAL",
-        "sceneClass11":              "REAL"        
+        "sceneClass10":             "REAL",
+        "sceneClass11":             "REAL"        
     },
 
     # table CSVInput
@@ -667,8 +667,14 @@ class Database:
     def set_scence_class_ratios_for_crop(self, connection_id, ratios):
         logger.debug(f"[database] set_scence_class_ratios_for_crop connection_id:{connection_id}, ratios:{ratios}")
         if isinstance(ratios, dict) and len(ratios) > 0:
-            query = "UPDATE TilesForPOIs SET "
+            query = "UPDATE TilesForPOIs "
+            first = True
             for key in ratios:
+                if first:
+                    query = query + "SET "
+                    first = False
+                else:
+                    query = query + ", "
                 # numpy.format_float_positional returns a float without scientific notation
                 query = query + f"sceneClass{key}={numpy.format_float_positional(ratios[key])} "
             query = query + f"WHERE rowid = {connection_id}"
