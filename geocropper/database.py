@@ -665,7 +665,7 @@ class Database:
 
     def set_scence_class_ratios_for_crop(self, connection_id, ratios):
         logger.debug(f"[database] set_scence_class_ratios_for_crop connection_id:{connection_id}, ratios:{ratios}")
-        if isinstance(ratios, dict) and len(rations) > 0 and connection_id > 0:
+        if isinstance(ratios, dict) and len(ratios) > 0 and connection_id > 0:
             query = "UPDATE TilesForPOIs SET "
             for key in ratios:
                 query = query + f"sceneClass{key}={ratios[key]} "
