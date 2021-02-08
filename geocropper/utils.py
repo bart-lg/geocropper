@@ -20,6 +20,7 @@ import tarfile
 from tqdm import tqdm
 import subprocess
 import sys
+from distutils.dir_util import copy_tree
 from datetime import datetime
 
 import geocropper.config as config
@@ -1459,7 +1460,7 @@ def copy_big_tiles(target_path):
     for required_tile in tqdm(required_tiles, desc="Copying big tiles: "):
         tile_path = config.bigTilesDir / required_tile
         if tile_path.is_dir():
-            shutil.copytree(str(tile_path.absolute()), str(target_path.absolute()))
+            copy_tree(str(tile_path.absolute()), str(target_path.absolute()))
 
 
 def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_boundaries=None, use_database_scene_values=True, \
