@@ -398,6 +398,13 @@ class Database:
         
 
     ### TILES ###
+
+    def get_all_tiles(self):
+        logger.debug(f"[database] get_all_tiles")
+        result = self.fetch_all_rows_query(f"SELECT rowid, * FROM tiles")
+        logger.debug(f"[database] get_all_tiles: all tiles fetched.")
+        return result       
+        
         
     def get_tile(self, product_id = None, folder_name = None):
 

@@ -1429,4 +1429,156 @@ def retrieve_scene_classes(crops_path):
                 db.set_scence_class_ratios_for_crop(crop_id, ratios)
 
 
+def copy_big_tiles(target_path):
+    """Copies the required big tiles from big tiles folder to target path.
 
+    Copies the required big tiles from big tiles folder to target path.
+    The required tiles are determined from the internal database.
+
+    Parameters
+    ----------
+    target_path : Path
+        Path where the big tiles should be copied to.
+    """    
+
+    target_path = pathlib.Path(target_path)
+
+    required_tiles = set()
+    tiles = db.get_all_tiles()
+
+    for tile in tiles:
+        required_tiles.add(tiles['folderName'])
+
+    try:
+        target_path.mkdir(exist_ok=True, parents=True)
+    except OSError as error:
+        print (f"Creation of the directory {target_path} failed")
+        print(error)
+        sys.exit()
+
+    for required_tile in tqdm(required_tiles, desc="Copying big tiles: "):
+        tile_path = config.bigTilesDir / required_tile
+        if tile_path.is_dir():
+            shutil.copytree(str(tile_path.absolute()), str(target_path.absolute()))
+
+
+def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_boundaries=None, use_database_scene_values=True, \
+                          move_crops_without_scene_classifications=False):
+    """Filters crops based on scene classification values (Sentinel-2) and moves them to new directory.
+
+    Filters crops based on scene classification values (Sentinel-2) and moves them to new directory.
+    Classifications (obtained from https://dragon3.esa.int/web/sentinel/technical-guides/sentinel-2-msi/level-2a/algorithm):
+    0: NO_DATA
+    1: SATURATED_OR_DEFECTIVE    
+    2: DARK_AREA_PIXELS
+    3: CLOUD_SHADOWS
+    4: VEGETATION
+    5: NOT_VEGETATED
+    6: WATER
+    7: UNCLASSIFIED
+    8: CLOUD_MEDIUM_PROBABILITY
+    9: CLOUD_HIGH_PROBABILITY
+    10: THIN_CIRRUS
+    11: SNOW
+
+    Parameters
+    ----------
+    crops_path : Path
+        Path of crops. Crops must match with database entries (especially crop id), if database should be used.
+    output_path : Path
+        Path where the filtered crops should be moved to.
+    lower_boundaries : dict, optional
+        Dictionary with lower boundary ratios of scene classes.
+    upper_boundaries : dict, optional
+        Dictionary with upper boundary ratios of scene classes.
+    use_database_scene_values : boolean, optional
+        If true, the scene ratios for each crop in the database will be used.
+        Otherwise, the scene ratios get retrieved by the scene classification map (Sentinel-2).
+        Default is true.
+    move_crops_without_scene_classifications : boolean, optional
+        Default is false.
+    """
+
+    if lower_boundaries == None and upper_boundaries == None:
+        return None
+
+    # file containing information (Sentinel-2 only)
+    filename_postfix = "_SCL_20m.jp2"        
+
+    try:
+        output_path.mkdir(exist_ok=True, parents=True)
+    except OSError as error:
+        print (f"Creation of the directory {output_path} failed")
+        print(error)
+        sys.exit()       
+
+    for crop in tqdm(crops_path.glob("*"), desc="Filtering and moving crops: "):
+
+        if crop.is_dir() and crop.name != "0_combined-preview":
+
+            move = False
+            ratios = None
+
+            crop_id = crop.name.split("_")[0]
+
+            if use_database_scene_values:
+
+                # not yet implemented
+                # retrieve ratios to dictionary
+                return False
+
+            else:
+
+                scl_folder = crop / "sensordata" / "R20m"
+
+                if scl_folder.is_dir():
+
+                    for scl_image_path in scl_folder.glob(f"*{filename_postfix}"):
+
+                        if ratios == None:
+
+                            scl_image_obj = gdal.Open(str(scl_image_path))
+                            scl_image = numpy.array(scl_image_obj.GetRasterBand(1).ReadAsArray())
+                            pixels = scl_image.shape[0] * scl_image.shape[1]
+
+                            ratios = {}
+
+                            unique, counts = numpy.unique(scl_image, return_counts=True)
+                            occurences = dict(zip(unique, counts))
+
+                            for key in occurences:
+                                ratios[key] = occurences[key] / pixels
+
+            if ratios == None or ( isinstance(ratios, dict) and len(ratios) == 0 ):
+                
+                if move_crops_without_scene_classifications:
+                    move = True
+
+            else:
+
+                # move = True NEEDS TO BE HERE!!
+                # BUT FIRST CHECK OUT WHY SOME CROPS GOT ALREADY FILTERED!!
+
+                if lower_boundaries != None and isinstance(lower_boundaries, dict) and len(lower_boundaries) > 0:
+
+                    move = True
+
+                    for key in lower_boundaries:
+
+                        if not ( key in ratios and ratios[key] >= lower_boundaries[key] ):
+
+                            move = False
+
+                if upper_boundaries != None and isinstance(upper_boundaries, dict) and len(upper_boundaries) > 0:
+
+                    for key in ratios:
+
+                        if key in upper_boundaries and ratios[key] > upper_boundaries[key]:
+
+                            move = False
+
+            if move:
+
+                # TODO: save new path to database (if crop exists in database)
+
+                shutil.move(str(crop.absolute()), str(output_path.absolute()))
