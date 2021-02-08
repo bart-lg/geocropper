@@ -408,7 +408,7 @@ def create_combined_images(source_folder):
 
     item_list = list(source_folder.glob("*"))
 
-    for i, item in enumerate(source_folder.glob("*"), 1):
+    for i, item in enumerate(source_folder.glob("*")):
 
         preview_file = item / "preview.tif"
 
@@ -418,7 +418,7 @@ def create_combined_images(source_folder):
             upper_label_list.append(item.name.split("_")[0])
             # lower_label_list.append(item.parent.name)
 
-        if i % config.previewImagesCombined == 0 or i == len(item_list):
+        if (i > 0 and i % config.previewImagesCombined == 0) or (i+1) == len(item_list):
 
             counter = counter + 1
 
