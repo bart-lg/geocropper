@@ -1447,7 +1447,7 @@ def copy_big_tiles(target_path):
     tiles = db.get_all_tiles()
 
     for tile in tiles:
-        required_tiles.add(tiles['folderName'])
+        required_tiles.add(tile['folderName'])
 
     try:
         target_path.mkdir(exist_ok=True, parents=True)
