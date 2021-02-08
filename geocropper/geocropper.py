@@ -631,3 +631,47 @@ def retrieve_scene_classes(groupname):
         if crops_dir.is_dir():
             print(f"Retrieve scene classes for subdir {crops_dir}")
             utils.retrieve_scene_classes(crops_dir)
+
+
+def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_boundaries=None, use_database_scene_values=True, \
+                          move_crops_without_scene_classifications=False):
+    """Filters crops based on scene classification values (Sentinel-2) and moves them to new directory.
+
+    Filters crops based on scene classification values (Sentinel-2) and moves them to new directory.
+    Classifications (obtained from https://dragon3.esa.int/web/sentinel/technical-guides/sentinel-2-msi/level-2a/algorithm):
+    0: NO_DATA
+    1: SATURATED_OR_DEFECTIVE    
+    2: DARK_AREA_PIXELS
+    3: CLOUD_SHADOWS
+    4: VEGETATION
+    5: NOT_VEGETATED
+    6: WATER
+    7: UNCLASSIFIED
+    8: CLOUD_MEDIUM_PROBABILITY
+    9: CLOUD_HIGH_PROBABILITY
+    10: THIN_CIRRUS
+    11: SNOW
+
+    Parameters
+    ----------
+    crops_path : str
+        Path of crops. Crops must match with database entries (especially crop id), if database should be used.
+    output_path : str
+        Path where the filtered crops should be moved to.
+    lower_boundaries : dict, optional
+        Dictionary with lower boundary ratios of scene classes.
+    upper_boundaries : dict, optional
+        Dictionary with upper boundary ratios of scene classes.
+    use_database_scene_values : boolean, optional
+        If true, the scene ratios for each crop in the database will be used.
+        Otherwise, the scene ratios get retrieved by the scene classification map (Sentinel-2).
+        Default is true.
+    move_crops_without_scene_classifications : boolean, optional
+        Default is false.
+    """
+
+    crops_path = pathlib.Path(crops_path)
+    output_path = pathlib.Path(output_path)
+
+    utils.filter_and_move_crops(crops_path, output_path, lower_boundaries, upper_boundaries, use_database_scene_values, \
+                          move_crops_without_scene_classifications)

@@ -1550,6 +1550,9 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
                             for key in occurences:
                                 ratios[key] = occurences[key] / pixels
 
+                            scl_image_obj = None
+
+
             if ratios == None or ( isinstance(ratios, dict) and len(ratios) == 0 ):
                 
                 if move_crops_without_scene_classifications:
@@ -1557,12 +1560,9 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
 
             else:
 
-                # move = True NEEDS TO BE HERE!!
-                # BUT FIRST CHECK OUT WHY SOME CROPS GOT ALREADY FILTERED!!
+                move = True
 
                 if lower_boundaries != None and isinstance(lower_boundaries, dict) and len(lower_boundaries) > 0:
-
-                    move = True
 
                     for key in lower_boundaries:
 
@@ -1577,6 +1577,8 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
                         if key in upper_boundaries and ratios[key] > upper_boundaries[key]:
 
                             move = False
+                            print(f"### CROP: {crop.name}")
+                            print(f"prevent moving: key:{key} ratio:{ratios[key]} boundary:{upper_boundaries[key]}")
 
             if move:
 
