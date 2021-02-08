@@ -610,6 +610,20 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
 def trim_crops(source_dir, target_dir, width, height):
     utils.trim_crops(source_dir, target_dir, width, height)
 
+def copy_big_tiles(target_dir):
+    """Copies the required big tiles from big tiles folder to target path.
+
+    Copies the required big tiles from big tiles folder to target path.
+    The required tiles are determined from the internal database.
+
+    Parameters
+    ----------
+    target_path : Path
+        Path where the big tiles should be copied to.
+    """        
+    utils.copy_big_tiles(target_dir)
+    
+
 def retrieve_scene_classes(groupname):
     input_dir = config.croppedTilesDir / groupname
     print(f"Retrieve scene classes for {input_dir}...")
