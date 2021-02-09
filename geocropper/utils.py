@@ -689,6 +689,8 @@ def create_trimmed_crops(source_dir, target_dir, width, height):
             # copy_function default is shutil.copy2 
             # shutil.cop2: Identical to copy() except that copy2() also attempts to preserve file metadata.
             shutil.copytree(folder_in, folder_out, symlinks = True, copy_function=shutil.copy)
+            copy_tree(str(folder_in.absolute()), str(folder_out.absolute()), preserve_symlinks=1, \
+                      preserve_mode=0, preserve_times=0)            
 
             # chmod to 664 for files and 775 for dirs
             try:
