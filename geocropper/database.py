@@ -655,7 +655,13 @@ class Database:
         if data == None:
             return 0
         else:
-            return data["rowid"]   
+            return data["rowid"]  
+
+    def get_tile_poi_connection(self, connection_id):
+        logger.debug(f"[database] get_tile_poi_connection {connection_id}")
+        result = self.fetch_first_row_query("SELECT rowid, * FROM TilesForPOIs WHERE rowid = %d" % connection_id)
+        logger.debug(f"[database] get_tile_poi_connection result: {repr(result)}")
+        return result         
         
     def add_tile_for_poi(self, poi_id, tile_id):
         logger.debug(f"[database] add_tile_for_poi poi:{poi_id} tile:{tile_id}")

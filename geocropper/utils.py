@@ -1524,9 +1524,13 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
 
             if use_database_scene_values:
 
-                # not yet implemented
-                # retrieve ratios to dictionary
-                return False
+                ratios = {}
+
+                crop_meta_data = db.get_tile_poi_connection(int(crop_id))
+                for key in crop_meta_data.keys():
+                    if key.startswith("sceneClass"):
+                        if crop_meta_data[key] != None:
+                            ratios[int(key.replace("sceneClass", ""))] = crop_meta_data[key]
 
             else:
 
