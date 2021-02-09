@@ -1513,6 +1513,9 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
         print(error)
         sys.exit()       
 
+    # counter for filtered out crops
+    counter = 0
+
     for crop in tqdm(crops_path.glob("*"), desc="Filtering and moving crops: "):
 
         if crop.is_dir() and crop.name != "0_combined-preview":
@@ -1581,7 +1584,8 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
                         if key in upper_boundaries and ratios[key] > upper_boundaries[key]:
 
                             move = False
-                            print(f"### CROP: {crop.name}")
+                            counter = counter + 1
+                            print(f"### [{counter}] CROP: {crop.name}")
                             print(f"prevent moving: key:{key} ratio:{ratios[key]} boundary:{upper_boundaries[key]}")
 
             if move:
