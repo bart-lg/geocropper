@@ -1584,8 +1584,7 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
                         if key in upper_boundaries and ratios[key] > upper_boundaries[key]:
 
                             move = False
-                            counter = counter + 1
-                            print(f"### [{counter}] CROP: {crop.name}")
+                            print(f"### [{counter+1}] CROP: {crop.name}")
                             print(f"prevent moving: key:{key} ratio:{ratios[key]} boundary:{upper_boundaries[key]}")
 
             if move:
@@ -1593,3 +1592,6 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
                 # TODO: save new path to database (if crop exists in database)
 
                 shutil.move(str(crop.absolute()), str(output_path.absolute()))
+
+            else:
+                counter = counter + 1
