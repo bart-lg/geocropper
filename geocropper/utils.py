@@ -732,47 +732,54 @@ def create_trimmed_crops(source_dir, target_dir, width, height):
                         else:
                             file_format = "GTiff"
 
-                        # open image with GDAL
-                        img = gdal.Open(str(file))
+                        try:
 
-                        # yres is negative!
-                        upper_left_x, xres, xskew, upper_left_y, yskew, yres = img.GetGeoTransform()
+                            # open image with GDAL
+                            img = gdal.Open(str(file))
 
-                        # get number of columns and rows
-                        cols = img.RasterXSize
-                        rows = img.RasterYSize
+                            # yres is negative!
+                            upper_left_x, xres, xskew, upper_left_y, yskew, yres = img.GetGeoTransform()
 
-                        # determine center pixel
-                        # if cols/rows are even take the next pixel at the top left
-                        center_pixel_col = math.ceil(cols / 2)
-                        center_pixel_row = math.ceil(rows / 2)
+                            # get number of columns and rows
+                            cols = img.RasterXSize
+                            rows = img.RasterYSize
 
-                        # determine coordinates of pixel
-                        center_pixel_x = xres * center_pixel_col + xskew * center_pixel_row + upper_left_x 
-                        center_pixel_y = yskew * center_pixel_col + yres * center_pixel_row + upper_left_y
+                            # determine center pixel
+                            # if cols/rows are even take the next pixel at the top left
+                            center_pixel_col = math.ceil(cols / 2)
+                            center_pixel_row = math.ceil(rows / 2)
 
-                        # shift to center of the pixel
-                        center_pixel_x += xres / 2
-                        center_pixel_y += yres / 2
+                            # determine coordinates of pixel
+                            center_pixel_x = xres * center_pixel_col + xskew * center_pixel_row + upper_left_x 
+                            center_pixel_y = yskew * center_pixel_col + yres * center_pixel_row + upper_left_y
 
-                        # calculate top left and bottom right coordinate of area to trim
-                        top_left_x = center_pixel_x - (width/2) - (height/2) / yres * xskew
-                        top_left_y = center_pixel_y + (height/2) - (width/2) / xres * yskew
-                        bottom_right_x = center_pixel_x + (width/2) + (height/2) / yres * xskew
-                        bottom_right_y = center_pixel_y - (height/2) + (width/2) / xres * yskew                        
+                            # shift to center of the pixel
+                            center_pixel_x += xres / 2
+                            center_pixel_y += yres / 2
 
-                        # trim image
-                        img = gdal.Translate(str(file) + "_new", img, format=file_format,
-                                            projWin=[top_left_x, top_left_y,
-                                                     bottom_right_x, bottom_right_y])                      
+                            # calculate top left and bottom right coordinate of area to trim
+                            top_left_x = center_pixel_x - (width/2) - (height/2) / yres * xskew
+                            top_left_y = center_pixel_y + (height/2) - (width/2) / xres * yskew
+                            bottom_right_x = center_pixel_x + (width/2) + (height/2) / yres * xskew
+                            bottom_right_y = center_pixel_y - (height/2) + (width/2) / xres * yskew                        
 
-                        # save and replace
+                            # trim image
+                            img = gdal.Translate(str(file) + "_new", img, format=file_format,
+                                                projWin=[top_left_x, top_left_y,
+                                                         bottom_right_x, bottom_right_y])                      
 
-                        img = None
+                            # save and replace
 
-                        file.unlink()
-                        file_new = pathlib.Path(str(file) + "_new")
-                        file_new.rename(file)
+                            img = None
+
+                            file.unlink()
+                            file_new = pathlib.Path(str(file) + "_new")
+                            file_new.rename(file)
+
+                        except:
+                            print(f"Error creating clipped file ({str(file.absolute())})!\n")
+                            logger.error(f"Error creating clipped file ({str(file.absolute())})!")
+                            logger.error(sys.exc_info()[0])                        
 
             # create preview image
             s1_image = folder_out / "sensordata" / "s1_cropped.tif"
