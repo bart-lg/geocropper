@@ -686,8 +686,17 @@ def create_trimmed_crops(source_dir, target_dir, width, height):
             folder_out = target_dir / folder_in.name
 
             # copy whole subfolder first
-            copy_tree(str(folder_in.absolute()), str(folder_out.absolute()), preserve_symlinks=1, \
-                      preserve_mode=0, preserve_times=0)            
+            # copy_function default is shutil.copy2 
+            # shutil.cop2: Identical to copy() except that copy2() also attempts to preserve file metadata.
+            try:
+                shutil.copytree(folder_in, folder_out, symlinks = True, copy_function=shutil.copy)
+            except:
+                logger.warning("Error in shutil.copytree.")
+                logger.warning(sys.exc_info()[0])
+
+            if not folder_out.exists():
+                logger.error(sys.exc_info()[0])
+                exit()
 
             # chmod to 664 for files and 775 for dirs
             try:
