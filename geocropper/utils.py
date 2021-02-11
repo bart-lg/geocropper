@@ -407,32 +407,39 @@ def create_combined_images(source_folder):
     combined_preview_folder.mkdir(exist_ok=True)
 
     item_list = list(source_folder.glob("*"))
+    # print(repr(item_list))
+    item_list_sorted = [int(item.name.split("_", 1)[0]) for item in item_list]
+    item_list_sorted.sort()
 
-    for i, item in enumerate(source_folder.glob("*")):
+    for i, item in enumerate(item_list_sorted):
 
-        preview_file = item / "preview.tif"
+        if item > 0:
 
-        if preview_file.exists():
+            in_path = list(source_folder.glob(f"{str(item)}_*"))[0]
 
-            image_path_list.append(preview_file)
-            upper_label_list.append(item.name.split("_")[0])
-            # lower_label_list.append(item.parent.name)
+            preview_file = in_path / "preview.tif"
 
-        if (i > 0 and i % config.previewImagesCombined == 0) or (i+1) == len(item_list):
+            if preview_file.exists():
 
-            counter = counter + 1
+                image_path_list.append(preview_file)
+                upper_label_list.append(str(item))
+                # lower_label_list.append(item.parent.name)
 
-            output_file = combined_preview_folder / ("combined-preview-" + str(counter) + ".tif")
-            summary_file = combined_preview_folder / ("combined-preview-" + str(counter) + "-paths.txt")
+            if (i > 0 and i % config.previewImagesCombined == 0) or (i+1) == len(item_list):
 
-            concat_images(image_path_list, output_file, gap=config.previewBorder,
-                          bcolor=config.previewBackground, paths_to_file=summary_file,
-                          upper_label_list=upper_label_list, write_image_text=config.previewTextOnImage, 
-                          center_point=config.previewCenterDot)
+                counter = counter + 1
 
-            image_path_list = []
-            upper_label_list = []
-            # lower_label_list = []
+                output_file = combined_preview_folder / ("combined-preview-" + str(counter) + ".tif")
+                summary_file = combined_preview_folder / ("combined-preview-" + str(counter) + "-paths.txt")
+
+                concat_images(image_path_list, output_file, gap=config.previewBorder,
+                              bcolor=config.previewBackground, paths_to_file=summary_file,
+                              upper_label_list=upper_label_list, write_image_text=config.previewTextOnImage, 
+                              center_point=config.previewCenterDot)
+
+                image_path_list = []
+                upper_label_list = []
+                # lower_label_list = []
 
 
 def combine_images(folder="", outside_cropped_tiles_dir=False, has_subdir=True):
