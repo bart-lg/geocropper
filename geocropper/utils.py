@@ -273,7 +273,8 @@ def create_preview_rg_image(file, target_dir, min_scale=-30, max_scale=30, expon
 
 
 def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_to_file=None,
-                  upper_label_list=None, lower_label_list=None, write_image_text=True, center_point=False):
+                  upper_label_list=None, lower_label_list=None, write_image_text=True, center_point=False,
+                  image_height=None, image_width=None):
     """Combine images to one image
 
     Parameters
@@ -304,6 +305,10 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
     center_point : boolean, optional
         marks the center of the individual preview images with a red dot
         default is False
+    image_height : int, optional
+        trimmed height of preview images
+    image_width : int, optional
+        trimmed width of preview images
 
     """
 
@@ -321,6 +326,12 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
             max_height = height
         if width > max_width:
             max_width = width
+
+    # set max image height and width to trimmed size
+    if image_height != None and image_height < max_height:
+        max_height = image_height
+    if image_width != None and image_width < max_width:
+        max_width = image_width
 
     # add gap to width and height
     total_height = max_height * raster_size + gap * (raster_size - 1)
@@ -357,8 +368,26 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
         # determine width and height
         height, width = image.shape[:2]
 
+        # trim image
+        if height > max_height:
+            image_height_start = math.floor(height / 2) - math.floor(max_height / 2)
+            image_height_end = image_height_start + max_height
+            height = max_height
+        else:
+            image_height_start = 0
+            image_height_end = height
+
+        if width > max_width:
+            image_width_start = math.floor(width / 2) - math.floor(max_width / 2)
+            image_width_end = image_width_start + max_width
+            width = max_width
+        else:
+            image_width_start = 0
+            image_width_end = width
+
         # paste image
-        combined_image[positions[i][2]:(positions[i][2]+height), positions[i][3]:(positions[i][3]+width)] = image
+        combined_image[positions[i][2]:(positions[i][2]+height), positions[i][3]:(positions[i][3]+width)] \
+            = image[image_height_start:image_height_end, image_width_start:image_width_end]
 
         # center point
         if center_point:
@@ -396,7 +425,7 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
                 file.write("\r\n")
 
 
-def create_combined_images(source_folder):
+def create_combined_images(source_folder, image_height=None, image_width=None):
 
     counter = 0
     image_path_list = []
@@ -407,7 +436,7 @@ def create_combined_images(source_folder):
     combined_preview_folder.mkdir(exist_ok=True)
 
     item_list = list(source_folder.glob("*"))
-    # print(repr(item_list))
+    
     item_list_sorted = [int(item.name.split("_", 1)[0]) for item in item_list]
     item_list_sorted.sort()
 
@@ -435,22 +464,22 @@ def create_combined_images(source_folder):
                 concat_images(image_path_list, output_file, gap=config.previewBorder,
                               bcolor=config.previewBackground, paths_to_file=summary_file,
                               upper_label_list=upper_label_list, write_image_text=config.previewTextOnImage, 
-                              center_point=config.previewCenterDot)
+                              center_point=config.previewCenterDot, image_height=image_height, image_width=image_width)
 
                 image_path_list = []
                 upper_label_list = []
                 # lower_label_list = []
 
 
-def combine_images(folder="", outside_cropped_tiles_dir=False, has_subdir=True):
+def combine_images(folder="", outside_cropped_tiles_dir=False, has_subdir=True, image_height=None, image_width=None):
 
     if outside_cropped_tiles_dir:
         source_dir = pathlib.Path(folder)
         if has_subdir:
             for request in source_dir.glob("*"):
-                create_combined_images(request)
+                create_combined_images(request, image_height, image_width)
         else:
-            create_combined_images(source_dir)        
+            create_combined_images(source_dir, image_height, image_width)        
     else:
         for group in config.croppedTilesDir.glob("*"):
 
@@ -458,9 +487,9 @@ def combine_images(folder="", outside_cropped_tiles_dir=False, has_subdir=True):
 
                 if has_subdir:
                     for request in group.glob("*"):
-                        create_combined_images(request)
+                        create_combined_images(request, image_height, image_width)
                 else:
-                    create_combined_images(group)
+                    create_combined_images(group, image_height, image_width)
 
 
 def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1000, height=1000):
