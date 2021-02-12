@@ -22,6 +22,7 @@ import subprocess
 import sys
 from datetime import datetime
 from distutils.dir_util import copy_tree
+from skimage import transform
 
 import geocropper.config as config
 import geocropper.download as download
@@ -351,8 +352,8 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
         max_width = image_width
 
     # add gap to width and height
-    total_height = max_height * raster_size_y + gap * (raster_size_y - 1)
-    total_width = max_width * raster_size_x + gap * (raster_size_x - 1)
+    total_height = max_height * config.previewEnlargeFactor * raster_size_y + gap * (raster_size_y - 1)
+    total_width = max_width * config.previewEnlargeFactor * raster_size_x + gap * (raster_size_x - 1)
 
     # assign positions to images
     # positions = [row, column, height_start, width_start]
@@ -365,16 +366,13 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
             column = raster_size_x
 
         # determine starting width and height
-        height_start = (row - 1) * (max_height + gap)
-        width_start = (column - 1) * (max_width + gap)
+        height_start = (row - 1) * (max_height * config.previewEnlargeFactor + gap)
+        width_start = (column - 1) * (max_width * config.previewEnlargeFactor + gap)
 
         positions[i-1][0] = int(row)
         positions[i-1][1] = int(column)
         positions[i-1][2] = int(height_start)
         positions[i-1][3] = int(width_start)
-
-    print(f"{total_width}:{total_height}")
-    print(f"{repr(positions)}")
 
     # create empty image
     combined_image = numpy.full((total_height, total_width, 3), bcolor)
@@ -404,10 +402,18 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
         else:
             image_width_start = 0
             image_width_end = width
+        
+        image = image[image_height_start:image_height_end, image_width_start:image_width_end] 
+        height, width = image.shape[:2]
+
+        # enlarge
+        if config.previewEnlargeFactor > 1:
+            image = transform.resize(image, (height*config.previewEnlargeFactor, width*config.previewEnlargeFactor), \
+                order=0, mode="constant", preserve_range=True)
+            height, width = image.shape[:2]
 
         # paste image
-        combined_image[positions[i][2]:(positions[i][2]+height), positions[i][3]:(positions[i][3]+width)] \
-            = image[image_height_start:image_height_end, image_width_start:image_width_end]
+        combined_image[positions[i][2]:(positions[i][2]+height), positions[i][3]:(positions[i][3]+width)] = image
 
         # center point
         if center_point:
@@ -460,7 +466,7 @@ def create_combined_images(source_folder, image_height=None, image_width=None):
     item_list_sorted = [int(item.name.split("_", 1)[0]) for item in item_list]
     item_list_sorted.sort()
 
-    for i, item in enumerate(item_list_sorted):
+    for i, item in tqdm(enumerate(item_list_sorted), desc="Images processed: "):
 
         if item > 0:
 

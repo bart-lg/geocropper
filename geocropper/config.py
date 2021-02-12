@@ -86,6 +86,7 @@ try:
 	previewImagesCombined = config["Combined Preview Images"].getint("previewImagesCombined")
 	previewCenterDot = config["Combined Preview Images"].getboolean("previewCenterDot")
 	previewFormat = config["Combined Preview Images"]["previewFormat"]
+	previewEnlargeFactor = config["Combined Preview Images"].getint("previewEnlargeFactor")
 
 	logger.info("Config loaded")
 
