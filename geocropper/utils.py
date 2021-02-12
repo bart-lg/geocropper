@@ -272,6 +272,17 @@ def create_preview_rg_image(file, target_dir, min_scale=-30, max_scale=30, expon
         small_image.save(str(target_dir / preview_file_small))      
 
 
+def rows_cols_for_ratio(items, ratio):
+    """Calculates optimum number of rows and columns for items for a given ratio.
+    """
+    cols = 0
+    rows = 0
+    while cols * rows < items:
+        rows = rows + 1
+        cols = math.ceil(rows * ratio)
+    return cols, rows
+
+
 def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_to_file=None,
                   upper_label_list=None, lower_label_list=None, write_image_text=True, center_point=False,
                   image_height=None, image_width=None):
@@ -313,7 +324,13 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
     """
 
     # determine needed raster size
-    raster_size = math.ceil(math.sqrt(len(image_path_list)))
+    if config.previewFormat == "1:1":
+        raster_size_x = math.ceil(math.sqrt(len(image_path_list)))
+        raster_size_y = raster_size_x
+    else:
+        preview_format = config.previewFormat.split(":")
+        raster_size_x, raster_size_y = rows_cols_for_ratio(len(image_path_list), \
+            int(preview_format[0]) / int(preview_format[1]))
 
     # determine max heigth and max width of all images
     max_height = 0
@@ -334,18 +351,18 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
         max_width = image_width
 
     # add gap to width and height
-    total_height = max_height * raster_size + gap * (raster_size - 1)
-    total_width = max_width * raster_size + gap * (raster_size - 1)
+    total_height = max_height * raster_size_y + gap * (raster_size_y - 1)
+    total_width = max_width * raster_size_x + gap * (raster_size_x - 1)
 
     # assign positions to images
     # positions = [row, column, height_start, width_start]
     positions = numpy.zeros((len(list(image_path_list)), 4), dtype=int)
     for i, image_path in enumerate(image_path_list, 1):
         # determine position
-        row = math.ceil(i / raster_size)
-        column = i % raster_size
+        row = math.ceil(i / raster_size_x)
+        column = i % raster_size_x
         if column == 0:
-            column = raster_size
+            column = raster_size_x
 
         # determine starting width and height
         height_start = (row - 1) * (max_height + gap)
@@ -355,6 +372,9 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
         positions[i-1][1] = int(column)
         positions[i-1][2] = int(height_start)
         positions[i-1][3] = int(width_start)
+
+    print(f"{total_width}:{total_height}")
+    print(f"{repr(positions)}")
 
     # create empty image
     combined_image = numpy.full((total_height, total_width, 3), bcolor)
@@ -417,7 +437,7 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
     if paths_to_file != None:
         file = open(paths_to_file, "w+")
         for i, image_path in enumerate(image_path_list, 1):
-            position = i % raster_size
+            position = i % raster_size_y
             if position != 1:
                 file.write("\t")
             file.write(str(image_path))

@@ -85,6 +85,7 @@ try:
 	previewImageFontSize = config["Combined Preview Images"].getint("previewImageFontSize")
 	previewImagesCombined = config["Combined Preview Images"].getint("previewImagesCombined")
 	previewCenterDot = config["Combined Preview Images"].getboolean("previewCenterDot")
+	previewFormat = config["Combined Preview Images"]["previewFormat"]
 
 	logger.info("Config loaded")
 
