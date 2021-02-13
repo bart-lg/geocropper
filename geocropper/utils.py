@@ -470,8 +470,13 @@ def create_combined_images(source_folder, image_height=None, image_width=None):
     combined_preview_folder.mkdir(exist_ok=True)
 
     item_list = list(source_folder.glob("*"))
+
+    item_list_sorted = []
+    for item in item_list:
+        num = item.name.split("_", 1)[0]
+        if num.isdigit():
+            item_list_sorted.append(int(num))
     
-    item_list_sorted = [int(item.name.split("_", 1)[0]) for item in item_list]
     item_list_sorted.sort()
 
     for i, item in tqdm(enumerate(item_list_sorted), desc="Images processed: "):
