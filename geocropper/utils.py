@@ -204,9 +204,13 @@ def create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_ban
     subprocess.call(command)
 
     # remove scaled bands
-    (target_dir / "r-scaled.tif").unlink()
-    (target_dir / "g-scaled.tif").unlink()
-    (target_dir / "b-scaled.tif").unlink()
+    try:
+        (target_dir / "r-scaled.tif").unlink()
+        (target_dir / "g-scaled.tif").unlink()
+        (target_dir / "b-scaled.tif").unlink()
+    except:
+        logger.error("Error while removing temporary images.")
+        logger.error(sys.exc_info()[0])        
 
     if config.resizePreviewImage:
         image = Image.open(str(target_dir / preview_file))
@@ -263,9 +267,13 @@ def create_preview_rg_image(file, target_dir, min_scale=-30, max_scale=30, expon
     subprocess.call(command)
 
     # remove scaled bands
-    (target_dir / "r-scaled.tif").unlink()
-    (target_dir / "g-scaled.tif").unlink()
-    (target_dir / "b-empty.tif").unlink()
+    try:
+        (target_dir / "r-scaled.tif").unlink()
+        (target_dir / "g-scaled.tif").unlink()
+        (target_dir / "b-empty.tif").unlink()
+    except:
+        logger.error("Error while removing temporary images.")
+        logger.error(sys.exc_info()[0])    
 
     if config.resizePreviewImage:
         image = Image.open(str(target_dir / preview_file))
