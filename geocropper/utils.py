@@ -346,12 +346,16 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
     max_width = 0
 
     for image_path in image_path_list:
-        image = pyplot.imread(image_path)[:, :, :3]
-        height, width = image.shape[:2]
-        if height > max_height:
-            max_height = height
-        if width > max_width:
-            max_width = width
+        try:
+            image = pyplot.imread(image_path)[:, :, :3]
+            height, width = image.shape[:2]
+            if height > max_height:
+                max_height = height
+            if width > max_width:
+                max_width = width
+        except:
+            logger.error(f"Could not read image: {image_path}")
+            logger.error(sys.exc_info()[0])
 
     # set max image height and width to trimmed size
     if image_height != None and image_height < max_height:
@@ -388,44 +392,50 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
     # paste images to combined image
     for i, image_path in enumerate(image_path_list):
 
-        # read image
-        image = pyplot.imread(image_path)[:, :, :3]
+        try:
 
-        # determine width and height
-        height, width = image.shape[:2]
+            # read image
+            image = pyplot.imread(image_path)[:, :, :3]
 
-        # trim image
-        if height > max_height:
-            image_height_start = math.floor(height / 2) - math.floor(max_height / 2)
-            image_height_end = image_height_start + max_height
-            height = max_height
-        else:
-            image_height_start = 0
-            image_height_end = height
-
-        if width > max_width:
-            image_width_start = math.floor(width / 2) - math.floor(max_width / 2)
-            image_width_end = image_width_start + max_width
-            width = max_width
-        else:
-            image_width_start = 0
-            image_width_end = width
-        
-        image = image[image_height_start:image_height_end, image_width_start:image_width_end] 
-        height, width = image.shape[:2]
-
-        # enlarge
-        if config.previewEnlargeFactor > 1:
-            image = transform.resize(image, (height*config.previewEnlargeFactor, width*config.previewEnlargeFactor), \
-                order=0, mode="constant", preserve_range=True)
+            # determine width and height
             height, width = image.shape[:2]
 
-        # paste image
-        combined_image[positions[i][2]:(positions[i][2]+height), positions[i][3]:(positions[i][3]+width)] = image
+            # trim image
+            if height > max_height:
+                image_height_start = math.floor(height / 2) - math.floor(max_height / 2)
+                image_height_end = image_height_start + max_height
+                height = max_height
+            else:
+                image_height_start = 0
+                image_height_end = height
 
-        # center point
-        if center_point:
-            combined_image[positions[i][2] + round(height / 2), positions[i][3] + round(width / 2)] = (255, 0, 0)
+            if width > max_width:
+                image_width_start = math.floor(width / 2) - math.floor(max_width / 2)
+                image_width_end = image_width_start + max_width
+                width = max_width
+            else:
+                image_width_start = 0
+                image_width_end = width
+            
+            image = image[image_height_start:image_height_end, image_width_start:image_width_end] 
+            height, width = image.shape[:2]
+
+            # enlarge
+            if config.previewEnlargeFactor > 1:
+                image = transform.resize(image, (height*config.previewEnlargeFactor, width*config.previewEnlargeFactor), \
+                    order=0, mode="constant", preserve_range=True)
+                height, width = image.shape[:2]
+
+            # paste image
+            combined_image[positions[i][2]:(positions[i][2]+height), positions[i][3]:(positions[i][3]+width)] = image
+
+            # center point
+            if center_point:
+                combined_image[positions[i][2] + round(height / 2), positions[i][3] + round(width / 2)] = (255, 0, 0)
+
+        except:
+            logger.error(f"Could not insert image {image_path} to combined preview image.")
+            logger.error(sys.exc_info()[0])                
 
     # write file
     image = Image.fromarray(numpy.uint8(combined_image))
