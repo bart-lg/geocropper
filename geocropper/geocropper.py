@@ -21,6 +21,7 @@ import geocropper.asfWrapper as asfWrapper
 import geocropper.csvImport as csvImport
 import geocropper.utils as utils
 import geocropper.download as download
+import geocropper.visualSelection as visualSelection
 
 from osgeo import gdal
 # gdal library distributed by conda destroys PATH environment variable
@@ -679,3 +680,7 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
 
     utils.filter_and_move_crops(crops_path, output_path, lower_boundaries, upper_boundaries, use_database_scene_values, \
                           move_crops_without_scene_classifications)
+
+
+def visual_selection(path, gap=config.previewBorder, image_start=1):
+    visualSelection.start_visual_selection(path, gap, image_start)

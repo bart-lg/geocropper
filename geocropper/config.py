@@ -88,6 +88,15 @@ try:
 	previewFormat = config["Combined Preview Images"]["previewFormat"]
 	previewEnlargeFactor = config["Combined Preview Images"].getint("previewEnlargeFactor")
 
+	# visual selection
+	fontScale = config["Visual Selection"].getfloat("fontScale")
+	fontColorR = config["Visual Selection"].getint("fontColorR")
+	fontColorG = config["Visual Selection"].getint("fontColorG")
+	fontColorB = config["Visual Selection"].getint("fontColorB")
+	lineType = config["Visual Selection"].getint("lineType")
+	textOffsetX = config["Visual Selection"].getint("textOffsetX")
+	textOffsetY = config["Visual Selection"].getint("textOffsetY")
+
 	logger.info("Config loaded")
 
 except Exception as e:
