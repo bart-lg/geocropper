@@ -18,21 +18,21 @@ class PreviewImage:
         self.path = path
 
 
-def get_combined_preview_files(folder):
+def get_combined_preview_numbers(folder):
     """Returns a list of the combined-preview files in the given folder
     """
 
-    folder = pathlib.Path(folder)
-
-    image_list = []
+    preview_numbers = []
 
     if folder.is_dir():
 
         for image_file in folder.glob("combined-preview-*.tif"):
 
-            image_list.append(image_file)
+            preview_number = image_file.name.replace(".tif", "").replace("combined-preview-", "")
+            preview_numbers.append(int(preview_number))
 
-    return image_list
+    preview_numbers.sort()
+    return preview_numbers
 
 
 def get_image_ids(file_path):
@@ -271,15 +271,24 @@ def get_grid_cell(preview_image_shape, image_shape, gap, position):
     return row, col        
 
 
+def get_preview_image_filename(image_number):
+    return f"combined-preview-{str(image_number)}.tif"
+
+
 def start_visual_selection(path, gap=config.previewBorder, image_start=1):
     """Opens GUI window with visual selection of images.
     """
 
-    file_list = get_combined_preview_files(path)
+    path = pathlib.Path(path)
 
-    preview_image_index = image_start-1
+    file_numbers = get_combined_preview_numbers(path)
+
+    if image_start in file_numbers:
+        preview_image_index = file_numbers.index(image_start)
+    else:
+        preview_image_index = 0
     
-    show_image(file_list[preview_image_index], gap)  
+    show_image(path / get_preview_image_filename(file_numbers[preview_image_index]), gap)  
 
     while True:
 
@@ -298,11 +307,11 @@ def start_visual_selection(path, gap=config.previewBorder, image_start=1):
             if (preview_image_index + 1) < len(file_list):
 
                 preview_image_index = preview_image_index + 1
-                show_image(file_list[preview_image_index], gap)
+                show_image(path / get_preview_image_filename(file_numbers[preview_image_index]), gap)
 
             else:
 
-                print(f"Current image is the last image: {file_list[preview_image_index].name}")
+                print(f"Current image is the last image: {get_preview_image_filename(file_numbers[preview_image_index])}")
             
         # previous image (back)
         if pressedkey==ord("b"):
@@ -310,15 +319,15 @@ def start_visual_selection(path, gap=config.previewBorder, image_start=1):
             if preview_image_index > 0:
 
                 preview_image_index = preview_image_index - 1
-                show_image(file_list[preview_image_index], gap)
+                show_image(path / get_preview_image_filename(file_numbers[preview_image_index]), gap)
 
             else:
 
-                print(f"Current image is the first image: {file_list[preview_image_index].name}")
+                print(f"Current image is the first image: {get_preview_image_filename(file_numbers[preview_image_index])}")
 
         # show preview image path
         if pressedkey==ord("i"):
-            print(f"Current preview image: {file_list[preview_image_index].name}")
+            print(f"Current preview image: {get_preview_image_filename(file_numbers[preview_image_index])}")
 
         try:
             if cv2.getWindowProperty('ImageSelection', cv2.WND_PROP_VISIBLE) == 0:
