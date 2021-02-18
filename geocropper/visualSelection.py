@@ -304,7 +304,7 @@ def start_visual_selection(path, gap=config.previewBorder, image_start=1):
         # next image (forward)
         if pressedkey==ord("f"):
 
-            if (preview_image_index + 1) < len(file_list):
+            if (preview_image_index + 1) < len(file_numbers):
 
                 preview_image_index = preview_image_index + 1
                 show_image(path / get_preview_image_filename(file_numbers[preview_image_index]), gap)
