@@ -37,7 +37,8 @@ from osgeo import gdal
 # gdal library distributed by conda destroys PATH environment variable
 # see -> https://github.com/OSGeo/gdal/issues/1231
 # workaround: remove first entry...
-os.environ["PATH"] = os.environ["PATH"].split(';')[1]
+if ";" in os.environ["PATH"]:
+    os.environ["PATH"] = os.environ["PATH"].split(';')[1]
 
 # get logger object
 logger = logging.getLogger('root')
