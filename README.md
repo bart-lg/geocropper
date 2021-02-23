@@ -212,3 +212,6 @@ The package omits all other field names.
 
 For automatic country determination the following tool is used: [countries](https://github.com/che0/countries)  
 Data for country borders obtained from: http://thematicmapping.org/downloads/world_borders.php
+
+# Acknowledgement
+We gratefully acknowledge support from the European Research Council (“reFUEL” ERC2017-STG 758149).
