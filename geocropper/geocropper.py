@@ -612,8 +612,8 @@ def load_imported_csv_data(lower_boundary=None, upper_boundary=None, auto_crop=T
 def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1000, height=1000):
     utils.create_random_crops(crops_per_tile, output_folder, width, height)
 
-def trim_crops(source_dir, target_dir, width, height):
-    utils.trim_crops(source_dir, target_dir, width, height)
+def trim_crops(source_dir, target_dir, width, height, has_subdir=True):
+    utils.trim_crops(source_dir, target_dir, width, height, has_subdir)
 
 def copy_big_tiles(target_dir):
     """Copies the required big tiles from big tiles folder to target path.
