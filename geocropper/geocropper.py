@@ -727,7 +727,7 @@ def move_selected_crops(source_dir, target_dir, csv_file):
                         shutil.move(str(crop.absolute()), str(target_path.absolute()))
 
                         counter = counter + 1
-                        print(f"found and moved: {crop.name}")
+                        print(f"[{counter}] found and moved: {crop.name}")
 
                 else:
 
