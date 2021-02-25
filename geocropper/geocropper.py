@@ -4,6 +4,7 @@ import os
 import subprocess
 import pathlib
 import shutil
+import csv
 import pyproj
 from pprint import pprint
 import rasterio
