@@ -719,8 +719,8 @@ def move_selected_crops(source_dir, target_dir, csv_file):
 
                     folder_name = found[0]
 
-                    if not folder_name.startswith("0_"):
-                            
+                    if not folder_name.name.startswith("0_"):
+
                         crop = source_path / folder_name
 
                         # move directory
