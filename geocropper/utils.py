@@ -472,6 +472,10 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
 
 def create_combined_images(source_folder, image_height=None, image_width=None):
 
+    if not config.combinedPreview:
+        logger.warning("Combined preview started, but disabled in config!")
+        return
+
     counter = 0
     image_path_list = []
     upper_label_list = []
