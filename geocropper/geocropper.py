@@ -713,7 +713,7 @@ def move_selected_crops(source_dir, target_dir, csv_file):
         for line in reader:
             if len(line) > 0 and len(line[0]) > 0 and line[0].isdigit():
 
-                found = list(source_path.glob(f"{line}_*"))
+                found = list(source_path.glob(f"{line[0]}_*"))
 
                 if len(found) > 0:
 
