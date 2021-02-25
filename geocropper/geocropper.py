@@ -692,7 +692,7 @@ def move_selected_crops(source_dir, target_dir, csv_file):
 
     source_path = pathlib.Path(source_dir)
     target_path = pathlib.Path(target_dir)
-    csv_path = pathlib.Pat(csv_file)
+    csv_path = pathlib.Path(csv_file)
 
     target_path.mkdir(parents=True, exist_ok=True)
 
