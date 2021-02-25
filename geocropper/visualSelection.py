@@ -10,6 +10,15 @@ import logging
 # get logger object
 logger = logging.getLogger('root')
 
+# Shift: 1
+# Strg: 2
+# Alt: 3
+# Shift+Strg: 4
+# Shift+Alt: 5
+# Strg+Alt: 6
+# Shift+Strg+Alt: 7
+max_markers = 7
+
 
 # PreviewImage keeps path of the preview image
 class PreviewImage:
@@ -127,9 +136,9 @@ def show_image(preview_image_path, gap):
 
     preview_image = PreviewImage(preview_image_path)
 
-    # load markers 1 to 3
+    # load markers 
     markers = []
-    for marker in range(1,4):
+    for marker in range(1,max_markers+1):
         markers.append(load_csv(preview_image.path.parents[0], marker))    
 
     # make sure image fills window
@@ -179,6 +188,24 @@ def show_image(preview_image_path, gap):
         })  
 
 
+def remove_all_markers_but(markers, marker_leave, image_id):
+    for marker in range(len(markers)):
+        if not marker == marker_leave:
+            markers[marker].discard(image_id)
+    return markers
+
+
+def switch_marker(markers, marker, image_id):
+    markers = remove_all_markers_but(markers, marker, image_id)
+    if image_id in markers[marker]:
+        # remove marker
+        markers[marker].discard(image_id)
+    else:
+        # add marker
+        markers[marker].add(image_id)
+    return markers
+
+
 def mouse_event(event, x, y, flags, params):
     
     write_csvs = False
@@ -197,51 +224,47 @@ def mouse_event(event, x, y, flags, params):
         
             image_id = int(image_ids[row][col])
 
-            if flags & cv2.EVENT_FLAG_SHIFTKEY:
+            if (flags & cv2.EVENT_FLAG_SHIFTKEY) and (flags & cv2.EVENT_FLAG_CTRLKEY) and (flags & cv2.EVENT_FLAG_ALTKEY):
 
-                # remove marker 2 and 3
-                markers[1].discard(image_id)
-                markers[2].discard(image_id)
-                
-                if image_id in markers[0]:
-                    # remove marker 1
-                    markers[0].discard(image_id)
-                else:
-                    # add marker 1
-                    markers[0].add(image_id)
+                if max_markers >= 7:
+                    markers = switch_marker(markers, 6, image_id)
+                    write_csvs = True
 
-                write_csvs = True
+            elif (flags & cv2.EVENT_FLAG_CTRLKEY) and (flags & cv2.EVENT_FLAG_ALTKEY):
 
+                if max_markers >= 6:
+                    markers = switch_marker(markers, 5, image_id)
+                    write_csvs = True                    
 
-            elif flags & cv2.EVENT_FLAG_CTRLKEY:
+            elif (flags & cv2.EVENT_FLAG_SHIFTKEY) and (flags & cv2.EVENT_FLAG_ALTKEY):
 
-                # remove marker 1 and 3
-                markers[0].discard(image_id)
-                markers[2].discard(image_id)
-                
-                if image_id in markers[1]:
-                    # remove marker 2
-                    markers[1].discard(image_id)
-                else:
-                    # add marker 2
-                    markers[1].add(image_id)
+                if max_markers >= 5:
+                    markers = switch_marker(markers, 4, image_id)
+                    write_csvs = True                    
 
-                write_csvs = True
+            elif (flags & cv2.EVENT_FLAG_SHIFTKEY) and (flags & cv2.EVENT_FLAG_CTRLKEY):
+
+                if max_markers >= 4:
+                    markers = switch_marker(markers, 3, image_id)
+                    write_csvs = True                 
 
             elif flags & cv2.EVENT_FLAG_ALTKEY:
 
-                # remove marker 1 and 2
-                markers[0].discard(image_id)
-                markers[1].discard(image_id)
-                
-                if image_id in markers[2]:
-                    # remove marker 3
-                    markers[2].discard(image_id)
-                else:
-                    # add marker 3
-                    markers[2].add(image_id)
+                if max_markers >= 3:
+                    markers = switch_marker(markers, 2, image_id)
+                    write_csvs = True  
 
-                write_csvs = True
+            elif flags & cv2.EVENT_FLAG_CTRLKEY:
+
+                if max_markers >= 2:
+                    markers = switch_marker(markers, 1, image_id)
+                    write_csvs = True  
+
+            elif flags & cv2.EVENT_FLAG_SHIFTKEY:
+
+                if max_markers >= 1:
+                    markers = switch_marker(markers, 0, image_id)
+                    write_csvs = True  
 
     # save markers and refresh image
     if write_csvs:
