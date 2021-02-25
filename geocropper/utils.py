@@ -462,7 +462,7 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
     if paths_to_file != None:
         file = open(paths_to_file, "w+")
         for i, image_path in enumerate(image_path_list, 1):
-            position = i % raster_size_y
+            position = i % raster_size_x
             if position != 1:
                 file.write("\t")
             file.write(str(image_path))
