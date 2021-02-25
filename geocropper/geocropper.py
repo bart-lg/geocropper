@@ -718,10 +718,13 @@ def move_selected_crops(source_dir, target_dir, csv_file):
                 if len(found) > 0:
 
                     folder_name = found[0]
-                    crop = source_path / folder_name
 
-                    # move directory
-                    shutil.move(str(crop.absolute()), str(target_path.absolute()))
+                    if not folder_name.startswith("0_"):
+                            
+                        crop = source_path / folder_name
 
-                    counter = counter + 1
-                    print(f"found and moved: {crop.name}")
+                        # move directory
+                        shutil.move(str(crop.absolute()), str(target_path.absolute()))
+
+                        counter = counter + 1
+                        print(f"found and moved: {crop.name}")
