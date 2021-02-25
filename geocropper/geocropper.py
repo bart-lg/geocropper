@@ -684,3 +684,43 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
 
 def visual_selection(path, gap=config.previewBorder, image_start=1):
     visualSelection.start_visual_selection(path, gap, image_start)
+
+
+def move_selected_crops(source_dir, target_dir, csv_file):
+    """Moves crop folders with IDs given in CSV file to target folder.
+    """
+
+    source_path = pathlib.Path(source_dir)
+    target_path = pathlib.Path(target_dir)
+    csv_path = pathlib.Pat(csv_file)
+
+    target_path.mkdir(parents=True, exist_ok=True)
+
+    print("Moving selected crops")
+    print("=====================\n")
+
+    print(f"source: {str(source_path.absolute())}")
+    print(f"target: {str(target_path.absolute())}")
+    print(f"csv: {str(csv_path.absolute())}\n")
+
+    counter = 0
+
+    with open(str(csv_path.absolute()), "r", newline="") as f:
+        
+        reader = csv.reader(f)
+        
+        for line in reader:
+            if len(line) > 0 and len(line[0]) > 0 and line[0].isdigit():
+
+                found = list(source_path.glob(f"{line}_*"))
+
+                if len(found) > 0:
+
+                    folder_name = found[0]
+                    crop = source_path / folder_name
+
+                    # move directory
+                    shutil.move(str(crop.absolute()), str(target_path.absolute()))
+
+                    counter = counter + 1
+                    print(f"found and moved: {crop.name}")
