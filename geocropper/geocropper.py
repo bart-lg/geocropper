@@ -728,3 +728,7 @@ def move_selected_crops(source_dir, target_dir, csv_file):
 
                         counter = counter + 1
                         print(f"found and moved: {crop.name}")
+
+                else:
+
+                    print(f"crop {line} not found...")
