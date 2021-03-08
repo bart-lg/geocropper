@@ -637,16 +637,16 @@ class Database:
         logger.debug(f"[database] get_pois_for_tile result: {repr(result)}")
         return result
 
-    def get_uncropped_pois_for_downloaded_tiles(self):
-        logger.debug("[database] get_uncropped_pois_for_downloaded_tiles")
+    def get_uncropped_pois_for_unpacked_tiles(self):
+        logger.debug("[database] get_uncropped_pois_for_unpacked_tiles")
         result = self.fetch_all_rows_query("SELECT PointOfInterests.rowid, PointOfInterests.*, TilesForPOIs.tileCropped, \
                                             TilesForPOIs.cancelled FROM PointOfInterests INNER JOIN TilesForPOIs \
                                             ON PointOfInterests.rowid = TilesForPOIs.poiId \
                                             INNER JOIN Tiles ON TilesForPOIs.tileId = Tiles.rowid \
-                                            WHERE Tiles.downloadComplete IS NOT NULL AND TilesForPOIs.tileCropped IS NULL \
+                                            WHERE Tiles.unzipped IS NOT NULL AND TilesForPOIs.tileCropped IS NULL \
                                             AND TilesForPOIs.cancelled IS NULL")
-        logger.debug(f"[database] get_uncropped_pois_for_downloaded_tiles result: {repr(result)}")
-        return result
+        logger.debug(f"[database] get_uncropped_pois_for_unpacked_tiles result: {repr(result)}")
+        return result        
 
     def get_tile_poi_connection_id(self, poi_id, tile_id):
         logger.debug(f"[database] get_tile_poi_connection_id poi:{poi_id} tile:{tile_id}")

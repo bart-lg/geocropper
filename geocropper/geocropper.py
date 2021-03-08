@@ -483,7 +483,7 @@ def download_and_crop_outstanding():
 
     # crop outstanding points                    
 
-    pois = db.get_uncropped_pois_for_downloaded_tiles()
+    pois = db.get_uncropped_pois_for_unpacked_tiles()
 
     if not pois == None:
 
@@ -502,7 +502,7 @@ def download_and_crop_outstanding():
 
 
 def get_number_of_outstanding_crops():
-    pois = db.get_uncropped_pois_for_downloaded_tiles()
+    pois = db.get_uncropped_pois_for_unpacked_tiles()
     return(len(pois))
 
 
@@ -518,7 +518,7 @@ def crop_outstanding(lower_boundary=None, upper_boundary=None):
     print(f"upper_boundary: {upper_boundary}\n")
 
     # get uncropped locations
-    pois = db.get_uncropped_pois_for_downloaded_tiles()
+    pois = db.get_uncropped_pois_for_unpacked_tiles()
 
     if upper_boundary != None and upper_boundary > 0 and len(pois) > upper_boundary:
         pois = pois[0:upper_boundary]
