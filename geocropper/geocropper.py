@@ -621,7 +621,7 @@ def create_random_crops(crops_per_tile=30, output_folder="random_crops", width=1
 def trim_crops(source_dir, target_dir, width, height, has_subdir=True):
     utils.trim_crops(source_dir, target_dir, width, height, has_subdir)
 
-def copy_big_tiles(target_dir):
+def copy_big_tiles(target_dir, required_only=False):
     """Copies the required big tiles from big tiles folder to target path.
 
     Copies the required big tiles from big tiles folder to target path.
@@ -631,8 +631,11 @@ def copy_big_tiles(target_dir):
     ----------
     target_path : Path
         Path where the big tiles should be copied to.
+    required_only : boolean, optional
+        If true, only required tiles for the outstanding crops will be copied.
+        If false, all tiles with existing entry in internal database will be copied.
     """        
-    utils.copy_big_tiles(target_dir)
+    utils.copy_big_tiles(target_dir, required_only)
     
 
 def retrieve_scene_classes(groupname):

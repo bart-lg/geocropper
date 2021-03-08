@@ -1535,7 +1535,7 @@ def retrieve_scene_classes(crops_path):
                 db.set_scence_class_ratios_for_crop(crop_id, ratios)
 
 
-def copy_big_tiles(target_path):
+def copy_big_tiles(target_path, required_only=False):
     """Copies the required big tiles from big tiles folder to target path.
 
     Copies the required big tiles from big tiles folder to target path.
@@ -1545,12 +1545,18 @@ def copy_big_tiles(target_path):
     ----------
     target_path : Path
         Path where the big tiles should be copied to.
+    required_only : boolean, optional
+        If true, only required tiles for the outstanding crops will be copied.
+        If false, all tiles with existing entry in internal database will be copied.        
     """    
 
     target_path = pathlib.Path(target_path)
 
     required_tiles = set()
-    tiles = db.get_all_tiles()
+    if required_only:
+        tiles = db.get_required_tiles()
+    else:
+        tiles = db.get_all_tiles()
 
     for tile in tiles:
         required_tiles.add(tile['folderName'])

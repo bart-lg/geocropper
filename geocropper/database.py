@@ -401,9 +401,19 @@ class Database:
 
     def get_all_tiles(self):
         logger.debug(f"[database] get_all_tiles")
-        result = self.fetch_all_rows_query(f"SELECT rowid, * FROM tiles")
+        result = self.fetch_all_rows_query("SELECT rowid, * FROM Tiles")
         logger.debug(f"[database] get_all_tiles: all tiles fetched.")
-        return result       
+        return result   
+
+
+    def get_required_tiles(self):
+        logger.debug(f"[database] get_required_tiles")
+        result = self.fetch_all_rows_query("SELECT Tiles.rowid, Tiles.* FROM Tiles \
+            INNER JOIN TilesForPOIs ON Tiles.rowid = TilesForPOIs.tileId \
+            WHERE TilesForPOIs.tileCropped IS NULL AND TilesForPOIs.cancelled IS NULL \
+            GROUP BY Tiles.rowid")
+        logger.debug(f"[database] get_required_tiles: all required tiles fetched.")
+        return result         
         
         
     def get_tile(self, product_id = None, folder_name = None):
