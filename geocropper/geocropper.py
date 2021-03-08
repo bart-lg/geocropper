@@ -506,6 +506,11 @@ def get_number_of_outstanding_crops():
     return(len(pois))
 
 
+def reset_cancelled_crops():
+    db.reset_cancelled_tiles_for_pois()
+    print("Cancelled crops got reseted.")
+
+
 def crop_outstanding(lower_boundary=None, upper_boundary=None):
     """Crops outstanding images. To easily run multiple processes boundaries can be set.
     """

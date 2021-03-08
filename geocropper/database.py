@@ -680,6 +680,11 @@ class Database:
         self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
         logger.info("[database] tile-poi updated in database (cancelled): poiId:%d tileId:%d" % (poi_id, tile_id))          
 
+    def reset_cancelled_tiles_for_pois(self):
+        logger.debug(f"[database] reset_cancelled_tiles_for_pois")
+        self.query("UPDATE TilesForPOIs SET cancelled = NULL WHERE cancelled IS NOT NULL")
+        logger.info("[database] tile-poi: cancelled crops reseted")
+
     def set_scence_class_ratios_for_crop(self, connection_id, ratios):
         logger.debug(f"[database] set_scence_class_ratios_for_crop connection_id:{connection_id}, ratios:{ratios}")
         if isinstance(ratios, dict) and len(ratios) > 0:
