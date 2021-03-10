@@ -1043,7 +1043,7 @@ def crop_tiles(poi_id):
         for tile in tiles:
         
             # crop if tile is not cropped yet (with the parameters of POI)
-            if tile["tileCropped"] == None and not (tile["downloadComplete"] == None):
+            if tile["tileCropped"] == None and not tile["unzipped"] == None:
 
                 print("Cropping %s ..." % tile["folderName"])
 
@@ -1054,8 +1054,9 @@ def crop_tiles(poi_id):
 
                     if download.check_for_existing_big_tile_archive(tile) == False:
 
-                        logger.warning("Big tile missing although marked as downloaded in database.")
+                        logger.warning("Big tile missing although marked as unzipped in database.")
                         db.clear_download_complete_for_tile(tile['rowid'])
+                        db.clear_unpacked_for_tile(tile['rowid'])
                         print("Big tile archive missing!")
                         print("The internal database got updated (missing download).")
                         print("Please start the download process again.")
@@ -1063,6 +1064,7 @@ def crop_tiles(poi_id):
                     else:
 
                         logger.warning("Big tile not unpacked, but crop function started.")
+                        db.clear_unpacked_for_tile(tile['rowid'])
                         print("Big tile archive found!")
                         print("Since download processes are maybe running, no automatic unpacking is performed at this point.")
                         print("Please unpack big tiles using the function unpack_big_tiles() or unpack manually and start again.\n")

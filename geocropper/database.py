@@ -490,6 +490,11 @@ class Database:
         logger.info(f"[database] tile updated in database \
             (lastDownloadRequest cleared due to failed request): {rowid}")
 
+    def clear_unpacked_for_tile(self, rowid):
+        logger.debug(f"[database] clear_unpacked_for_tile {rowid}")
+        self.query("UPDATE Tiles SET unzipped = NULL WHERE rowid = %d" % rowid)
+        logger.debug(f"[database] tile updated in database (unzipped cleared): {rowid}")
+
     def set_cancelled_tile(self, rowid):
         logger.debug(f"[database] set_cancelled_tile {rowid}")
         self.query("UPDATE Tiles SET cancelled = datetime('now', 'localtime') \
