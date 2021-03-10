@@ -1572,6 +1572,9 @@ def copy_big_tiles(target_path, required_only=False):
         tile_path = config.bigTilesDir / required_tile
         if tile_path.is_dir():
             copy_tree(str(tile_path.absolute()), str((target_path / required_tile).absolute()), preserve_mode=0, preserve_times=0)
+            # TODO: this is probably not the best solution
+            tile = db.get_tile(folder_name=required_tile)
+            db.set_unpacked_for_tile(tile['rowid'])
 
 
 def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_boundaries=None, use_database_scene_values=True, \
