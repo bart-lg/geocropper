@@ -298,6 +298,52 @@ def get_preview_image_filename(image_number):
     return f"combined-preview-{str(image_number)}.tif"
 
 
+def mark_unmark_all_shown_images(preview_image_path, marker, gap):
+
+    preview_image = PreviewImage(preview_image_path)
+
+    # load markers 
+    markers = []
+    for m in range(1,max_markers+1):
+        markers.append(load_csv(preview_image.path.parents[0], m))    
+    
+    # get IDs of images displayed
+    image_ids = get_image_ids(preview_image.path)
+
+    if int(image_ids[0][0]) in markers[marker]:
+
+        # unmark all shown images
+        for row in range(len(image_ids)):
+            for col in range(len(image_ids[row])):
+            
+                image_id = int(image_ids[row][col])
+
+                markers = remove_all_markers_but(markers, marker, image_id)
+            
+                if image_id in markers[marker]:
+                    # remove marker
+                    markers[marker].discard(image_id)
+
+    else:
+
+        # mark all shown images
+        for row in range(len(image_ids)):
+            for col in range(len(image_ids[row])):
+            
+                image_id = int(image_ids[row][col])
+
+                markers = remove_all_markers_but(markers, marker, image_id)
+            
+                if not (image_id in markers[marker]):
+                    # add marker
+                    markers[marker].add(image_id)
+
+    for marker in range(len(markers)):
+        save_csv(preview_image.path.parents[0], marker+1, markers[marker])
+
+    show_image(preview_image.path, gap)
+    
+
 def start_visual_selection(path, gap=config.previewBorder, image_start=1):
     """Opens GUI window with visual selection of images.
     """
@@ -318,6 +364,23 @@ def start_visual_selection(path, gap=config.previewBorder, image_start=1):
         # Needs a value greater than 0 otherwise it would wait until a key is pressed
         # and then it would not be possible to catch closed windows
         pressedkey=cv2.waitKey(100)    
+
+        # mark/unmark all visible images 
+        if pressedkey==ord("1"):
+            mark_unmark_all_shown_images(path / get_preview_image_filename(file_numbers[preview_image_index]), 0, gap)
+        if pressedkey==ord("2"):
+            mark_unmark_all_shown_images(path / get_preview_image_filename(file_numbers[preview_image_index]), 1, gap)
+        if pressedkey==ord("3"):
+            mark_unmark_all_shown_images(path / get_preview_image_filename(file_numbers[preview_image_index]), 2, gap)
+        if pressedkey==ord("4"):
+            mark_unmark_all_shown_images(path / get_preview_image_filename(file_numbers[preview_image_index]), 3, gap)
+        if pressedkey==ord("5"):
+            mark_unmark_all_shown_images(path / get_preview_image_filename(file_numbers[preview_image_index]), 4, gap)
+        if pressedkey==ord("6"):
+            mark_unmark_all_shown_images(path / get_preview_image_filename(file_numbers[preview_image_index]), 5, gap)
+        if pressedkey==ord("7"):
+            mark_unmark_all_shown_images(path / get_preview_image_filename(file_numbers[preview_image_index]), 6, gap)
+
 
         # Wait for ESC key to exit
         if pressedkey==27:
