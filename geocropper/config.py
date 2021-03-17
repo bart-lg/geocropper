@@ -87,6 +87,12 @@ try:
 	previewCenterDot = config["Combined Preview Images"].getboolean("previewCenterDot")
 	previewFormat = config["Combined Preview Images"]["previewFormat"]
 	previewEnlargeFactor = config["Combined Preview Images"].getint("previewEnlargeFactor")
+	previewShowInternalID = config["Combined Preview Images"].getboolean("previewShowInternalID")
+	previewShowDescription = config["Combined Preview Images"].getboolean("previewShowDescription")
+	previewShowTileDate = config["Combined Preview Images"].getboolean("previewShowTileDate")
+	previewTopMarginFirstLabel = config["Combined Preview Images"].getint("previewTopMarginFirstLabel")
+	previewTopMarginSecondLabel = config["Combined Preview Images"].getint("previewTopMarginSecondLabel")
+	previewTopMarginThirdLabel = config["Combined Preview Images"].getint("previewTopMarginThirdLabel")
 
 	# visual selection
 	fontScale = config["Visual Selection"].getfloat("fontScale")

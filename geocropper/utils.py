@@ -294,8 +294,8 @@ def rows_cols_for_ratio(items, ratio):
 
 
 def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_to_file=None,
-                  upper_label_list=None, lower_label_list=None, write_image_text=True, center_point=False,
-                  image_height=None, image_width=None):
+                  first_label_list=None, second_label_list=None, third_label_list=None,
+                  write_image_text=True, center_point=False, image_height=None, image_width=None):
     """Combine images to one image
 
     Parameters
@@ -312,14 +312,16 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
         default is (0,0,0) -> black
     paths_to_file : str, optional
         if defined a list of paths will be saved to the given path
-    upper_label_list : list, optional
+    first_label_list : list, optional
         if defined the contained labels will be written on the image
-        upper label will be written in first line
+        first label will be written in first line
         instead of the paths of the individual images
-    lower_label_list : list, optional
+    second_label_list : list, optional
         if defined the contained labels will be written on the image 
-        lower label will be written in second line
-        instead of the paths of the individual images
+        second label will be written in second line
+    third_label_list : list, optional
+        if defined the contained labels will be written on the image 
+        third label will be written in third line        
     write_image_text : boolean, optional
         write paths or labels on image
         default is True
@@ -446,15 +448,19 @@ def concat_images(image_path_list, output_file, gap=3, bcolor=(0, 0, 0), paths_t
         font = ImageFont.truetype(str(
             pathlib.Path(os.environ["CONDA_PREFIX"]) / "fonts" / "open-fonts" / "IBMPlexMono-Regular.otf"), config.previewImageFontSize)
         draw = ImageDraw.Draw(image)
-        if upper_label_list == None:
-            upper_label_list = image_path_list
-        for i, upper_label in enumerate(upper_label_list):
+        if first_label_list == None:
+            first_label_list = image_path_list
+        for i, first_label in enumerate(first_label_list):
             # draw.text requires coordinates in following order: width, height
-            draw.text((positions[i][3] + 5, positions[i][2] + 5), upper_label, font=font, fill=(255, 0, 0))
-        if lower_label_list != None:
-            for i, lower_label in enumerate(lower_label_list):
+            draw.text((positions[i][3] + 5, positions[i][2] + config.previewTopMarginFirstLabel), first_label, font=font, fill=(255, 0, 0))
+        if second_label_list != None:
+            for i, second_label in enumerate(second_label_list):
                 # draw.text requires coordinates in following order: width, height
-                draw.text((positions[i][3] + 5, positions[i][2] + 15), lower_label, font=font, fill=(255, 0, 0))
+                draw.text((positions[i][3] + 5, positions[i][2] + config.previewTopMarginSecondLabel), second_label, font=font, fill=(255, 0, 0))
+        if third_label_list != None:
+            for i, third_label in enumerate(third_label_list):
+                # draw.text requires coordinates in following order: width, height
+                draw.text((positions[i][3] + 5, positions[i][2] + config.previewTopMarginThirdLabel), third_label, font=font, fill=(255, 0, 0))                
 
     image.save(output_file)
 
@@ -478,8 +484,9 @@ def create_combined_images(source_folder, image_height=None, image_width=None):
 
     counter = 0
     image_path_list = []
-    upper_label_list = []
-    lower_label_list = []
+    first_label_list = []
+    second_label_list = []
+    third_label_list = []
 
     combined_preview_folder = source_folder / "0_combined-preview"
     combined_preview_folder.mkdir(exist_ok=True)
@@ -505,8 +512,29 @@ def create_combined_images(source_folder, image_height=None, image_width=None):
             if preview_file.exists():
 
                 image_path_list.append(preview_file)
-                upper_label_list.append(str(item))
-                # lower_label_list.append(item.parent.name)
+                
+                first_label_list.append(str(item))
+
+                if config.previewShowDescription == True:
+                    description = ""
+                    try:
+                        crop = db.get_tile_poi_connection(item)
+                        poi = db.get_poi_from_id(crop["poiId"])
+                        description = poi["description"]
+                    except:
+                        pass
+                    second_label_list.append("D:" + str(description))
+
+                if config.previewShowTileDate == True:
+                    tile_date = ""
+                    try:
+                        crop = db.get_tile_poi_connection(item)
+                        tile = db.get_tile_by_rowid(crop["tileId"])
+                        tile_date = convert_date(tile["beginposition"], "%d.%m.%y")
+                    except:
+                        pass                        
+                    third_label_list.append(tile_date)
+
 
             if (i > 0 and i % config.previewImagesCombined == 0) or (i+1) == len(item_list):
 
@@ -517,12 +545,14 @@ def create_combined_images(source_folder, image_height=None, image_width=None):
 
                 concat_images(image_path_list, output_file, gap=config.previewBorder,
                               bcolor=config.previewBackground, paths_to_file=summary_file,
-                              upper_label_list=upper_label_list, write_image_text=config.previewTextOnImage, 
-                              center_point=config.previewCenterDot, image_height=image_height, image_width=image_width)
+                              first_label_list=first_label_list, second_label_list=second_label_list, third_label_list=third_label_list, 
+                              write_image_text=config.previewTextOnImage, center_point=config.previewCenterDot, 
+                              image_height=image_height, image_width=image_width)
 
                 image_path_list = []
-                upper_label_list = []
-                # lower_label_list = []
+                first_label_list = []
+                second_label_list = []
+                third_label_list = []
 
 
 def combine_images(folder="", outside_cropped_tiles_dir=False, has_subdir=True, image_height=None, image_width=None):
