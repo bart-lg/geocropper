@@ -473,11 +473,11 @@ def download_and_crop_outstanding():
             print(f"\nPlatform: {tile['platform']}")
             print(f"Tile: {tile['folderName']}")
             print(f"Product ID: {tile['productId']}")            
-            print(f"First download request: {convert_date(tile['firstDownloadRequest'], new_format='%Y-%m-%d %H:%M:%S')}")
+            print(f"First download request: {utils.convert_date(tile['firstDownloadRequest'], new_format='%Y-%m-%d %H:%M:%S')}")
             if tile['lastDownloadRequest'] == None:
                 print(f"Last download request: None\n")
             else:
-                print(f"Last download request: {convert_date(tile['lastDownloadRequest'], new_format='%Y-%m-%d %H:%M:%S')}\n")
+                print(f"Last download request: {utils.convert_date(tile['lastDownloadRequest'], new_format='%Y-%m-%d %H:%M:%S')}\n")
 
             download.download_product(tile=tile)
 

@@ -12,7 +12,7 @@ from pyproj import Geod
 import random
 from shapely.geometry import Point
 from shapely.geometry import Polygon
-from shapely.ops import transform
+from shapely.ops import transform as shapely_transform
 from dateutil.parser import *
 from functools import partial
 import zipfile
@@ -114,7 +114,7 @@ def transform_latlon_to_xy(path, point):
         pyproj.Proj('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs '), pyproj.Proj(img.crs))
 
     # transform corner coordinates for cropping
-    point = transform(to_target_crs, point)
+    point = shapely_transform(to_target_crs, point)
 
     return(point)
 
