@@ -773,7 +773,7 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                 
                 if has_subdir:
                 
-                    spamwriter.writerow(["request", "id", "lon", "lat"])
+                    spamwriter.writerow(["request", "id", "lon", "lat", "image_datetime"])
                 
                     for request in source_dir.glob("*"):
                 
@@ -789,14 +789,15 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                         crop_id = int(crop_name[0])
                                         crop_lon = float(crop_name[1])
                                         crop_lat = float(crop_name[2])
+                                        crop_datetime = crop_name[3]
 
-                                        spamwriter.writerow([request.name, crop_id, crop_lon, crop_lat])
+                                        spamwriter.writerow([request.name, crop_id, crop_lon, crop_lat, crop_datetime])
                                     except:
                                         pass
 
                 else:
 
-                    spamwriter.writerow(["id", "lon", "lat"])
+                    spamwriter.writerow(["id", "lon", "lat", "image_datetime"])
 
                     for crop in source_dir.glob("*"):
 
@@ -807,17 +808,18 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                 crop_id = int(crop_name[0])
                                 crop_lon = float(crop_name[1])
                                 crop_lat = float(crop_name[2])
+                                crop_datetime = crop_name[3]
 
-                                spamwriter.writerow([crop_id, crop_lon, crop_lat])                
+                                spamwriter.writerow([crop_id, crop_lon, crop_lat, crop_datetime])                
                             except:
                                 pass
                 
             else:
 
                 if has_subdir:
-                    spamwriter.writerow(["groupname", "request", "id", "lon", "lat"])
+                    spamwriter.writerow(["groupname", "request", "id", "lon", "lat", "image_datetime"])
                 else:
-                    spamwriter.writerow(["groupname", "id", "lon", "lat"])
+                    spamwriter.writerow(["groupname", "id", "lon", "lat", "image_datetime"])
 
                 for group in config.croppedTilesDir.glob("*"):
 
@@ -838,8 +840,9 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                                 crop_id = int(crop_name[0])
                                                 crop_lon = float(crop_name[1])
                                                 crop_lat = float(crop_name[2])
+                                                crop_datetime = crop_name[3]
 
-                                                spamwriter.writerow([group.name, request.name, crop_id, crop_lon, crop_lat])                                
+                                                spamwriter.writerow([group.name, request.name, crop_id, crop_lon, crop_lat, crop_datetime])                                
                                             except:
                                                 pass
 
@@ -854,8 +857,9 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                         crop_id = int(crop_name[0])
                                         crop_lon = float(crop_name[1])
                                         crop_lat = float(crop_name[2])
+                                        crop_datetime = crop_name[3]
 
-                                        spamwriter.writerow([group.name, crop_id, crop_lon, crop_lat])                              
+                                        spamwriter.writerow([group.name, crop_id, crop_lon, crop_lat, crop_datetime])                              
                                     except:
                                         pass
                         
