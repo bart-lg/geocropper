@@ -557,6 +557,7 @@ def create_combined_images(source_folder, image_height=None, image_width=None):
 
 def combine_images(folder="", outside_cropped_tiles_dir=False, has_subdir=True, image_height=None, image_width=None):
 
+    # TODO: create a new function that determines exact path of source dir based on the first three given arguments (redundancy in other functions)
     if outside_cropped_tiles_dir:
         source_dir = pathlib.Path(folder)
         if has_subdir:

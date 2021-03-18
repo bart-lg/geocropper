@@ -740,3 +740,122 @@ def move_selected_crops(source_dir, target_dir, csv_file):
                 else:
 
                     print(f"crop {line} not found...")
+
+
+def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False, has_subdir=True):
+    """Creates a CSV file containing ID and coordinates of crops in the specified cropped tiles folder.
+
+    Parameters
+    ----------
+    csv_path : string
+        Path to csv file that should be created.
+    source_dir : string
+        Name of the group directory or direct path to source directory.
+    outside_cropped_tiles_dir : boolean, optional
+        Default is False.
+        Set this to true if folder path is not a relative path within the cropped tiles folder,
+        but an absolute path.
+    has_subdir : boolean, optional
+        Default is True.
+        The cropped tiles directory can have two different structures.
+        This parameter defines, if the passed directory has a further subdirectory.
+    """
+
+    if len(source_dir) > 0:
+
+        with open(csv_path, "w", newline="") as csv_file:
+
+            spamwriter = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+
+            if outside_cropped_tiles_dir:
+                
+                source_dir = pathlib.Path(source_dir)
+                
+                if has_subdir:
+                
+                    spamwriter.writerow(["request", "id", "lon", "lat"])
+                
+                    for request in source_dir.glob("*"):
+                
+                        if request.is_dir():
+
+                            for crop in request.glob("*"):
+
+                                if not crop.name.startswith("0_"):
+
+                                    # TODO: better exception handling... log if something went wrong
+                                    try:
+                                        crop_name = crop.name.split("_")
+                                        crop_id = int(crop_name[0])
+                                        crop_lon = float(crop_name[1])
+                                        crop_lat = float(crop_name[2])
+
+                                        spamwriter.writerow([request.name, crop_id, crop_lon, crop_lat])
+                                    except:
+                                        pass
+
+                else:
+
+                    spamwriter.writerow(["id", "lon", "lat"])
+
+                    for crop in source_dir.glob("*"):
+
+                        if not crop.name.startswith("0_"):
+
+                            try:
+                                crop_name = crop.name.split("_")
+                                crop_id = int(crop_name[0])
+                                crop_lon = float(crop_name[1])
+                                crop_lat = float(crop_name[2])
+
+                                spamwriter.writerow([crop_id, crop_lon, crop_lat])                
+                            except:
+                                pass
+                
+            else:
+
+                if has_subdir:
+                    spamwriter.writerow(["groupname", "request", "id", "lon", "lat"])
+                else:
+                    spamwriter.writerow(["groupname", "id", "lon", "lat"])
+
+                for group in config.croppedTilesDir.glob("*"):
+
+                    if group.is_dir() and source_dir == group.name:
+
+                        if has_subdir:
+                            
+                            for request in group.glob("*"):
+                                    
+                                if request.is_dir():
+
+                                    for crop in request.glob("*"):
+
+                                        if not crop.name.startswith("0_"):
+
+                                            try:
+                                                crop_name = crop.name.split("_")
+                                                crop_id = int(crop_name[0])
+                                                crop_lon = float(crop_name[1])
+                                                crop_lat = float(crop_name[2])
+
+                                                spamwriter.writerow([group.name, request.name, crop_id, crop_lon, crop_lat])                                
+                                            except:
+                                                pass
+
+                        else:
+
+                            for crop in group.glob("*"):
+
+                                if not crop.name.startswith("0_"):
+
+                                    try:
+                                        crop_name = crop.name.split("_")
+                                        crop_id = int(crop_name[0])
+                                        crop_lon = float(crop_name[1])
+                                        crop_lat = float(crop_name[2])
+
+                                        spamwriter.writerow([group.name, crop_id, crop_lon, crop_lat])                              
+                                    except:
+                                        pass
+                        
