@@ -532,13 +532,31 @@ class Database:
         logger.debug(f"[database] get_poi {groupname}, {lat}, {lon}, {date_from}, {date_to}, \
                      {platform}, {width}, {height}, {description}, {tile_limit}, {tile_start}, {repr(kwargs)}")
 
+        # TODO: if not checked yet, lat and lon are mandatory for any import, so it is not checked here, 
+        #       because in this case we want an error to be thrown
         query = "SELECT rowid, * FROM PointOfInterests WHERE groupname = '" + str(groupname) \
-            + "' AND lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + date_from + "'" \
-            + " AND dateTo = '" + date_to + "' AND platform = '" + platform \
-            + "' AND width = " + str(width) + " AND height = " + str(height) \
-            + " AND description = '" + str(description) + "' AND tileLimit = " + str(tile_limit)
+            + "' AND lat = " + str(lat) + " AND lon = " + str(lon) + " AND dateFrom = '" + str(date_from) + "'" \
+            + " AND dateTo = '" + date_to + "' AND platform = '" + platform + "' AND description = '" + str(description) + "'"
+
+        if not (width == None) and isinstance(width, int):
+            query = "%s AND width = %d" % (query, width)
+        else:
+            query = query + " AND width IS NULL"
+
+        if not (height == None) and isinstance(height, int):
+            query = "%s AND height = %d" % (query, height)
+        else:
+            query = query + " AND height IS NULL"
+
+        if not (tile_limit == None) and isinstance(tile_limit, int):
+            query = "%s AND tileLimit = %d" % (query, tile_limit)
+        else:
+            query = query + " AND tileLimit IS NULL"
+
         if not (tile_start == None) and tile_start > 1:
             query = query + " AND tileStart = " + str(tile_start)
+        else:
+            query = query + " AND tileStart IS NULL"
 
         used_keys = []
 
