@@ -33,6 +33,7 @@ import geocropper.asfWrapper as asfWrapper
 import logging
 
 from osgeo import gdal
+from osgeo import gdal_array
 
 # gdal library distributed by conda destroys PATH environment variable
 # see -> https://github.com/OSGeo/gdal/issues/1231
@@ -1742,3 +1743,42 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
 
             else:
                 counter = counter + 1
+
+
+def move_imperfect_S1_crops(source_dir, target_dir):
+
+    crop_list = list(source_dir.glob("*"))
+
+    for crop in tqdm(crop_list, desc="Checking crops: "):
+
+        if not crop.name.startswith("0_"):
+
+            s1_image = crop / "sensordata" / "s1_cropped.tif"
+            
+            if s1_image.exists():
+
+                raster_array = None
+
+                # Read raster data as numeric array from file
+                try:
+                    raster_array = gdal_array.LoadFile(str(s1_image.absolute()))
+                except:
+                    print(f"Error in reading file. Moving crop {crop.name}")
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(crop.absolute()), str(target_dir.absolute()))
+
+                if isinstance(raster_array, numpy.ndarray):
+                    pixels = raster_array.shape[1] * raster_array.shape[2]
+                    pixels_na = 0
+
+                    for row in range(raster_array.shape[1]):
+                        for col in range(raster_array.shape[2]):
+                            if raster_array[0][row][col] == 0 and raster_array[1][row][col] == 0:
+                                pixels_na = pixels_na + 1
+
+                    # if 10% of pixels contain value 0 in both bands, move crop to target dir
+                    if pixels_na / pixels >= 0.1:
+                        print(f"\nMoving crop {crop.name} (imperfect area: {math.ceil(pixels_na / pixels * 100)}%)")
+                        target_dir.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(crop.absolute()), str(target_dir.absolute()))                      
+

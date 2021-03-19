@@ -862,4 +862,57 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                         spamwriter.writerow([group.name, crop_id, crop_lon, crop_lat, crop_datetime])                              
                                     except:
                                         pass
-                        
+
+
+def move_imperfect_S1_crops(source_dir, target_dir, outside_cropped_tiles_dir=False, has_subdir=True):
+    """Moves imperfect Sentinel-1 crops to target dir.
+
+    Parameters
+    ----------
+    source_dir : string
+        Name of the group directory or direct path to source directory.
+    target_dir : string
+        Path of target directory.
+    outside_cropped_tiles_dir : boolean, optional
+        Default is False.
+        Set this to true if folder path is not a relative path within the cropped tiles folder,
+        but an absolute path.
+    has_subdir : boolean, optional
+        Default is True.
+        The cropped tiles directory can have two different structures.
+        This parameter defines, if the passed directory has a further subdirectory.
+    """
+
+    target_dir = pathlib.Path(target_dir)
+
+    if len(source_dir) > 0:
+
+        print("Checking Sentinel-1 crops...")
+
+        if outside_cropped_tiles_dir:
+
+            print(f"Source directory: {source_dir}")
+
+            source_dir = pathlib.Path(source_dir)
+            if has_subdir:
+                for request in source_dir.glob("*"):
+                    if request.is_dir():
+                        print(f"Subdirectory: {request.name}")
+                        utils.move_imperfect_S1_crops(request, (target_dir / request.name))
+            else:
+                utils.move_imperfect_S1_crops(source_dir, target_dir)
+        else:
+            for group in config.croppedTilesDir.glob("*"):
+
+                if source_dir == group.name:
+
+                    print(f"Group directory: {group.name}")
+
+                    if has_subdir:
+                        for request in group.glob("*"):
+                            if request.is_dir():
+                                print(f"Subdirectory: {request.name}")
+                                utils.move_imperfect_S1_crops(request, (target_dir / group.name / request.name))                            
+
+                    else:
+                        utils.move_imperfect_S1_crops(group, (target_dir / group.name))                                                    
