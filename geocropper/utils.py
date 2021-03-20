@@ -858,6 +858,7 @@ def create_trimmed_crops(source_dir, target_dir, width, height):
 
                             # open image with GDAL
                             img = gdal.Open(str(file))
+                            proj = img.GetProjection()
 
                             # yres is negative!
                             upper_left_x, xres, xskew, upper_left_y, yskew, yres = img.GetGeoTransform()
@@ -886,16 +887,24 @@ def create_trimmed_crops(source_dir, target_dir, width, height):
                             bottom_right_y = center_pixel_y - (height/2) + (width/2) / xres * yskew                        
 
                             # trim image
-                            img = gdal.Translate(str(file) + "_new", img, format=file_format,
-                                                projWin=[top_left_x, top_left_y,
-                                                         bottom_right_x, bottom_right_y])                      
+                            img = gdal.Translate(
+                                str(file) + "_new.jp2", 
+                                str(file), 
+                                format=file_format,
+                                outputSRS=proj,
+                                projWin=[
+                                    top_left_x, 
+                                    top_left_y,
+                                    bottom_right_x, 
+                                    bottom_right_y
+                                ])                      
 
                             # save and replace
 
                             img = None
 
                             file.unlink()
-                            file_new = pathlib.Path(str(file) + "_new")
+                            file_new = pathlib.Path(str(file) + "_new.jp2")
                             file_new.rename(file)
 
                         except:
