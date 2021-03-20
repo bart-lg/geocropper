@@ -9,6 +9,7 @@ import rasterio
 import shutil
 import pyproj
 from pyproj import Geod
+import pandas
 import random
 from shapely.geometry import Point
 from shapely.geometry import Polygon
@@ -1791,3 +1792,48 @@ def move_imperfect_S1_crops(source_dir, target_dir):
                         target_dir.mkdir(parents=True, exist_ok=True)
                         shutil.move(str(crop.absolute()), str(target_dir.absolute()))                      
 
+
+def get_coordinate_list_from_csv(csv_path):
+    data = None
+    csv_path = pathlib.Path(csv_path)
+    if csv_path.exists():
+        col_list = ["lon", "lat"]
+        data = pandas.read_csv(csv_path, usecols=col_list)
+    return data
+
+
+def move_crops_containing_locations(csv_path, source_dir, target_dir):
+
+    crop_list = list(source_dir.glob("*"))
+    coordinates = get_coordinate_list_from_csv(csv_path)
+
+    if isinstance(coordinates, pandas.core.frame.DataFrame) and len(coordinates) > 0:
+
+        for crop in tqdm(crop_list, desc="Checking crops: "):
+
+            if not crop.name.startswith("0_"):
+
+                preview_file = crop / "preview.tif"
+                    
+                if preview_file.exists():
+
+                    img = rasterio.open(str(preview_file.absolute()))
+
+                    for i in range(len(coordinates)):
+
+                        lon = coordinates["lon"][i]
+                        lat = coordinates["lat"][i]
+
+                        inProj = pyproj.Proj(init='epsg:4326')
+                        outProj = pyproj.Proj(img.crs)
+
+                        x, y = pyproj.transform(inProj, outProj, lon, lat)
+
+                        row, col = rasterio.transform.rowcol(img.transform, x, y)
+
+                        if row > 0 and row <= img.shape[0] and col > 0 and col <= img.shape[1]:
+                            img.close()
+                            print(f"\nMoving crop {crop.name} (contains point lat:{lat} lon:{lon})")
+                            target_dir.mkdir(parents=True, exist_ok=True)
+                            shutil.move(str(crop.absolute()), str(target_dir.absolute()))
+                            break                 
