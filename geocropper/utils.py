@@ -1802,7 +1802,7 @@ def get_coordinate_list_from_csv(csv_path):
     return data
 
 
-def move_crops_containing_locations(csv_path, source_dir, target_dir):
+def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_foldername=False):
 
     crop_list = list(source_dir.glob("*"))
     coordinates = get_coordinate_list_from_csv(csv_path)
@@ -1813,16 +1813,28 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir):
 
             if not crop.name.startswith("0_"):
 
-                preview_file = crop / "preview.tif"
-                    
-                if preview_file.exists():
+                if not based_on_foldername:
+
+                    preview_file = crop / "preview.tif"
+                        
+                    if not preview_file.exists():
+                        break
 
                     img = rasterio.open(str(preview_file.absolute()))
 
-                    for i in range(len(coordinates)):
+                move_crop = False
 
-                        lon = coordinates["lon"][i]
-                        lat = coordinates["lat"][i]
+                for i in range(len(coordinates)):
+
+                    lon = coordinates["lon"][i]
+                    lat = coordinates["lat"][i]
+
+                    if based_on_foldername:
+
+                        if f"_{lon}_{lat}" in crop.name:
+                            move_crop = True
+
+                    else:
 
                         inProj = pyproj.Proj(init='epsg:4326')
                         outProj = pyproj.Proj(img.crs)
@@ -1833,6 +1845,9 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir):
 
                         if row > 0 and row <= img.shape[0] and col > 0 and col <= img.shape[1]:
                             img.close()
+                            move_crop = True
+
+                        if move_crop:
                             print(f"\nMoving crop {crop.name} (contains point lat:{lat} lon:{lon})")
                             target_dir.mkdir(parents=True, exist_ok=True)
                             shutil.move(str(crop.absolute()), str(target_dir.absolute()))

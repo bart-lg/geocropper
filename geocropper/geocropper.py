@@ -930,8 +930,8 @@ def move_imperfect_S1_crops(source_dir, target_dir, outside_cropped_tiles_dir=Fa
                         utils.move_imperfect_S1_crops(group, (target_dir / group.name))                                                    
 
 
-def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cropped_tiles_dir=False, has_subdir=True):
-    """Move crops that contain coordinates in CSV to target dir. The crops must contain a georeferenced preview.tif.
+def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cropped_tiles_dir=False, has_subdir=True, based_on_foldername=False):
+    """Move crops that contain coordinates in CSV to target dir.
 
     Parameters
     ----------
@@ -949,6 +949,10 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
         Default is True.
         The cropped tiles directory can have two different structures.
         This parameter defines, if the passed directory has a further subdirectory.
+    based_on_foldername : boolean, optional
+        Default is False.
+        If true, compare with coordinates mentioned in crop folder name.
+        If false, check if coordinates are within the preview.tif (crops must contain a georeferenced preview.tif).
     """
 
     target_dir = pathlib.Path(target_dir)
