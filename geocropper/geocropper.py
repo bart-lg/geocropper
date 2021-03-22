@@ -789,7 +789,10 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                         crop_id = int(crop_name[0])
                                         crop_lon = float(crop_name[1])
                                         crop_lat = float(crop_name[2])
-                                        crop_datetime = crop_name[3]
+                                        if len(crop_name) > 3:
+                                            crop_datetime = crop_name[3]
+                                        else:
+                                            crop_datetime = ""
 
                                         spamwriter.writerow([request.name, crop_id, crop_lon, crop_lat, crop_datetime])
                                     except:
@@ -808,7 +811,10 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                 crop_id = int(crop_name[0])
                                 crop_lon = float(crop_name[1])
                                 crop_lat = float(crop_name[2])
-                                crop_datetime = crop_name[3]
+                                if len(crop_name) > 3:
+                                    crop_datetime = crop_name[3]
+                                else:
+                                    crop_datetime = ""
 
                                 spamwriter.writerow([crop_id, crop_lon, crop_lat, crop_datetime])                
                             except:
@@ -840,7 +846,10 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                                 crop_id = int(crop_name[0])
                                                 crop_lon = float(crop_name[1])
                                                 crop_lat = float(crop_name[2])
-                                                crop_datetime = crop_name[3]
+                                                if len(crop_name) > 3:
+                                                    crop_datetime = crop_name[3]
+                                                else:
+                                                    crop_datetime = ""
 
                                                 spamwriter.writerow([group.name, request.name, crop_id, crop_lon, crop_lat, crop_datetime])                                
                                             except:
@@ -857,7 +866,10 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                         crop_id = int(crop_name[0])
                                         crop_lon = float(crop_name[1])
                                         crop_lat = float(crop_name[2])
-                                        crop_datetime = crop_name[3]
+                                        if len(crop_name) > 3:
+                                            crop_datetime = crop_name[3]
+                                        else:
+                                            crop_datetime = ""
 
                                         spamwriter.writerow([group.name, crop_id, crop_lon, crop_lat, crop_datetime])                              
                                     except:
