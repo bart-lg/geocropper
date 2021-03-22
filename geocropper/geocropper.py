@@ -973,3 +973,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
 
                     else:
                         utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name))
+
+
+def stack_trimmed_images():
+    pass
