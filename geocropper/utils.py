@@ -1825,7 +1825,11 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                     if not preview_file.exists():
                         break
 
-                    img = rasterio.open(str(preview_file.absolute()))
+                    try:
+                        img = rasterio.open(str(preview_file.absolute()))
+                    except:
+                        print(f"Could not open preview.tif: {crop.name}")
+                        break
 
                 move_crop = False
 
