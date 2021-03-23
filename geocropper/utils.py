@@ -1839,85 +1839,61 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir):
                             break                 
 
 
-def get_unique_lat_lon_set(source_dir, postfix):
-
-    """Loops through every folder of the specified speckle variant in rootdir and returns 
-    a set with unique latitude and longitude positions.
+def get_unique_lat_lon_set(source_dir, postfix=""):
+    """Loops through every folder in source dir, optionally looks for matching postfix if defined and returns 
+    a set of strings with unique latitude and longitude positions.
 
     Parameters
     ----------
-    root_dir: Path
-        Path of trimmed crops with various speckle variants and recording times.
-    speckle: String
-        Set desired speckle variant (options available in geocropper.stack_trimmed_images) 
+    source_dir: Path
+        Path of trimmed crops 
+    postfix: String
+        Set desired postfix for selecting specific folders containing a certain string 
+        (by default is empty "" and therefore selects every folder in source_dir) 
     """
     
     # Set is an unordered list which allows no duplicated entries
     lat_lon_set = set()
 
-    print(f"Reading unique positions for {speckle}...")
+    print(f"Reading unique positions...")
 
-    for folder in root_dir.glob(f"*{speckle}*"):
+    for folder in source_dir.glob(f"*{postfix}"):
         if folder.is_dir() and folder.name.split("_")[0] != "stacked":
             for crop in folder.glob("*"):
-                if crop.is_dir() and crop.name != "0_combined-preview":
+                if crop.is_dir() and not crop.name.startswith("0_"):
                     lat_lon_set.add(crop.name.split("_")[1] + "_" + crop.name.split("_")[2])
 
     return lat_lon_set
 
 
-def get_image_path_list(root_dir, speckle, position):
-    """Find one or more images of a specified position in the root directory and returns a list containing the 
+def get_image_path_list(source_dir, position, postfix=""):
+    """Find one or more images of a specified position in the source directory and returns a list containing the 
     paths of these images.
 
     Parameters
     ----------
-    root_dir: Path
-        Path of trimmed crops with various speckle variants and recording times.
-    speckle: String
-        Set the desired speckle variant (options available in geocropper.stack_trimmed_images)
+    source_dir: Path
+        Path of trimmed crops
     position: String
         Set the position of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    postfix: String, optional
+        Set desired postfix for selecting specific folders containing a certain string 
+        (by default is empty "" and therefore selects every folder in source_dir) 
     """
 
     image_path_list = []
-    for folder in root_dir.glob(f"*{speckle}*"):
+    for folder in source_dir.glob(f"*{postfix}"):
         if folder.is_dir() and folder.name.split("_")[0] != "stacked":
             for crop in folder.glob(f"*{position}*"):
                 if crop.is_dir():
                     image_path = crop / "sensordata" / "s1_cropped.tif"
-                    image_path_list.append(image_path)
+                    if image_path.exists():
+                        image_path_list.append(image_path)
 
     return image_path_list
 
 
-def mkdir_for_stacked_image(output_dir, speckle, position):
-    """Makes a directory in the output_dir for the stacked image named by the lat_lon position and returns the 
-    path to the created directory.
-
-    Parameters
-    ----------
-    output_dir: Path
-        Path where the stacked image shall be stored
-    speckle: String
-        Set the desired speckle variant (options available in geocropper.stack_trimmed_images)
-    position: String
-        Set the position of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
-    """
-    
-    stacked_image_path = output_dir / ("stacked_images_" + speckle) / position
-
-    try:
-        stacked_image_path.mkdir(exist_ok=True, parents=True)
-    except OSError as error:
-        print (f"Creation of the directory {stacked_image_path} failed")
-        print(error)
-        sys.exit()
-    else:
-        return stacked_image_path
-
-
-def stack_trimmed_images(image_path_list, output_dir, speckle, position):
+def stack_trimmed_images(image_path_list, output_dir, position, postfix="", tif_band_name_list=["s1_stacked_VV.tif", "s1_stacked_VH.tif"]):
     """Stacks trimmed images from provided image_path_list with rasterio in order to preserve the georeferencing
     and writes both bands to tif files ("s1_stacked_VV.tif", "s1_stacked_VH.tif").
 
@@ -1927,27 +1903,38 @@ def stack_trimmed_images(image_path_list, output_dir, speckle, position):
         List containing paths of images of the same position with different capture dates.
     output_dir: Path
         Path where the stacked image shall be stored
-    speckle: String
-        Set the desired speckle variant (options available in geocropper.stack_trimmed_images)
     position: String
         Set the position of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    postfix: String, optional
+        Set desired postfix for selecting specific folders containing a certain string 
+        (by default is empty "" and therefore selects every folder in source_dir)
+    tif_band_names: String, optional
+        Set names for the bands of the tif tiles (by default the bands are called ["s1_stacked_VV.tif", "s1_stacked_VH.tif"])
     """
 
     rasterio_image_list = []
     for image_path in image_path_list:
         rasterio_image_list.append(rasterio.open(image_path))
 
+    # if a postfix exists the foldername for the stacked_images will be complemented with the postfix string
+    stacked_image_path = output_dir / ("_".join(filter(None, ["stacked_images", postfix]))) / position
+
+    try:
+        stacked_image_path.mkdir(exist_ok=True, parents=True)
+    except OSError as error:
+        print (f"Creation of the directory {stacked_image_path} failed")
+        print(error)
+        sys.exit()
+
     try:
         profile = rasterio_image_list[0].profile
         profile.update({"count":len(rasterio_image_list)})
 
-        stacked_image_path = mkdir_for_stacked_image(output_dir, speckle, position)
-
-        for band, tif_file in enumerate(["s1_stacked_VV.tif", "s1_stacked_VH.tif"], start=1):
+        for band, tif_file in enumerate(tif_band_name_list, start=1):
             with rasterio.open((stacked_image_path / tif_file), "w", **profile) as dest:
                 for i, image in enumerate(rasterio_image_list, start=1):
                     dest.write(image.read(band), i)
-    
+
     except IndexError as error:
         print (f"No images for stacking were found.")
         print(error)
