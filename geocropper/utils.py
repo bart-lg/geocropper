@@ -1848,7 +1848,10 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                             move_crop = True
 
                         if move_crop:
-                            print(f"\nMoving crop {crop.name} (contains point lat:{lat} lon:{lon})")
-                            target_dir.mkdir(parents=True, exist_ok=True)
-                            shutil.move(str(crop.absolute()), str(target_dir.absolute()))
+                            try:
+                                print(f"\nMoving crop {crop.name} (contains point lat:{lat} lon:{lon})")
+                                target_dir.mkdir(parents=True, exist_ok=True)
+                                shutil.move(str(crop.absolute()), str(target_dir.absolute()))
+                            except:
+                                print(f"\nCould not move: {crop.name}")
                             break                 
