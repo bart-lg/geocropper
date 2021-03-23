@@ -975,7 +975,8 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
                         utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name))
 
 
-def stack_trimmed_images(root_dir, speckle, output_dir=None):
+def stack_trimmed_images(source_dir, postfix, output_dir=None):
+
     """Stack images of the same position with different capture dates and write them to tifs.
     
     Folowing speckle variants can be chosen
