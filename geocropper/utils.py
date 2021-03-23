@@ -1798,7 +1798,7 @@ def get_coordinate_list_from_csv(csv_path):
     csv_path = pathlib.Path(csv_path)
     if csv_path.exists():
         col_list = ["lon", "lat"]
-        data = pandas.read_csv(csv_path, usecols=col_list)
+        data = pandas.read_csv(csv_path, usecols=col_list, dtype=str)
     return data
 
 
@@ -1832,15 +1832,26 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                         break
 
                 move_crop = False
+                crop_components = crop.name.split("_")
+                if len(crop_components) >= 3:
+                    crop_lon = str(crop_components[1])
+                    crop_lat = str(crop_components[2])
+                else:
+                    if based_on_foldername:
+                        print(f"Crop name contains no coordinates: {crop.name}")
+                        break
+                    else:
+                        crop_lon = None
+                        crop_lat = None
 
                 for i in range(len(coordinates)):
 
-                    lon = coordinates["lon"][i]
-                    lat = coordinates["lat"][i]
+                    lon = str(coordinates["lon"][i])
+                    lat = str(coordinates["lat"][i])
 
                     if based_on_foldername:
 
-                        if f"_{lon}_{lat}" in crop.name:
+                        if ( lon in crop_lon or crop_lon in lon ) and ( lat in crop_lat or crop_lat in lat ):
                             move_crop = True
 
                     else:
@@ -1856,11 +1867,11 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                             img.close()
                             move_crop = True
 
-                        if move_crop:
-                            try:
-                                print(f"\nMoving crop {crop.name} (contains point lat:{lat} lon:{lon})")
-                                target_dir.mkdir(parents=True, exist_ok=True)
-                                shutil.move(str(crop.absolute()), str(target_dir.absolute()))
-                            except:
-                                print(f"\nCould not move: {crop.name}")
-                            break                 
+                    if move_crop:
+                        try:
+                            print(f"\nMoving crop {crop.name} (contains point lat:{lat} lon:{lon})")
+                            target_dir.mkdir(parents=True, exist_ok=True)
+                            shutil.move(str(crop.absolute()), str(target_dir.absolute()))
+                        except:
+                            print(f"\nCould not move: {crop.name}")
+                        break                 
