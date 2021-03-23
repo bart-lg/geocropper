@@ -1908,7 +1908,7 @@ def stack_trimmed_images(image_path_list, output_dir, position, postfix="", tif_
     postfix: String, optional
         Set desired postfix for selecting specific folders containing a certain string 
         (by default is empty "" and therefore selects every folder in source_dir)
-    tif_band_names: String, optional
+    tif_band_name_list: String, optional
         Set names for the bands of the tif tiles (by default the bands are called ["s1_stacked_VV.tif", "s1_stacked_VH.tif"])
     """
 
