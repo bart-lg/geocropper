@@ -971,9 +971,9 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
                 for request in source_dir.glob("*"):
                     if request.is_dir():
                         print(f"Subdirectory: {request.name}")
-                        utils.move_crops_containing_locations(csv_path, request, (target_dir / request.name))
+                        utils.move_crops_containing_locations(csv_path, request, (target_dir / request.name), based_on_foldername)
             else:
-                utils.move_crops_containing_locations(csv_path, source_dir, target_dir)
+                utils.move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_foldername)
         else:
             for group in config.croppedTilesDir.glob("*"):
 
@@ -985,7 +985,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
                         for request in group.glob("*"):
                             if request.is_dir():
                                 print(f"Subdirectory: {request.name}")
-                                utils.move_crops_containing_locations(csv_path, request, (target_dir / group.name / request.name))
+                                utils.move_crops_containing_locations(csv_path, request, (target_dir / group.name / request.name), based_on_foldername)
 
                     else:
-                        utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name))
+                        utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name), based_on_foldername)
