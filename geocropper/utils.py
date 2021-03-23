@@ -1807,6 +1807,11 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
     crop_list = list(source_dir.glob("*"))
     coordinates = get_coordinate_list_from_csv(csv_path)
 
+    if based_on_foldername:
+        print("Checking locations based on folder name.")
+    else:
+        print("Checking locations within preview.tif images.")
+
     if isinstance(coordinates, pandas.core.frame.DataFrame) and len(coordinates) > 0:
 
         for crop in tqdm(crop_list, desc="Checking crops: "):
