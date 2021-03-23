@@ -1839,7 +1839,8 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir):
                             break                 
 
 
-def get_unique_lat_lon(root_dir, speckle):
+def get_unique_lat_lon_set(source_dir, postfix):
+
     """Loops through every folder of the specified speckle variant in rootdir and returns 
     a set with unique latitude and longitude positions.
 
