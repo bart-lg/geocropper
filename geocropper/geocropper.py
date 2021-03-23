@@ -975,39 +975,29 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
                         utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name))
 
 
-def stack_trimmed_images(source_dir, postfix, output_dir=None):
+def stack_trimmed_images(source_dir, postfix="", output_dir=None):
 
     """Stack images of the same position with different capture dates and write them to tifs.
-    
-    Folowing speckle variants can be chosen
-        speckle = "speckle-test_boxcar_trimmed"
-        speckle = "speckle-test_frost_trimmed"
-        speckle = "speckle-test_gamma-map_trimmed"
-        speckle = "speckle-test_IDAN_trimmed"
-        speckle = "speckle-test_lee_trimmed"
-        speckle = "speckle-test_lee-sigma_trimmed"
-        speckle = "speckle-test_median_trimmed"
-        speckle = "speckle-test_no-speckle_trimmed"
-        speckle = "speckle-test_refined-lee_trimmed"
     
     Parameters
     ----------
     root_dir: Path
         Path of trimmed crops with various speckle variants and recording times.
-    speckle: String
-        Set desired speckle variant (e.g. "speckle-test_lee-sigma_trimmed", "speckle-test_boxcar_trimmed") 
+    postfix: String
+        Set desired postfix for selecting specific folders containing a certain string 
+        (by default is empty "" and therefore selects every folder in source_dir)
     output_dir: Path
         Path where the stacked image shall be stored (by default is equal to root_dir)
     """
 
-    root_dir = pathlib.Path(root_dir)
+    source_dir = pathlib.Path(source_dir)
     if output_dir == None:
-        output_dir = root_dir
+        output_dir = source_dir
     else:
         output_dir = pathlib.Path(output_dir)
 
-    lat_lon_set = utils.get_unique_lat_lon(root_dir, speckle)
+    lat_lon_set = utils.get_unique_lat_lon(source_dir, postfix)
 
     for position in tqdm(lat_lon_set, desc="Stacking images and writing tifs: "):
-        image_path_list = utils.get_image_path_list(root_dir, speckle, position)
-        utils.stack_trimmed_images(image_path_list, output_dir, speckle, position)
+        image_path_list = utils.get_image_path_list(source_dir, postfix, position)
+        utils.stack_trimmed_images(image_path_list, output_dir, postfix, position)
