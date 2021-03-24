@@ -1823,13 +1823,13 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                     preview_file = crop / "preview.tif"
                         
                     if not preview_file.exists():
-                        break
+                        continue
 
                     try:
                         img = rasterio.open(str(preview_file.absolute()))
                     except:
                         print(f"Could not open preview.tif: {crop.name}")
-                        break
+                        continue
 
                 move_crop = False
                 crop_components = crop.name.split("_")
@@ -1839,7 +1839,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                 else:
                     if based_on_foldername:
                         print(f"Crop name contains no coordinates: {crop.name}")
-                        break
+                        continue
                     else:
                         crop_lon = None
                         crop_lat = None
@@ -1876,7 +1876,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                         except:
                             print(f"\nCould not move: {crop.name}")
 
-                        break                     
+                        continue                     
 
 
 def get_unique_lat_lon_set(source_dir, postfix=""):
