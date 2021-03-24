@@ -1798,14 +1798,19 @@ def get_coordinate_list_from_csv(csv_path):
     csv_path = pathlib.Path(csv_path)
     if csv_path.exists():
         col_list = ["lon", "lat"]
-        data = pandas.read_csv(csv_path, usecols=col_list)
+        data = pandas.read_csv(csv_path, usecols=col_list, dtype=str)
     return data
 
 
-def move_crops_containing_locations(csv_path, source_dir, target_dir):
+def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_foldername=False):
 
     crop_list = list(source_dir.glob("*"))
     coordinates = get_coordinate_list_from_csv(csv_path)
+
+    if based_on_foldername:
+        print("Checking locations based on folder name.")
+    else:
+        print("Checking locations within preview.tif images.")
 
     if isinstance(coordinates, pandas.core.frame.DataFrame) and len(coordinates) > 0:
 
@@ -1813,16 +1818,43 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir):
 
             if not crop.name.startswith("0_"):
 
-                preview_file = crop / "preview.tif"
-                    
-                if preview_file.exists():
+                if not based_on_foldername:
 
-                    img = rasterio.open(str(preview_file.absolute()))
+                    preview_file = crop / "preview.tif"
+                        
+                    if not preview_file.exists():
+                        break
 
-                    for i in range(len(coordinates)):
+                    try:
+                        img = rasterio.open(str(preview_file.absolute()))
+                    except:
+                        print(f"Could not open preview.tif: {crop.name}")
+                        break
 
-                        lon = coordinates["lon"][i]
-                        lat = coordinates["lat"][i]
+                move_crop = False
+                crop_components = crop.name.split("_")
+                if len(crop_components) >= 3:
+                    crop_lon = str(crop_components[1])
+                    crop_lat = str(crop_components[2])
+                else:
+                    if based_on_foldername:
+                        print(f"Crop name contains no coordinates: {crop.name}")
+                        break
+                    else:
+                        crop_lon = None
+                        crop_lat = None
+
+                for i in range(len(coordinates)):
+
+                    lon = str(coordinates["lon"][i])
+                    lat = str(coordinates["lat"][i])
+
+                    if based_on_foldername:
+
+                        if ( lon in crop_lon or crop_lon in lon ) and ( lat in crop_lat or crop_lat in lat ):
+                            move_crop = True
+
+                    else:
 
                         inProj = pyproj.Proj(init='epsg:4326')
                         outProj = pyproj.Proj(img.crs)
@@ -1833,10 +1865,18 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir):
 
                         if row > 0 and row <= img.shape[0] and col > 0 and col <= img.shape[1]:
                             img.close()
+                            move_crop = True
+
+                    if move_crop:
+                        try:
                             print(f"\nMoving crop {crop.name} (contains point lat:{lat} lon:{lon})")
                             target_dir.mkdir(parents=True, exist_ok=True)
                             shutil.move(str(crop.absolute()), str(target_dir.absolute()))
-                            break                 
+
+                        except:
+                            print(f"\nCould not move: {crop.name}")
+
+                        break                     
 
 
 def get_unique_lat_lon_set(source_dir, postfix=""):
