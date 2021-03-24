@@ -988,4 +988,32 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
                                 utils.move_crops_containing_locations(csv_path, request, (target_dir / group.name / request.name), based_on_foldername)
 
                     else:
+
                         utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name), based_on_foldername)
+
+
+def stack_trimmed_images(source_dir, postfix="", output_dir=None):
+    """Stack images of the same position with different capture dates and write them to tifs.
+    
+    Parameters
+    ----------
+    root_dir: Path
+        Path of trimmed crops of various recording times which shall be stacked
+    postfix: String, optional
+        Set desired postfix for selecting specific folders containing a certain string 
+        (by default is empty "" and therefore selects every folder in source_dir).
+    output_dir: Path, optional
+        Path where the stacked image shall be stored (by default is equal to root_dir)
+    """
+
+    source_dir = pathlib.Path(source_dir)
+    if output_dir == None:
+        output_dir = source_dir
+    else:
+        output_dir = pathlib.Path(output_dir)
+
+    lat_lon_set = utils.get_unique_lat_lon_set(source_dir, postfix)
+
+    for position in tqdm(lat_lon_set, desc="Stacking images and writing tifs: "):
+        image_path_list = utils.get_image_path_list(source_dir, position, postfix)
+        utils.stack_trimmed_images(image_path_list, output_dir, position, postfix)
