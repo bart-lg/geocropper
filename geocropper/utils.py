@@ -1876,7 +1876,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                         except:
                             print(f"\nCould not move: {crop.name}")
 
-                        continue                     
+                        break                     
 
 
 def get_unique_lat_lon_set(source_dir, postfix=""):
