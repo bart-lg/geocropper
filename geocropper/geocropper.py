@@ -975,28 +975,59 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
                         utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name))
 
 
-def stack_trimmed_images(source_dir, postfix="", output_dir=None):
+def stack_trimmed_images(source_dir, postfix="", target_dir=None):
     """Stack images of the same position with different capture dates and write them to tifs.
     
     Parameters
     ----------
-    root_dir: Path
+    source_dir: Path
         Path of trimmed crops of various recording times which shall be stacked
     postfix: String, optional
         Set desired postfix for selecting specific folders containing a certain string 
-        (by default is empty "" and therefore selects every folder in source_dir).
-    output_dir: Path, optional
+        (default is empty "" and therefore selects every folder in source_dir).
+    target_dir: Path, optional
         Path where the stacked image shall be stored (by default is equal to root_dir)
     """
 
     source_dir = pathlib.Path(source_dir)
-    if output_dir == None:
-        output_dir = source_dir
+    if target_dir == None:
+        target_dir = source_dir
     else:
-        output_dir = pathlib.Path(output_dir)
+        target_dir = pathlib.Path(target_dir)
 
     lat_lon_set = utils.get_unique_lat_lon_set(source_dir, postfix)
 
     for position in tqdm(lat_lon_set, desc="Stacking images and writing tifs: "):
         image_path_list = utils.get_image_path_list(source_dir, position, postfix)
-        utils.stack_trimmed_images(image_path_list, output_dir, position, postfix)
+        utils.stack_trimmed_images(image_path_list, target_dir, position, postfix)
+
+
+def standardize_stacked_images(source_dir, standardization_procedure="layerwise", scaler_type="StandardScaler", target_dir=None):
+    """Standardize stacked images either layerwise or stackwise with StandardScaler or RobustScaler.
+    
+    Parameters
+    ----------
+    source_dir: Path
+        Path of stacked images which shall be standardized
+    standardization_procedure: String, optional
+        Set the standardization precedure (default is "layerwise")
+        "stackwise" = calculate mean and standard deviation based on the whole stack (10x400x400)
+        "layerwise" = calculate mean and standard deviation based on each layer (400x400)
+    scaler_type: String, optional
+        Set desired scaler type (default is "StandardScaler")
+        "StandardScaler" = standardizes the values by subtracting the mean and then scaling to unit variance.
+        "Robustscaler" = transforms the values by subtracting the median and then dividing by the interquartile range (75% value — 25% value)
+    target_dir: Path, optional
+        Path where the standardized image shall be stored (default is equal to root_dir)
+    """
+    
+    source_dir = pathlib.Path(source_dir)
+    if target_dir == None:
+        target_dir = source_dir.parent / ("standardized_" + source_dir.name)
+    else:
+        target_dir = pathlib.Path(target_dir)
+    
+    for image_dir in tqdm(source_dir.glob("*"), desc="Standardizing images and writing tifs: "):
+        if image_dir.is_dir() and not image_dir.name.startswith("0_"):
+            position = image_dir.name
+            utils.standardize_stacked_image(image_dir, target_dir, position, standardization_procedure, scaler_type)
