@@ -1942,27 +1942,42 @@ def stack_trimmed_images(image_path_list, target_dir, position, postfix="", tif_
         sys.exit()
 
 
-def standardize_stacked_image(image_dir, target_dir, position, standardization_procedure, scaler_type):
-    """Standardizes tif with multiple layers with specific standardization procedure and scaler type and returns
-    the image as an numpy array.
+def standardize_stacked_image(image_dir, target_dir, crop, standardization_procedure="layerwise", scaler_type="StandardScaler"):
+    """Standardizes tif either layerwise or stackwise with the scikit-learn StandardScaler or RobustScaler.
+
+    Parameters
+    ----------
+    image_dir: Path
+        Path of stacked images which shall be standardized
+    target_dir: Path
+        Path where the standardized image shall be stored
+    crop: String
+        Position of the crop in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    standardization_procedure: String, optional
+        Set the standardization precedure (default is "layerwise")
+        "stackwise" = calculate mean and standard deviation based on the whole stack (10x400x400)
+        "layerwise" = calculate mean and standard deviation based on each layer (400x400)
+    scaler_type: String, optional
+        Set desired scaler type (default is "StandardScaler")
+        "StandardScaler" = standardizes the values by subtracting the mean and then scaling to unit variance.
+        "Robustscaler" = transforms the values by subtracting the median and then dividing by the interquartile range (75% value — 25% value)
     """
     if image_dir.is_dir():
+
         image_path_VV = image_dir / "s1_stacked_VV.tif"
         image_path_VH = image_dir / "s1_stacked_VH.tif"
-        if image_path_VV.exists() and image_path_VH.exists():
-            image_VV = rasterio.open(image_path_VV)
-            image_VH = rasterio.open(image_path_VH)
-            profile = image_VV.profile
-            if standardization_procedure == "stackwise":
-                standardized_image_VV = standardize_tif_stackwise(image_VV, scaler_type)
-                standardized_image_VH = standardize_tif_stackwise(image_VH, scaler_type)
-            elif standardization_procedure == "layerwise":
-                standardized_image_VV = standardize_tif_layerwise(image_VV, scaler_type)
-                standardized_image_VH = standardize_tif_layerwise(image_VH, scaler_type)
-            else:
-                print("Choose a correct standardization procedure. ('layerwise' or 'stackwise')")
 
-    output_dir = target_dir / position
+        if image_path_VV.exists():
+            image_VV = rasterio.open(image_path_VV)
+            profile = image_VV.profile
+            standardized_image_VV = standardize_rasterio_image(image_VV, standardization_procedure, scaler_type)
+
+        if image_path_VH.exists():
+            image_VH = rasterio.open(image_path_VH)
+            profile = image_VH.profile
+            standardized_image_VH = standardize_rasterio_image(image_VH, standardization_procedure, scaler_type)
+
+    output_dir = target_dir / crop
                 
     try:
         output_dir.mkdir(exist_ok=True, parents=True)
@@ -1979,44 +1994,56 @@ def standardize_stacked_image(image_dir, target_dir, position, standardization_p
                 dest.write(standardized_image_VH)
 
 
-def standardize_tif_stackwise(rasterio_image, scaler_type):
-    """Takes in an image array, standardizes it based on all pixel values and returns the array.
+def standardize_rasterio_image(rasterio_image, standardization_procedure="layerwise", scaler_type="StandardScaler"):
+    """Standardizes a rasterio image with a specific standardization procedure and scaler type:
+    
+    Parameters
+    ----------
+    rasterio_image: rasterio.open()
+        Opened tif file with the rasterio package (rasterio.open("/path/to/image.tif"))
+    standardization_procedure: String, optional
+        Set the standardization precedure (default is "layerwise")
+        "stackwise" = calculate mean and standard deviation based on the whole stack (10x400x400)
+        "layerwise" = calculate mean and standard deviation based on each layer (400x400)
+    scaler_type: String, optional
+        Set desired scaler type (default is "StandardScaler")
+        "StandardScaler" = standardizes the values by subtracting the mean and then scaling to unit variance.
+        "Robustscaler" = transforms the values by subtracting the median and then dividing by the interquartile range (75% value — 25% value)
     """
+
     image_array = rasterio_image.read()
     num_layers, num_pixel_y, num_pixel_x = image_array.shape
-    
-    # Reshape the array into 2D
-    image_array = numpy.reshape(image_array, newshape=(num_pixel_y, -1))
-    
-    # Fit and transform the image array based on all pixel values
-    if scaler_type == "StandardScaler":
-        scaler = preprocessing.StandardScaler()
-    elif scaler_type == "RobustScaler":
-        scaler = preprocessing.RobustScaler()
-    standardized_image_array = scaler.fit_transform(image_array)
-    
-    # Reshape back to initial shape
-    standardized_image_array = numpy.reshape(standardized_image_array, newshape=(num_layers, num_pixel_y, num_pixel_x))
-    
-    return standardized_image_array
 
+    if standardization_procedure == "layerwise":
 
-def standardize_tif_layerwise(rasterio_image, scaler_type):
-    """Takes in an image array, standardizes each layer seperately, concatenates the layers back 
-    together and returns the array.
-    """
+        standardized_image_array = None
 
-    standardized_image_array = None
-    for band in rasterio_image.read():
-        # Initialize scaler
+        for band in image_array:
+
+            if scaler_type == "StandardScaler":
+                scaler = preprocessing.StandardScaler()
+            elif scaler_type == "RobustScaler":
+                scaler = preprocessing.RobustScaler()
+
+            # Standardize each layer based on the mean/median and variance of each layer seperately
+            if type(standardized_image_array) != numpy.ndarray:
+                standardized_image_array = numpy.array(([scaler.fit_transform(band)]))
+            else:
+                standardized_image_array = numpy.concatenate((standardized_image_array, [scaler.fit_transform(band)]))
+
+    if standardization_procedure == "stackwise":
+
+        image_array = numpy.reshape(image_array, newshape=(num_pixel_y, -1))
+
         if scaler_type == "StandardScaler":
             scaler = preprocessing.StandardScaler()
         elif scaler_type == "RobustScaler":
             scaler = preprocessing.RobustScaler()
-        # Create standardized numpy array
-        if type(standardized_image_array) != numpy.ndarray:
-            standardized_image_array = numpy.array(([scaler.fit_transform(band)]))
-        else:
-            standardized_image_array = numpy.concatenate((standardized_image_array, [scaler.fit_transform(band)]))
+
+        # Standardize the image stack based on the mean/median and variance of the whole stack
+        standardized_image_array = scaler.fit_transform(image_array)
+
+        # Reshape back to initial shape
+        standardized_image_array = numpy.reshape(standardized_image_array, newshape=(num_layers, num_pixel_y, num_pixel_x))
     
     return standardized_image_array

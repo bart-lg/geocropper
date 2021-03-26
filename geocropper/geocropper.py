@@ -1002,13 +1002,15 @@ def stack_trimmed_images(source_dir, postfix="", target_dir=None):
         utils.stack_trimmed_images(image_path_list, target_dir, position, postfix)
 
 
-def standardize_stacked_images(source_dir, standardization_procedure="layerwise", scaler_type="StandardScaler", target_dir=None):
+def standardize_stacked_images(source_dir, target_dir=None, standardization_procedure="layerwise", scaler_type="StandardScaler"):
     """Standardize stacked images either layerwise or stackwise with StandardScaler or RobustScaler.
     
     Parameters
     ----------
     source_dir: Path
         Path of stacked images which shall be standardized
+    target_dir: Path, optional
+        default is source_dir with prefix "standardized_"
     standardization_procedure: String, optional
         Set the standardization precedure (default is "layerwise")
         "stackwise" = calculate mean and standard deviation based on the whole stack (10x400x400)
@@ -1017,8 +1019,6 @@ def standardize_stacked_images(source_dir, standardization_procedure="layerwise"
         Set desired scaler type (default is "StandardScaler")
         "StandardScaler" = standardizes the values by subtracting the mean and then scaling to unit variance.
         "Robustscaler" = transforms the values by subtracting the median and then dividing by the interquartile range (75% value — 25% value)
-    target_dir: Path, optional
-        Path where the standardized image shall be stored (default is equal to root_dir)
     """
     
     source_dir = pathlib.Path(source_dir)
@@ -1029,5 +1029,5 @@ def standardize_stacked_images(source_dir, standardization_procedure="layerwise"
     
     for image_dir in tqdm(source_dir.glob("*"), desc="Standardizing images and writing tifs: "):
         if image_dir.is_dir() and not image_dir.name.startswith("0_"):
-            position = image_dir.name
-            utils.standardize_stacked_image(image_dir, target_dir, position, standardization_procedure, scaler_type)
+            crop = image_dir.name
+            utils.standardize_stacked_image(image_dir, target_dir, crop, standardization_procedure, scaler_type)
