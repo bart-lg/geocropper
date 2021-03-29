@@ -8,6 +8,8 @@ import csv
 import pyproj
 from pprint import pprint
 import rasterio
+import numpy
+import pandas
 import math 
 from shapely.geometry import Point
 from shapely.geometry import Polygon
@@ -997,13 +999,13 @@ def stack_trimmed_images(source_dir, postfix="", output_dir=None):
     
     Parameters
     ----------
-    root_dir: Path
+    root_dir : string
         Path of trimmed crops of various recording times which shall be stacked
-    postfix: String, optional
+    postfix : string, optional
         Set desired postfix for selecting specific folders containing a certain string 
         (by default is empty "" and therefore selects every folder in source_dir).
-    output_dir: Path, optional
-        Path where the stacked image shall be stored (by default is equal to root_dir)
+    output_dir : string, optional
+        Path where the stacked image shall be stored to (by default is equal to root_dir)
     """
 
     source_dir = pathlib.Path(source_dir)
@@ -1017,3 +1019,100 @@ def stack_trimmed_images(source_dir, postfix="", output_dir=None):
     for position in tqdm(lat_lon_set, desc="Stacking images and writing tifs: "):
         image_path_list = utils.get_image_path_list(source_dir, position, postfix)
         utils.stack_trimmed_images(image_path_list, output_dir, position, postfix)
+
+
+def compare_csv_locations(csv_dir, reference_csv_path=None, result_csv_path=None):
+    """Compares lat and lon coordinates in multiple csv files and outlines how many coordinates occur multiply.
+
+    Compares lat and lon coordinates in multiple csv files and outlines how many coordinates occur multiply.
+    The reference csv can be used to specify a list of coordinates, which sould be checked. This csv can be located outside the csv_dir.
+
+    Parameters
+    ----------
+    csv_dir : string
+        Path containing the csv files which shall be checked.
+    reference_csv_path : string, optional
+        Path of the reference csv file.
+    result_csv_path : string, optional
+        Path of csv file for output of results.
+    """
+
+    csv_dir = pathlib.Path(csv_dir)
+    if not csv_dir.exists():
+        print("CSV directory does not exist!")
+        return
+
+    lat_lon_set = None
+
+    print("Creating unique coordinate list...")
+
+    if not isinstance(reference_csv_path, type(None)):
+        
+        reference_csv_path = pathlib.Path(reference_csv_path)
+        if not reference_csv_path.exists():
+            print("Reference CSV file does not exist. Continuing without reference file.")
+            reference_csv_path = None
+
+        else:
+            lat_lon_set = utils.get_unique_lat_lon_set(csv_path=reference_csv_path)
+
+    if isinstance(lat_lon_set, type(None)):
+        for csv_file in csv_dir.glob("*.csv"):
+            lat_lon_set = utils.get_unique_lat_lon_set(csv_path=csv_file)
+
+    print("Counting coordinates in csv files...")
+
+    csv_list = list(csv_dir.glob("*.csv"))
+    lat_lon_list = numpy.array(list(lat_lon_set), str)
+    lat_lon_counter = numpy.zeros((len(lat_lon_list), len(csv_list)), int)
+
+    print(f"Total number of csv files: {len(csv_list)}")
+
+    col_list = ["lon", "lat"]
+    for i, csv_file in tqdm(enumerate(csv_list), desc="Scanning CSV files: "):
+        data = pandas.read_csv(csv_file, usecols=col_list, dtype=str)
+        for j in range(len(data)):
+            lon = str(data["lon"][j])
+            lat = str(data["lat"][j])            
+            list_index = numpy.where(lat_lon_list == f"{lon}_{lat}")[0]
+            if len(list_index) > 0:
+                lat_lon_counter[list_index[0]][i] = 1
+
+    print("\nResults:")
+    print("=========\n")
+
+    print(f"Number of coordinates: {str(len(lat_lon_list))}")
+    print(f"Number of scanned csv files: {str(len(csv_list))}")
+    if not isinstance(reference_csv_path, type(None)):
+        print(f"Reference csv file with coordinates: {reference_csv_path.name}")
+    print("")
+
+    sums = numpy.zeros(len(lat_lon_list), int)
+    for i in range(len(lat_lon_list)):
+        for j in range(len(lat_lon_counter[i])):
+            sums[i] = sums[i] + lat_lon_counter[i][j]
+
+    for i in range(len(csv_list)+1):
+        count = numpy.count_nonzero(sums == i)
+        print(f"{str(i)} occurences per coordinate: {str(count)}")
+    print("")
+
+    for i in range(len(csv_list)):
+        found = 0
+        for j in range(len(lat_lon_counter)):
+            found = found + lat_lon_counter[j][i]
+        percentage = round(found / len(lat_lon_counter) * 100)
+        print(f"Share of found coordinates in {csv_list[i].name}: " + "{:.2f}%".format(round(percentage, 2)))
+
+    if not isinstance(result_csv_path, type(None)):
+        result_csv_path = pathlib.Path(result_csv_path)
+        if not result_csv_path.exists():
+            with open(result_csv_path.absolute(), "w", newline="") as csvfile:
+                spamwriter = csv.writer(csvfile, delimiter=",")
+                spamwriter.writerow(["lon", "lat", "sum"] + [item.name for item in csv_list])
+                for i in range(len(lat_lon_list)):
+                    lon = lat_lon_list[i].split("_")[0]
+                    lat = lat_lon_list[i].split("_")[1]
+                    s = sums[i]
+                    counts = numpy.array(lat_lon_counter[i], str)
+                    spamwriter.writerow(numpy.append(numpy.array([str(lon), str(lat), str(s)]), counts))

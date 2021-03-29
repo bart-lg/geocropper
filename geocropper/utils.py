@@ -1879,29 +1879,49 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                         break                     
 
 
-def get_unique_lat_lon_set(source_dir, postfix=""):
+def get_unique_lat_lon_set(source_dir=None, postfix="", csv_path=None, lat_lon_set=None):
     """Loops through every folder in source dir, optionally looks for matching postfix if defined and returns 
     a set of strings with unique latitude and longitude positions.
 
     Parameters
     ----------
-    source_dir: Path
+    source_dir : path, optional
         Path of trimmed crops 
-    postfix: String
-        Set desired postfix for selecting specific folders containing a certain string 
-        (by default is empty "" and therefore selects every folder in source_dir) 
+    postfix : string, optional
+        Set desired postfix for selecting specific folders containing a certain string.
+        Default is empty string and therefore every folder in source_dir is included.
+    csv_path : path, optional
+        Path to csv file containing lat lon coordinates.
+    lat_lon_set : set, optional
+        Set containing coordinates, which should be appended with new ones. 
     """
     
     # Set is an unordered list which allows no duplicated entries
-    lat_lon_set = set()
+    if not isinstance(lat_lon_set, set):
+        lat_lon_set = set()
 
     print(f"Reading unique positions...")
 
-    for folder in source_dir.glob(f"*{postfix}"):
-        if folder.is_dir() and folder.name.split("_")[0] != "stacked":
-            for crop in folder.glob("*"):
-                if crop.is_dir() and not crop.name.startswith("0_"):
-                    lat_lon_set.add(crop.name.split("_")[1] + "_" + crop.name.split("_")[2])
+    if isinstance(source_dir, pathlib.PurePath):
+
+        for folder in source_dir.glob(f"*{postfix}"):
+            if folder.is_dir() and folder.name.split("_")[0] != "stacked":
+                for crop in folder.glob("*"):
+                    if crop.is_dir() and not crop.name.startswith("0_"):
+                        lat_lon_set.add(crop.name.split("_")[1] + "_" + crop.name.split("_")[2])
+
+    elif isinstance(csv_path, pathlib.PurePath):
+
+        if csv_path.exists():
+            col_list = ["lon", "lat"]
+            data = pandas.read_csv(csv_path, usecols=col_list, dtype=str)
+
+            for i in range(len(data)):
+
+                lon = str(data["lon"][i])
+                lat = str(data["lat"][i])
+
+                lat_lon_set.add(lon + "_" + lat)
 
     return lat_lon_set
 
