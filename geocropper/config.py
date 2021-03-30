@@ -33,6 +33,7 @@ try:
 	covertS1CropsToUTM = config["Misc"].getboolean("covertS1CropsToUTM")
 	databaseTimeout = config["Misc"].getint("databaseTimeout")
 	databaseRetryQueries = config["Misc"].getint("databaseRetryQueries")
+	coordinateDecimalsForComparison = config["Misc"].getint("coordinateDecimalsForComparison")
 
 	# various data paths
 	dataDir = pathlib.Path(config["Paths"]["data"])

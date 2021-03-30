@@ -1073,7 +1073,8 @@ def compare_csv_locations(csv_dir, reference_csv_path=None, result_csv_path=None
         data = pandas.read_csv(csv_file, usecols=col_list, dtype=str)
         for j in range(len(data)):
             lon = str(data["lon"][j])
-            lat = str(data["lat"][j])            
+            lat = str(data["lat"][j]) 
+            lon, lat = utils.reduce_coordinate_digits(lon, lat)           
             list_index = numpy.where(lat_lon_list == f"{lon}_{lat}")[0]
             if len(list_index) > 0:
                 lat_lon_counter[list_index[0]][i] = 1

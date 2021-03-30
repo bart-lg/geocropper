@@ -1836,6 +1836,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                 if len(crop_components) >= 3:
                     crop_lon = str(crop_components[1])
                     crop_lat = str(crop_components[2])
+                    crop_lon, crop_lat = reduce_coordinate_digits(crop_lon, crop_lat)
                 else:
                     if based_on_foldername:
                         print(f"Crop name contains no coordinates: {crop.name}")
@@ -1848,6 +1849,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
 
                     lon = str(coordinates["lon"][i])
                     lat = str(coordinates["lat"][i])
+                    lon, lat = reduce_coordinate_digits(lon, lat)
 
                     if based_on_foldername:
 
@@ -1908,7 +1910,11 @@ def get_unique_lat_lon_set(source_dir=None, postfix="", csv_path=None, lat_lon_s
             if folder.is_dir() and folder.name.split("_")[0] != "stacked":
                 for crop in folder.glob("*"):
                     if crop.is_dir() and not crop.name.startswith("0_"):
-                        lat_lon_set.add(crop.name.split("_")[1] + "_" + crop.name.split("_")[2])
+                        lon = crop.name.split("_")[1]
+                        lat = crop.name.split("_")[2]
+                        # reduce digits to specified length
+                        lon, lat = reduce_coordinate_digits(lon, lat)
+                        lat_lon_set.add(lon + "_" + lat)
 
     elif isinstance(csv_path, pathlib.PurePath):
 
@@ -1920,10 +1926,18 @@ def get_unique_lat_lon_set(source_dir=None, postfix="", csv_path=None, lat_lon_s
 
                 lon = str(data["lon"][i])
                 lat = str(data["lat"][i])
+                # reduce digits to specified length
+                lon, lat = reduce_coordinate_digits(lon, lat)
 
                 lat_lon_set.add(lon + "_" + lat)
 
     return lat_lon_set
+
+
+def reduce_coordinate_digits(lon, lat):
+    lon = lon[ : ( lon.find(".") + config.coordinateDecimalsForComparison + 1 ) ]
+    lat = lat[ : ( lat.find(".") + config.coordinateDecimalsForComparison + 1 ) ]
+    return lon, lat
 
 
 def get_image_path_list(source_dir, position, postfix=""):
