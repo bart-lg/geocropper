@@ -8,6 +8,8 @@ import csv
 import pyproj
 from pprint import pprint
 import rasterio
+import numpy
+import pandas
 import math 
 from shapely.geometry import Point
 from shapely.geometry import Polygon
@@ -789,7 +791,10 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                         crop_id = int(crop_name[0])
                                         crop_lon = float(crop_name[1])
                                         crop_lat = float(crop_name[2])
-                                        crop_datetime = crop_name[3]
+                                        if len(crop_name) > 3:
+                                            crop_datetime = crop_name[3]
+                                        else:
+                                            crop_datetime = ""
 
                                         spamwriter.writerow([request.name, crop_id, crop_lon, crop_lat, crop_datetime])
                                     except:
@@ -808,7 +813,10 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                 crop_id = int(crop_name[0])
                                 crop_lon = float(crop_name[1])
                                 crop_lat = float(crop_name[2])
-                                crop_datetime = crop_name[3]
+                                if len(crop_name) > 3:
+                                    crop_datetime = crop_name[3]
+                                else:
+                                    crop_datetime = ""
 
                                 spamwriter.writerow([crop_id, crop_lon, crop_lat, crop_datetime])                
                             except:
@@ -840,7 +848,10 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                                 crop_id = int(crop_name[0])
                                                 crop_lon = float(crop_name[1])
                                                 crop_lat = float(crop_name[2])
-                                                crop_datetime = crop_name[3]
+                                                if len(crop_name) > 3:
+                                                    crop_datetime = crop_name[3]
+                                                else:
+                                                    crop_datetime = ""
 
                                                 spamwriter.writerow([group.name, request.name, crop_id, crop_lon, crop_lat, crop_datetime])                                
                                             except:
@@ -857,7 +868,10 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                         crop_id = int(crop_name[0])
                                         crop_lon = float(crop_name[1])
                                         crop_lat = float(crop_name[2])
-                                        crop_datetime = crop_name[3]
+                                        if len(crop_name) > 3:
+                                            crop_datetime = crop_name[3]
+                                        else:
+                                            crop_datetime = ""
 
                                         spamwriter.writerow([group.name, crop_id, crop_lon, crop_lat, crop_datetime])                              
                                     except:
@@ -918,8 +932,8 @@ def move_imperfect_S1_crops(source_dir, target_dir, outside_cropped_tiles_dir=Fa
                         utils.move_imperfect_S1_crops(group, (target_dir / group.name))                                                    
 
 
-def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cropped_tiles_dir=False, has_subdir=True):
-    """Move crops that contain coordinates in CSV to target dir. The crops must contain a georeferenced preview.tif.
+def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cropped_tiles_dir=False, has_subdir=True, based_on_foldername=False):
+    """Move crops that contain coordinates in CSV to target dir.
 
     Parameters
     ----------
@@ -937,6 +951,10 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
         Default is True.
         The cropped tiles directory can have two different structures.
         This parameter defines, if the passed directory has a further subdirectory.
+    based_on_foldername : boolean, optional
+        Default is False.
+        If true, compare with coordinates mentioned in crop folder name.
+        If false, check if coordinates are within the preview.tif (crops must contain a georeferenced preview.tif).
     """
 
     target_dir = pathlib.Path(target_dir)
@@ -955,9 +973,9 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
                 for request in source_dir.glob("*"):
                     if request.is_dir():
                         print(f"Subdirectory: {request.name}")
-                        utils.move_crops_containing_locations(csv_path, request, (target_dir / request.name))
+                        utils.move_crops_containing_locations(csv_path, request, (target_dir / request.name), based_on_foldername)
             else:
-                utils.move_crops_containing_locations(csv_path, source_dir, target_dir)
+                utils.move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_foldername)
         else:
             for group in config.croppedTilesDir.glob("*"):
 
@@ -969,10 +987,11 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
                         for request in group.glob("*"):
                             if request.is_dir():
                                 print(f"Subdirectory: {request.name}")
-                                utils.move_crops_containing_locations(csv_path, request, (target_dir / group.name / request.name))
+                                utils.move_crops_containing_locations(csv_path, request, (target_dir / group.name / request.name), based_on_foldername)
 
                     else:
-                        utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name))
+                  
+                        utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name), based_on_foldername)
 
 
 def stack_trimmed_images(source_dir, postfix="", target_dir=None):
@@ -1031,3 +1050,100 @@ def standardize_stacked_images(source_dir, target_dir=None, standardization_proc
         if image_dir.is_dir() and not image_dir.name.startswith("0_"):
             crop = image_dir.name
             utils.standardize_stacked_image(image_dir, target_dir, crop, standardization_procedure, scaler_type)
+
+
+def compare_csv_locations(csv_dir, reference_csv_path=None, result_csv_path=None):
+    """Compares lat and lon coordinates in multiple csv files and outlines how many coordinates occur multiply.
+
+    Compares lat and lon coordinates in multiple csv files and outlines how many coordinates occur multiply.
+    The reference csv can be used to specify a list of coordinates, which sould be checked. This csv can be located outside the csv_dir.
+
+    Parameters
+    ----------
+    csv_dir : string
+        Path containing the csv files which shall be checked.
+    reference_csv_path : string, optional
+        Path of the reference csv file.
+    result_csv_path : string, optional
+        Path of csv file for output of results.
+    """
+
+    csv_dir = pathlib.Path(csv_dir)
+    if not csv_dir.exists():
+        print("CSV directory does not exist!")
+        return
+
+    lat_lon_set = None
+
+    print("Creating unique coordinate list...")
+
+    if not isinstance(reference_csv_path, type(None)):
+        
+        reference_csv_path = pathlib.Path(reference_csv_path)
+        if not reference_csv_path.exists():
+            print("Reference CSV file does not exist. Continuing without reference file.")
+            reference_csv_path = None
+
+        else:
+            lat_lon_set = utils.get_unique_lat_lon_set(csv_path=reference_csv_path)
+
+    if isinstance(lat_lon_set, type(None)):
+        for csv_file in csv_dir.glob("*.csv"):
+            lat_lon_set = utils.get_unique_lat_lon_set(csv_path=csv_file)
+
+    print("Counting coordinates in csv files...")
+
+    csv_list = list(csv_dir.glob("*.csv"))
+    lat_lon_list = numpy.array(list(lat_lon_set), str)
+    lat_lon_counter = numpy.zeros((len(lat_lon_list), len(csv_list)), int)
+
+    print(f"Total number of csv files: {len(csv_list)}")
+
+    col_list = ["lon", "lat"]
+    for i, csv_file in tqdm(enumerate(csv_list), desc="Scanning CSV files: "):
+        data = pandas.read_csv(csv_file, usecols=col_list, dtype=str)
+        for j in range(len(data)):
+            lon = str(data["lon"][j])
+            lat = str(data["lat"][j])            
+            list_index = numpy.where(lat_lon_list == f"{lon}_{lat}")[0]
+            if len(list_index) > 0:
+                lat_lon_counter[list_index[0]][i] = 1
+
+    print("\nResults:")
+    print("=========\n")
+
+    print(f"Number of coordinates: {str(len(lat_lon_list))}")
+    print(f"Number of scanned csv files: {str(len(csv_list))}")
+    if not isinstance(reference_csv_path, type(None)):
+        print(f"Reference csv file with coordinates: {reference_csv_path.name}")
+    print("")
+
+    sums = numpy.zeros(len(lat_lon_list), int)
+    for i in range(len(lat_lon_list)):
+        for j in range(len(lat_lon_counter[i])):
+            sums[i] = sums[i] + lat_lon_counter[i][j]
+
+    for i in range(len(csv_list)+1):
+        count = numpy.count_nonzero(sums == i)
+        print(f"{str(i)} occurences per coordinate: {str(count)}")
+    print("")
+
+    for i in range(len(csv_list)):
+        found = 0
+        for j in range(len(lat_lon_counter)):
+            found = found + lat_lon_counter[j][i]
+        percentage = round(found / len(lat_lon_counter) * 100)
+        print(f"Share of found coordinates in {csv_list[i].name}: " + "{:.2f}%".format(round(percentage, 2)))
+
+    if not isinstance(result_csv_path, type(None)):
+        result_csv_path = pathlib.Path(result_csv_path)
+        if not result_csv_path.exists():
+            with open(result_csv_path.absolute(), "w", newline="") as csvfile:
+                spamwriter = csv.writer(csvfile, delimiter=",")
+                spamwriter.writerow(["lon", "lat", "sum"] + [item.name for item in csv_list])
+                for i in range(len(lat_lon_list)):
+                    lon = lat_lon_list[i].split("_")[0]
+                    lat = lat_lon_list[i].split("_")[1]
+                    s = sums[i]
+                    counts = numpy.array(lat_lon_counter[i], str)
+                    spamwriter.writerow(numpy.append(numpy.array([str(lon), str(lat), str(s)]), counts))
