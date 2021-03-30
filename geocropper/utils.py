@@ -1842,7 +1842,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir):
 
 def get_unique_lat_lon_set(source_dir, postfix=""):
     """Loops through every folder in source dir, optionally looks for matching postfix if defined and returns 
-    a set of strings with unique latitude and longitude positions.
+    a set of strings with unique latitude and longitude locations.
 
     Parameters
     ----------
@@ -1856,7 +1856,7 @@ def get_unique_lat_lon_set(source_dir, postfix=""):
     # Set is an unordered list which allows no duplicated entries
     lat_lon_set = set()
 
-    print(f"Reading unique positions...")
+    print(f"Reading unique locationss...")
 
     for folder in source_dir.glob(f"*{postfix}"):
         if folder.is_dir() and folder.name.split("_")[0] != "stacked":
@@ -1867,16 +1867,16 @@ def get_unique_lat_lon_set(source_dir, postfix=""):
     return lat_lon_set
 
 
-def get_image_path_list(source_dir, position, postfix=""):
-    """Find one or more images of a specified position in the source directory and returns a list containing the 
+def get_image_path_list(source_dir, location, postfix=""):
+    """Find one or more images of a specified location in the source directory and returns a list containing the 
     paths of these images.
 
     Parameters
     ----------
     source_dir: Path
         Path of trimmed crops
-    position: String
-        Set the position of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    location: String
+        Set the location of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
     postfix: String, optional
         Set desired postfix for selecting specific folders containing a certain string 
         (by default is empty "" and therefore selects every folder in source_dir) 
@@ -1885,7 +1885,7 @@ def get_image_path_list(source_dir, position, postfix=""):
     image_path_list = []
     for folder in source_dir.glob(f"*{postfix}"):
         if folder.is_dir() and folder.name.split("_")[0] != "stacked":
-            for crop in folder.glob(f"*{position}*"):
+            for crop in folder.glob(f"*{location}*"):
                 if crop.is_dir():
                     image_path = crop / "sensordata" / "s1_cropped.tif"
                     if image_path.exists():
@@ -1894,18 +1894,18 @@ def get_image_path_list(source_dir, position, postfix=""):
     return image_path_list
 
 
-def stack_trimmed_images(image_path_list, target_dir, position, postfix="", tif_band_name_list=["s1_stacked_VV.tif", "s1_stacked_VH.tif"]):
+def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_band_name_list=["s1_stacked_VV.tif", "s1_stacked_VH.tif"]):
     """Stacks trimmed images from provided image_path_list with rasterio in order to preserve the georeferencing
     and writes both bands to tif files ("s1_stacked_VV.tif", "s1_stacked_VH.tif").
 
     Parameters
     ----------
     image_path_list: List
-        List containing paths of images of the same position with different capture dates.
+        List containing paths of images of the same location with different capture dates.
     target_dir: Path
         Path where the stacked image shall be stored
-    position: String
-        Set the position of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    location: String
+        Set the location of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
     postfix: String, optional
         Set desired postfix for selecting specific folders containing a certain string 
         (by default is empty "" and therefore selects every folder in source_dir)
@@ -1918,7 +1918,7 @@ def stack_trimmed_images(image_path_list, target_dir, position, postfix="", tif_
         rasterio_image_list.append(rasterio.open(image_path))
 
     # if a postfix exists the foldername for the stacked_images will be complemented with the postfix string
-    stacked_image_path = target_dir / ("_".join(filter(None, ["stacked_images", postfix]))) / position
+    stacked_image_path = target_dir / ("_".join(filter(None, ["stacked_images", postfix]))) / location
 
     try:
         stacked_image_path.mkdir(exist_ok=True, parents=True)
@@ -1952,7 +1952,7 @@ def standardize_stacked_image(image_dir, target_dir, crop, standardization_proce
     target_dir: Path
         Path where the standardized image shall be stored
     crop: String
-        Position of the crop in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+        Location of the crop in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
     standardization_procedure: String, optional
         Set the standardization precedure (default is "layerwise")
         "stackwise" = calculate mean and standard deviation based on the whole stack (10x400x400)
@@ -2033,6 +2033,8 @@ def standardize_rasterio_image(rasterio_image, standardization_procedure="layerw
 
     if standardization_procedure == "stackwise":
 
+        # In order to standardize the images based on the whole stack of images the dimension has to be reduced by 1
+        # since the scaler only work for 2D arrays (e.g. reduce dimension from (5, 400, 400) to (400, 2000))
         image_array = numpy.reshape(image_array, newshape=(num_pixel_y, -1))
 
         if scaler_type == "StandardScaler":

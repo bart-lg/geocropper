@@ -976,7 +976,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
 
 
 def stack_trimmed_images(source_dir, postfix="", target_dir=None):
-    """Stack images of the same position with different capture dates and write them to tifs.
+    """Stack images of the same location with different capture dates and write them to tifs.
     
     Parameters
     ----------
@@ -997,9 +997,9 @@ def stack_trimmed_images(source_dir, postfix="", target_dir=None):
 
     lat_lon_set = utils.get_unique_lat_lon_set(source_dir, postfix)
 
-    for position in tqdm(lat_lon_set, desc="Stacking images and writing tifs: "):
-        image_path_list = utils.get_image_path_list(source_dir, position, postfix)
-        utils.stack_trimmed_images(image_path_list, target_dir, position, postfix)
+    for location in tqdm(lat_lon_set, desc="Stacking images and writing tifs: "):
+        image_path_list = utils.get_image_path_list(source_dir, location, postfix)
+        utils.stack_trimmed_images(image_path_list, target_dir, location, postfix)
 
 
 def standardize_stacked_images(source_dir, target_dir=None, standardization_procedure="layerwise", scaler_type="StandardScaler"):
