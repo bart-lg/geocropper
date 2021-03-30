@@ -24,6 +24,7 @@ import sys
 from datetime import datetime
 from distutils.dir_util import copy_tree
 from skimage import transform
+from sklearn import preprocessing
 
 import geocropper.config as config
 import geocropper.download as download
@@ -1940,16 +1941,16 @@ def reduce_coordinate_digits(lon, lat):
     return lon, lat
 
 
-def get_image_path_list(source_dir, position, postfix=""):
-    """Find one or more images of a specified position in the source directory and returns a list containing the 
+def get_image_path_list(source_dir, location, postfix=""):
+    """Find one or more images of a specified location in the source directory and returns a list containing the 
     paths of these images.
 
     Parameters
     ----------
     source_dir: Path
         Path of trimmed crops
-    position: String
-        Set the position of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    location: String
+        Set the location of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
     postfix: String, optional
         Set desired postfix for selecting specific folders containing a certain string 
         (by default is empty "" and therefore selects every folder in source_dir) 
@@ -1958,7 +1959,7 @@ def get_image_path_list(source_dir, position, postfix=""):
     image_path_list = []
     for folder in source_dir.glob(f"*{postfix}"):
         if folder.is_dir() and folder.name.split("_")[0] != "stacked":
-            for crop in folder.glob(f"*{position}*"):
+            for crop in folder.glob(f"*{location}*"):
                 if crop.is_dir():
                     image_path = crop / "sensordata" / "s1_cropped.tif"
                     if image_path.exists():
@@ -1967,18 +1968,18 @@ def get_image_path_list(source_dir, position, postfix=""):
     return image_path_list
 
 
-def stack_trimmed_images(image_path_list, output_dir, position, postfix="", tif_band_name_list=["s1_stacked_VV.tif", "s1_stacked_VH.tif"]):
+def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_band_name_list=["s1_stacked_VV.tif", "s1_stacked_VH.tif"]):
     """Stacks trimmed images from provided image_path_list with rasterio in order to preserve the georeferencing
     and writes both bands to tif files ("s1_stacked_VV.tif", "s1_stacked_VH.tif").
 
     Parameters
     ----------
     image_path_list: List
-        List containing paths of images of the same position with different capture dates.
-    output_dir: Path
+        List containing paths of images of the same location with different capture dates.
+    target_dir: Path
         Path where the stacked image shall be stored
-    position: String
-        Set the position of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    location: String
+        Set the location of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
     postfix: String, optional
         Set desired postfix for selecting specific folders containing a certain string 
         (by default is empty "" and therefore selects every folder in source_dir)
@@ -1991,7 +1992,7 @@ def stack_trimmed_images(image_path_list, output_dir, position, postfix="", tif_
         rasterio_image_list.append(rasterio.open(image_path))
 
     # if a postfix exists the foldername for the stacked_images will be complemented with the postfix string
-    stacked_image_path = output_dir / ("_".join(filter(None, ["stacked_images", postfix]))) / position
+    stacked_image_path = target_dir / ("_".join(filter(None, ["stacked_images", postfix]))) / location
 
     try:
         stacked_image_path.mkdir(exist_ok=True, parents=True)
@@ -2013,3 +2014,112 @@ def stack_trimmed_images(image_path_list, output_dir, position, postfix="", tif_
         print (f"No images for stacking were found.")
         print(error)
         sys.exit()
+
+
+def standardize_stacked_image(image_dir, target_dir, crop, standardization_procedure="layerwise", scaler_type="StandardScaler"):
+    """Standardizes tif either layerwise or stackwise with the scikit-learn StandardScaler or RobustScaler.
+
+    Parameters
+    ----------
+    image_dir: Path
+        Path of stacked images which shall be standardized
+    target_dir: Path
+        Path where the standardized image shall be stored
+    crop: String
+        Location of the crop in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    standardization_procedure: String, optional
+        Set the standardization precedure (default is "layerwise")
+        "stackwise" = calculate mean and standard deviation based on the whole stack (10x400x400)
+        "layerwise" = calculate mean and standard deviation based on each layer (400x400)
+    scaler_type: String, optional
+        Set desired scaler type (default is "StandardScaler")
+        "StandardScaler" = standardizes the values by subtracting the mean and then scaling to unit variance.
+        "Robustscaler" = transforms the values by subtracting the median and then dividing by the interquartile range (75% value — 25% value)
+    """
+    if image_dir.is_dir():
+
+        image_path_VV = image_dir / "s1_stacked_VV.tif"
+        image_path_VH = image_dir / "s1_stacked_VH.tif"
+
+        if image_path_VV.exists():
+            image_VV = rasterio.open(image_path_VV)
+            profile = image_VV.profile
+            standardized_image_VV = standardize_rasterio_image(image_VV, standardization_procedure, scaler_type)
+
+        if image_path_VH.exists():
+            image_VH = rasterio.open(image_path_VH)
+            profile = image_VH.profile
+            standardized_image_VH = standardize_rasterio_image(image_VH, standardization_procedure, scaler_type)
+
+    output_dir = target_dir / crop
+                
+    try:
+        output_dir.mkdir(exist_ok=True, parents=True)
+    except OSError as error:
+        print (f"Creation of the directory {output_dir} failed")
+        print(error)
+        sys.exit()
+
+    for polarization_type in ['s1_standardized_VV.tif', 's1_standardized_VH.tif']:
+        with rasterio.open((output_dir / polarization_type), "w", **profile) as dest:
+            if polarization_type == 's1_standardized_VV.tif':
+                dest.write(standardized_image_VV)
+            if polarization_type == 's1_standardized_VH.tif':
+                dest.write(standardized_image_VH)
+
+
+def standardize_rasterio_image(rasterio_image, standardization_procedure="layerwise", scaler_type="StandardScaler"):
+    """Standardizes a rasterio image with a specific standardization procedure and scaler type:
+    
+    Parameters
+    ----------
+    rasterio_image: rasterio.open()
+        Opened tif file with the rasterio package (rasterio.open("/path/to/image.tif"))
+    standardization_procedure: String, optional
+        Set the standardization precedure (default is "layerwise")
+        "stackwise" = calculate mean and standard deviation based on the whole stack (10x400x400)
+        "layerwise" = calculate mean and standard deviation based on each layer (400x400)
+    scaler_type: String, optional
+        Set desired scaler type (default is "StandardScaler")
+        "StandardScaler" = standardizes the values by subtracting the mean and then scaling to unit variance.
+        "Robustscaler" = transforms the values by subtracting the median and then dividing by the interquartile range (75% value — 25% value)
+    """
+
+    image_array = rasterio_image.read()
+    num_layers, num_pixel_y, num_pixel_x = image_array.shape
+
+    if standardization_procedure == "layerwise":
+
+        standardized_image_array = None
+
+        for band in image_array:
+
+            if scaler_type == "StandardScaler":
+                scaler = preprocessing.StandardScaler()
+            elif scaler_type == "RobustScaler":
+                scaler = preprocessing.RobustScaler()
+
+            # Standardize each layer based on the mean/median and variance of each layer seperately
+            if type(standardized_image_array) != numpy.ndarray:
+                standardized_image_array = numpy.array(([scaler.fit_transform(band)]))
+            else:
+                standardized_image_array = numpy.concatenate((standardized_image_array, [scaler.fit_transform(band)]))
+
+    if standardization_procedure == "stackwise":
+
+        # In order to standardize the images based on the whole stack of images the dimension has to be reduced by 1
+        # since the scaler only work for 2D arrays (e.g. reduce dimension from (5, 400, 400) to (400, 2000))
+        image_array = numpy.reshape(image_array, newshape=(num_pixel_y, -1))
+
+        if scaler_type == "StandardScaler":
+            scaler = preprocessing.StandardScaler()
+        elif scaler_type == "RobustScaler":
+            scaler = preprocessing.RobustScaler()
+
+        # Standardize the image stack based on the mean/median and variance of the whole stack
+        standardized_image_array = scaler.fit_transform(image_array)
+
+        # Reshape back to initial shape
+        standardized_image_array = numpy.reshape(standardized_image_array, newshape=(num_layers, num_pixel_y, num_pixel_x))
+    
+    return standardized_image_array
