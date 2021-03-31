@@ -999,12 +999,12 @@ def stack_trimmed_images(source_dir, postfix="", target_dir=None):
     
     Parameters
     ----------
-    source_dir: Path
+    source_dir: String
         Path of trimmed crops of various recording times which shall be stacked
     postfix: String, optional
         Set desired postfix for selecting specific folders containing a certain string 
         (default is empty "" and therefore selects every folder in source_dir).
-    target_dir: Path, optional
+    target_dir: String, optional
         Path where the stacked image shall be stored (by default is equal to root_dir)
     """
 
@@ -1026,9 +1026,9 @@ def standardize_stacked_images(source_dir, target_dir=None, standardization_proc
     
     Parameters
     ----------
-    source_dir: Path
+    source_dir: String
         Path of stacked images which shall be standardized
-    target_dir: Path, optional
+    target_dir: String, optional
         default is source_dir with prefix "standardized_"
     standardization_procedure: String, optional
         Set the standardization precedure (default is "layerwise")
@@ -1148,3 +1148,34 @@ def compare_csv_locations(csv_dir, reference_csv_path=None, result_csv_path=None
                     s = sums[i]
                     counts = numpy.array(lat_lon_counter[i], str)
                     spamwriter.writerow(numpy.append(numpy.array([str(lon), str(lat), str(s)]), counts))
+
+
+def create_dimensionality_reduced_images(source_dir, target_dir=None):
+    """Reduces the dimensions of stacked images by extracting the most relevant information of each layer.
+
+    The source_dir points to the standardized_stacked_images. These images have multiple layers x (e.g. (x, 400, 400))
+    which are reduced to one final layer (e.g. (400, 400)). This dimensionality reduced image contains information
+    based on all provided layers x.
+
+    Parameters
+    ----------
+    source_dir: String
+        Path of standardized_stacked_images which dimension shall be reduced
+    target_dir: String, optional
+        Default is source_dir with prefix "dim_reduced_"
+    """
+
+    source_dir = pathlib.Path(source_dir)
+    if target_dir == None:
+        target_dir = source_dir.parent / ("dim_reduced_" + source_dir.name)
+    else:
+        target_dir = pathlib.Path(target_dir)
+    
+    for image_dir in tqdm(source_dir.glob("*"), desc="Reducing dimensionality of images: "):
+        if image_dir.is_dir() and not image_dir.name.startswith("0_"):
+            crop = image_dir.name
+            # every standardized_stacked_image folder for each location should contain either "s1_standardized_VV.tif" or
+            # "s1_standardized_VH.tif" or both. Therefore the dimension of both images will be reduced seperately.
+            image_names = ["s1_standardized_VV.tif", "s1_standardized_VH.tif"]
+            for image_name in image_names:
+                utils.reduce_image_dimensionality(image_dir, image_name, target_dir, crop)

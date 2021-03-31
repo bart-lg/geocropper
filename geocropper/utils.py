@@ -25,6 +25,7 @@ from datetime import datetime
 from distutils.dir_util import copy_tree
 from skimage import transform
 from sklearn import preprocessing
+import otbApplication
 
 import geocropper.config as config
 import geocropper.download as download
@@ -2123,3 +2124,42 @@ def standardize_rasterio_image(rasterio_image, standardization_procedure="layerw
         standardized_image_array = numpy.reshape(standardized_image_array, newshape=(num_layers, num_pixel_y, num_pixel_x))
     
     return standardized_image_array
+
+
+def reduce_image_dimensionality(image_dir, image_name, target_dir, crop):
+    """Reduces the dimension of a stacked image by extracting the most relevant information of each layer:
+    
+    Parameters
+    ----------
+    image_dir: Path
+        Path of sentinel 1 standardized images (VV and VH)
+    image_name: String
+        Name of the image which dimension shall be reduced ("s1_standardized_VV.tif" or "s1_standardized_VH.tif")
+    target_dir: Path
+        Default is source_dir with prefix "dim_reduced_"
+    crop: String
+        Location of the crop in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    """
+
+    output_dir = target_dir / crop
+    if image_name == "s1_standardized_VV.tif":
+        new_image_name = "s1_dim_reduced_VV.tif"
+    elif image_name == "s1_standardized_VH.tif":
+        new_image_name = "s1_dim_reduced_VH.tif"
+
+    try:
+        output_dir.mkdir(exist_ok=True, parents=True)
+    except OSError as error:
+        print (f"Creation of the directory {output_dir} failed")
+        print(error)
+        sys.exit()
+    else:
+        app = otbApplication.Registry.CreateApplication("DimensionalityReduction")
+
+        app.SetParameterString("in", str(image_dir / image_name))
+        app.SetParameterString("out", str(output_dir / new_image_name))
+        app.SetParameterString("method", "pca")
+        # nbcomp = Number of components, therefore it will be reduced to one component (from [x, 400, 400] to [400, 400])
+        app.SetParameterInt("nbcomp", 1)
+
+        app.ExecuteAndWriteOutput()    
