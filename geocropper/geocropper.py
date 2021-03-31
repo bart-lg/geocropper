@@ -1148,3 +1148,79 @@ def compare_csv_locations(csv_dir, reference_csv_path=None, result_csv_path=None
                     s = sums[i]
                     counts = numpy.array(lat_lon_counter[i], str)
                     spamwriter.writerow(numpy.append(numpy.array([str(lon), str(lat), str(s)]), counts))
+
+
+def filter_certain_coordinates_from_csv(source_csv, reference_csv, target_csv, mode="remove"):
+    """Filters list of coordinates in source csv to target csv based on coordinates in reference csv.
+
+    Parameters
+    ----------
+    source_csv : string
+        Path to source csv file with coordinates (csv file containing lat and lon variable names).
+    reference_csv : string
+        Path to reference csv file with coordinates (csv file containing lat and lon variable names).
+    target_csv : string
+        Path to target csv file which should be created.
+        Script aborts if target csv file already exists.
+    mode : string, optional
+        Two mode types available.
+        remove: removes all coordinates in source matching reference coordinates
+        filter: removes all coordinates in source not matching reference coordinates
+        Default is remove.
+    """
+
+    source_csv = pathlib.Path(source_csv)
+    reference_csv = pathlib.Path(reference_csv)
+    target_csv = pathlib.Path(target_csv)
+
+    if not source_csv.exists():
+        print("Source csv file does not exist!")
+        return
+    if not reference_csv.exists():
+        print("Reference csv file does not exist!")
+        return
+    if target_csv.exists():
+        print("Target csv file already exist!")
+        return
+
+    print("Filtering csv file...")
+
+    lat_lon_set = utils.get_unique_lat_lon_set(csv_path=reference_csv)
+
+    with open(target_csv.absolute(), "w", newline="") as target_file:
+        with open(source_csv.absolute(), newline="") as source_file:
+
+            spamwriter = csv.writer(target_file, delimiter=",")
+            spamreader = csv.reader(source_file, delimiter=",")
+
+            lon_col = None
+            lat_col = None
+
+            first_row = True
+            for row in tqdm(spamreader, desc="Checking coordinates: "):
+
+                if first_row:
+
+                    # determine columns for lon and lat coordinates
+                    row_data = numpy.array(row)
+                    lon_col = numpy.where(row_data == "lon")[0][0]
+                    lat_col = numpy.where(row_data == "lat")[0][0]
+
+                    # copy header to new csv
+                    spamwriter.writerow(row)
+
+                    first_row = False
+
+                else:
+
+                    lon = row[lon_col]
+                    lat = row[lat_col]
+                    lon, lat = utils.reduce_coordinate_digits(lon, lat)
+
+                    if mode == "remove" and not ( f"{lon}_{lat}" in lat_lon_set ):
+                        spamwriter.writerow(row)
+                    elif mode == "filter" and ( f"{lon}_{lat}" in lat_lon_set ):
+                        spamwriter.writerow(row)
+
+    print("Done.")
+
