@@ -601,8 +601,12 @@ class Database:
                 query = query + ", '" + str(value) + "'"
         query = query + ", '" + self.get_country(lat, lon) + "', '" + date_from + "', '" + date_to + "', '" \
             + platform + "', " + str(width) + ", " + str(height) \
-            + ", " + str(tile_limit) + ", " + str(tile_start) + ", '" \
-            + description + "', datetime('now', 'localtime'))"
+            + ", " + str(tile_limit) + ", " + str(tile_start) + ", "
+        if isinstance(description, type(None)):
+            query = query + "''"
+        else:
+            query = query + "'" + str(description) + "'"
+        query = query + ", datetime('now', 'localtime'))"
 
         logger.debug(f"[database] add_poi query: {query}")
 
