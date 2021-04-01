@@ -1150,11 +1150,11 @@ def compare_csv_locations(csv_dir, reference_csv_path=None, result_csv_path=None
                     spamwriter.writerow(numpy.append(numpy.array([str(lon), str(lat), str(s)]), counts))
 
 
-def create_dimensionality_reduced_images(source_dir, target_dir=None):
-    """Reduces the dimensions of stacked images by extracting the most relevant information of each layer.
+def create_dimensionality_reduced_images(source_dir, target_dir=None, dim_reduction_method="pca"):
+    """Reduces the dimensions of standardized and stacked images by extracting the most relevant information of each layer.
 
     The source_dir points to the standardized_stacked_images. These images have multiple layers x (e.g. (x, 400, 400))
-    which are reduced to one final layer (e.g. (400, 400)). This dimensionality reduced image contains information
+    which are reduced to one final layer (e.g. (1, 400, 400)). This dimensionality reduced image contains information
     based on all provided layers x.
 
     Parameters
@@ -1163,6 +1163,10 @@ def create_dimensionality_reduced_images(source_dir, target_dir=None):
         Path of standardized_stacked_images which dimension shall be reduced
     target_dir: String, optional
         Default is source_dir with prefix "dim_reduced_"
+    dim_reduction_method: String, optional
+        Set the method for dimensionality reduction (default is "pca")
+        "pca" = Principal Component Analysis, simplify data with a small amount of linear components
+        "max_values" = The maximum value of each pixel from all layers is selected
     """
 
     source_dir = pathlib.Path(source_dir)
@@ -1178,4 +1182,4 @@ def create_dimensionality_reduced_images(source_dir, target_dir=None):
             # "s1_standardized_VH.tif" or both. Therefore the dimension of both images will be reduced seperately.
             image_names = ["s1_standardized_VV.tif", "s1_standardized_VH.tif"]
             for image_name in image_names:
-                utils.reduce_image_dimensionality(image_dir, image_name, target_dir, crop)
+                utils.reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_reduction_method)

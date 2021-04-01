@@ -2126,7 +2126,7 @@ def standardize_rasterio_image(rasterio_image, standardization_procedure="layerw
     return standardized_image_array
 
 
-def reduce_image_dimensionality(image_dir, image_name, target_dir, crop):
+def reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_reduction_method):
     """Reduces the dimension of a stacked image by extracting the most relevant information of each layer:
     
     Parameters
@@ -2139,6 +2139,10 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop):
         Default is source_dir with prefix "dim_reduced_"
     crop: String
         Location of the crop in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    dim_reduction_method: String, optional
+        Set the method for dimension reduction (default is "pca")
+        "pca" = Principal Component Analysis, simplify data with a small amount of linear components
+        "max_values" = The maximum value of each pixel from all layers is selected
     """
 
     output_dir = target_dir / crop
@@ -2148,18 +2152,46 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop):
         new_image_name = "s1_dim_reduced_VH.tif"
 
     try:
+
         output_dir.mkdir(exist_ok=True, parents=True)
+
     except OSError as error:
+
         print (f"Creation of the directory {output_dir} failed")
         print(error)
         sys.exit()
+
     else:
-        app = otbApplication.Registry.CreateApplication("DimensionalityReduction")
 
-        app.SetParameterString("in", str(image_dir / image_name))
-        app.SetParameterString("out", str(output_dir / new_image_name))
-        app.SetParameterString("method", "pca")
-        # nbcomp = Number of components, therefore it will be reduced to one component (from [x, 400, 400] to [400, 400])
-        app.SetParameterInt("nbcomp", 1)
+        if dim_reduction_method == "pca":
 
-        app.ExecuteAndWriteOutput()    
+            app = otbApplication.Registry.CreateApplication("DimensionalityReduction")
+
+            app.SetParameterString("in", str(image_dir / image_name))
+            app.SetParameterString("out", str(output_dir / new_image_name))
+            app.SetParameterString("method", dim_reduction_method)
+            # nbcomp = Number of components, therefore it will be reduced to one component (from (x, 400, 400) to (1, 400, 400))
+            app.SetParameterInt("nbcomp", 1)
+
+            app.ExecuteAndWriteOutput()
+
+        elif dim_reduction_method == "max_values":
+
+            image = rasterio.open((image_dir / image_name))
+            profile = image.profile
+            # Update the profile from x layers to 1
+            profile.update({"count":1})
+
+            # Read image as numpy array
+            image_array = image.read()
+
+            # Select the maximum value of each pixel from all layers
+            # The dimension is kept but reduced to one (1, 400, 400)
+            max_values_image_array = numpy.amax(image_array, axis=0, keepdims=True)
+
+            with rasterio.open((output_dir / new_image_name), "w", **profile) as dest:
+                dest.write(max_values_image_array)
+        
+        else:
+
+            print("Choose a correct dim_reduction_method ('pca' or 'max_values')")
