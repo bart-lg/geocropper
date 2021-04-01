@@ -1224,3 +1224,7 @@ def filter_certain_coordinates_from_csv(source_csv, reference_csv, target_csv, m
 
     print("Done.")
 
+
+def refresh_unzipped_big_tiles():
+    utils.refresh_unzipped_big_tiles()
+    

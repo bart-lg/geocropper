@@ -1580,6 +1580,18 @@ def retrieve_scene_classes(crops_path):
                 db.set_scence_class_ratios_for_crop(crop_id, ratios)
 
 
+def refresh_unzipped_big_tiles():
+    tiles = db.get_all_tiles()
+    for tile in tiles:
+        if download.check_for_existing_big_tile_folder(tile) == True:
+            db.set_unpacked_for_tile(tile['rowid'])
+        elif download.check_for_existing_big_tile_archive(tile) == True:
+            db.set_download_complete_for_tile(tile['rowid'])
+        else:
+            db.clear_download_complete_for_tile(tile['rowid'])
+            db.clear_unpacked_for_tile(tile['rowid'])
+
+
 def copy_big_tiles(target_path, required_only=False):
     """Copies the required big tiles from big tiles folder to target path.
 
@@ -2123,3 +2135,6 @@ def standardize_rasterio_image(rasterio_image, standardization_procedure="layerw
         standardized_image_array = numpy.reshape(standardized_image_array, newshape=(num_layers, num_pixel_y, num_pixel_x))
     
     return standardized_image_array
+
+
+
