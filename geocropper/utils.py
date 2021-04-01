@@ -28,8 +28,7 @@ from sklearn import preprocessing
 try:
     import otbApplication
 except ImportError:
-    print("otbApplication is not installed!")
-    print("PCA mode in function create_dimensionality_reduced_images is disabled.")
+    pass
 
 
 import geocropper.config as config
@@ -2145,9 +2144,10 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_red
     crop: String
         Location of the crop in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
     dim_reduction_method: String, optional
-        Set the method for dimension reduction (default is "pca")
-        "pca" = Principal Component Analysis, simplify data with a small amount of linear components
+        Set the method for dimension reduction (default is "max_values")
         "max_values" = The maximum value of each pixel from all layers is selected
+        "pca" = Principal Component Analysis, simplify data with a small amount of linear components. 
+            If pca is chosen as dim_reduction_method "otbApplication" has to be installed => check import otbApplication info.
     """
 
     output_dir = target_dir / crop
@@ -2168,19 +2168,7 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_red
 
     else:
 
-        if dim_reduction_method == "pca":
-
-            app = otbApplication.Registry.CreateApplication("DimensionalityReduction")
-
-            app.SetParameterString("in", str(image_dir / image_name))
-            app.SetParameterString("out", str(output_dir / new_image_name))
-            app.SetParameterString("method", dim_reduction_method)
-            # nbcomp = Number of components, therefore it will be reduced to one component (from (x, 400, 400) to (1, 400, 400))
-            app.SetParameterInt("nbcomp", 1)
-
-            app.ExecuteAndWriteOutput()
-
-        elif dim_reduction_method == "max_values":
+        if dim_reduction_method == "max_values":
 
             image = rasterio.open((image_dir / image_name))
             profile = image.profile
@@ -2196,7 +2184,25 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_red
 
             with rasterio.open((output_dir / new_image_name), "w", **profile) as dest:
                 dest.write(max_values_image_array)
+
+        elif dim_reduction_method == "pca":
+
+            # check if otbApplication is installed since this is required for the PCA
+            if "otbApplication" not in sys.modules:
+                print("'pca' was chosen as dimensionality reduction method but otbApplication is not installed!")
+                print("Please, install otbApplication on your machine or use 'max_values' as dimensionality reduction method!")
+                return
+
+            app = otbApplication.Registry.CreateApplication("DimensionalityReduction")
+
+            app.SetParameterString("in", str(image_dir / image_name))
+            app.SetParameterString("out", str(output_dir / new_image_name))
+            app.SetParameterString("method", dim_reduction_method)
+            # nbcomp = Number of components, therefore it will be reduced to one component (from (x, 400, 400) to (1, 400, 400))
+            app.SetParameterInt("nbcomp", 1)
+
+            app.ExecuteAndWriteOutput()
         
         else:
 
-            print("Choose a correct dim_reduction_method ('pca' or 'max_values')")
+            print("Choose a correct dime_reduction_method ('pca' or 'max_values')!")

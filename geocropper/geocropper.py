@@ -1150,7 +1150,7 @@ def compare_csv_locations(csv_dir, reference_csv_path=None, result_csv_path=None
                     spamwriter.writerow(numpy.append(numpy.array([str(lon), str(lat), str(s)]), counts))
 
 
-def create_dimensionality_reduced_images(source_dir, target_dir=None, dim_reduction_method="pca"):
+def create_dimensionality_reduced_images(source_dir, target_dir=None, dim_reduction_method="max_values"):
     """Reduces the dimensions of standardized and stacked images by extracting the most relevant information of each layer.
 
     The source_dir points to the standardized_stacked_images. These images have multiple layers x (e.g. (x, 400, 400))
@@ -1164,9 +1164,9 @@ def create_dimensionality_reduced_images(source_dir, target_dir=None, dim_reduct
     target_dir: String, optional
         Default is source_dir with prefix "dim_reduced_"
     dim_reduction_method: String, optional
-        Set the method for dimensionality reduction (default is "pca")
-        "pca" = Principal Component Analysis, simplify data with a small amount of linear components
+        Set the method for dimensionality reduction (default is "max_values")
         "max_values" = The maximum value of each pixel from all layers is selected
+        "pca" = Principal Component Analysis, simplify data with a small amount of linear components
     """
 
     source_dir = pathlib.Path(source_dir)
