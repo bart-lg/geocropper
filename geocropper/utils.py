@@ -2205,4 +2205,4 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_red
         
         else:
 
-            print("Choose a correct dime_reduction_method ('pca' or 'max_values')!")
+            print("Please, choose a valid dim_reduction_method ('pca' or 'max_values')!")
