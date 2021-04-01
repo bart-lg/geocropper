@@ -25,7 +25,12 @@ from datetime import datetime
 from distutils.dir_util import copy_tree
 from skimage import transform
 from sklearn import preprocessing
-import otbApplication
+try:
+    import otbApplication
+except ImportError:
+    print("otbApplication is not installed!")
+    print("PCA mode in function create_dimensionality_reduced_images is disabled.")
+
 
 import geocropper.config as config
 import geocropper.download as download
