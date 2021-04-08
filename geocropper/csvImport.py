@@ -2,6 +2,7 @@ import csv
 import shutil
 import os
 import pathlib
+import time
 
 import logging
 
@@ -145,6 +146,9 @@ def load_imported_csv_data(lower_boundary=None, upper_boundary=None, auto_crop=T
             for key in item.keys():
                 if key in config.optionalSentinelParameters and item[key] != None:
                     kwargs[key] = item[key]
+
+            # delay requests to ommit HTTP error code 429 due to frequent requests
+            time.sleep(config.requestDelay)
 
             # download and crop with geocropper module
             geocropper.download_and_crop(item["lat"], item["lon"], groupname = item["groupname"], \

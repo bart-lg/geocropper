@@ -34,6 +34,7 @@ try:
 	databaseTimeout = config["Misc"].getint("databaseTimeout")
 	databaseRetryQueries = config["Misc"].getint("databaseRetryQueries")
 	coordinateDecimalsForComparison = config["Misc"].getint("coordinateDecimalsForComparison")
+	requestDelay = config["Misc"].getint("requestDelay")
 
 	# various data paths
 	dataDir = pathlib.Path(config["Paths"]["data"])
