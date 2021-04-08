@@ -537,11 +537,10 @@ def cancel_individual_crops(csv_file):
             lat = str(data["lat"][i]) 
             lon, lat = utils.reduce_coordinate_digits(lon, lat)
 
-            crops = db.get_pois_for_coordinates(lat, lon)
-            for crop in crops:
-                poi_id = crop["poiId"]
-                tile_id = crop["tileId"]                
-                db.set_cancelled_tile_for_poi(poi_id, tile_id)
+            pois = db.get_pois_for_coordinates(lat, lon)
+            for poi in pois:
+                poi_id = poi["rowid"]                   
+                db.set_cancelled_tile_for_poi(poi_id)
                 counter = counter + 1
 
         print(f"{counter} individual crops cancelled.")
@@ -569,11 +568,10 @@ def reset_individual_cancelled_crops(csv_file):
             lat = str(data["lat"][i]) 
             lon, lat = utils.reduce_coordinate_digits(lon, lat)
 
-            crops = db.get_pois_for_coordinates(lat, lon)
-            for crop in crops:
-                poi_id = crop["poiId"]
-                tile_id = crop["tileId"]                
-                db.reset_cancelled_tile_for_poi(poi_id, tile_id)
+            pois = db.get_pois_for_coordinates(lat, lon)
+            for poi in pois:
+                poi_id = poi["rowid"]              
+                db.reset_cancelled_tile_for_poi(poi_id)
                 counter = counter + 1
 
         print(f"{counter} individual crops reseted.")

@@ -725,9 +725,12 @@ class Database:
                     AND tileId = %d" % (path, poi_id, tile_id))
         logger.info("[database] tile-poi updated in database (tileCropped): poiId:%d tileId:%d" % (poi_id, tile_id))
 
-    def set_cancelled_tile_for_poi(self, poi_id, tile_id):
+    def set_cancelled_tile_for_poi(self, poi_id, tile_id=None):
         logger.debug(f"[database] set_cancelled_tile_for_poi poi:{poi_id}, tile:{tile_id}")
-        self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
+        if isinstance(tile_id, type(None)):
+            self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d" % poi_id)
+        else:
+            self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
         logger.info("[database] tile-poi updated in database (cancelled): poiId:%d tileId:%d" % (poi_id, tile_id))          
 
     def set_cancelled_tiles_for_pois(self):
@@ -735,9 +738,12 @@ class Database:
         self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime')")
         logger.info("[database] tile-poi: cancelled all crops")        
 
-    def reset_cancelled_tile_for_poi(self, poi_id, tile_id):
+    def reset_cancelled_tile_for_poi(self, poi_id, tile_id=None):
         logger.debug(f"[database] reset_cancelled_tile_for_poi")
-        self.query("UPDATE TilesForPOIs SET cancelled = NULL WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
+        if isinstance(tile_id, type(None)):
+            self.query("UPDATE TilesForPOIs SET cancelled = NULL WHERE poiId = %d" % poi_id)
+        else:
+            self.query("UPDATE TilesForPOIs SET cancelled = NULL WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
         logger.info("[database] tile-poi: cancelled crop reseted")
 
     def reset_cancelled_tiles_for_pois(self):
