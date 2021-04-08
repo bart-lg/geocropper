@@ -514,11 +514,7 @@ def reset_cancelled_crops():
 
 
 def cancel_all_crops():
-    crops = db.get_tile_poi_connections()
-    for crop in crops:
-        poi_id = crop["poiId"]
-        tile_id = crop["tileId"]
-        db.set_cancelled_tile_for_poi(poi_id, tile_id)
+    db.set_cancelled_tiles_for_pois()
     print("Cancelled all crops.")
 
 

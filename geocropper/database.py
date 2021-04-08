@@ -730,6 +730,11 @@ class Database:
         self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
         logger.info("[database] tile-poi updated in database (cancelled): poiId:%d tileId:%d" % (poi_id, tile_id))          
 
+    def set_cancelled_tiles_for_pois(self):
+        logger.debug(f"[database] set_cancelled_tiles_for_pois")
+        self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime')")
+        logger.info("[database] tile-poi: cancelled all crops")        
+
     def reset_cancelled_tile_for_poi(self, poi_id, tile_id):
         logger.debug(f"[database] reset_cancelled_tile_for_poi")
         self.query("UPDATE TilesForPOIs SET cancelled = NULL WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
