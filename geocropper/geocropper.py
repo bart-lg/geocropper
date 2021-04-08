@@ -513,6 +513,79 @@ def reset_cancelled_crops():
     print("Cancelled crops got reseted.")
 
 
+def cancel_all_crops():
+    crops = db.get_tile_poi_connections()
+    for crop in crops:
+        poi_id = crop["poiId"]
+        tile_id = crop["tileId"]
+        db.set_cancelled_tile_for_poi(poi_id, tile_id)
+    print("Cancelled all crops.")
+
+
+def cancel_individual_crops(csv_file):
+    """Cancels individual crops based on lat lon coordinates in csv file.
+    """
+
+    csv_file = pathlib.Path(csv_file)
+
+    if csv_file.exists():
+
+        counter = 0
+
+        col_list = ["lon", "lat"]
+        data = pandas.read_csv(csv_file, usecols=col_list, dtype=str)
+        
+        for i in range(len(data)):
+
+            lon = str(data["lon"][i])
+            lat = str(data["lat"][i]) 
+            lon, lat = utils.reduce_coordinate_digits(lon, lat)
+
+            crops = db.get_pois_for_coordinates(lat, lon)
+            for crop in crops:
+                poi_id = crop["poiId"]
+                tile_id = crop["tileId"]                
+                db.set_cancelled_tile_for_poi(poi_id, tile_id)
+                counter = counter + 1
+
+        print(f"{counter} individual crops cancelled.")
+
+    else:
+        print("CSV file does not exist!")
+
+
+def reset_individual_cancelled_crops(csv_file):
+    """Resets individual crops based on lat lon coordinates in csv file.
+    """
+
+    csv_file = pathlib.Path(csv_file)
+
+    if csv_file.exists():
+
+        counter = 0
+
+        col_list = ["lon", "lat"]
+        data = pandas.read_csv(csv_file, usecols=col_list, dtype=str)
+        
+        for i in range(len(data)):
+
+            lon = str(data["lon"][i])
+            lat = str(data["lat"][i]) 
+            lon, lat = utils.reduce_coordinate_digits(lon, lat)
+
+            crops = db.get_pois_for_coordinates(lat, lon)
+            for crop in crops:
+                poi_id = crop["poiId"]
+                tile_id = crop["tileId"]                
+                db.reset_cancelled_tile_for_poi(poi_id, tile_id)
+                counter = counter + 1
+
+        print(f"{counter} individual crops reseted.")
+
+    else:
+        print("CSV file does not exist!")
+    
+
 def crop_outstanding(lower_boundary=None, upper_boundary=None):
     """Crops outstanding images. To easily run multiple processes boundaries can be set.
     """

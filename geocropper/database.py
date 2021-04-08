@@ -635,6 +635,13 @@ class Database:
         result = self.fetch_first_row_query("SELECT rowid, * FROM PointOfInterests WHERE rowid = %d" % poi_id)
         logger.debug(f"[database] get_poi result: {repr(result)}")
         return result
+
+    def get_pois_for_coordinates(self, lat, lon):
+        logger.debug(f"[database] get_pois_for_coordinates lat:{lat} lon:{lon}")
+        result = self.fetch_all_rows_query(f"SELECT rowid, * FROM PointOfInterests WHERE lat LIKE '{str(lat)}%' \
+            AND lon LIKE '{str(lon)}%'")
+        logger.debug(f"[database] get_pois_for_coordinates result rows: {len(result)}")
+        return result 
         
     def set_tiles_identified_for_poi(self, poi_id):
         logger.debug(f"[database] set_tiles_identified_for_poi {poi_id}")
@@ -699,6 +706,12 @@ class Database:
         result = self.fetch_first_row_query("SELECT rowid, * FROM TilesForPOIs WHERE rowid = %d" % connection_id)
         logger.debug(f"[database] get_tile_poi_connection result: {repr(result)}")
         return result         
+
+    def get_tile_poi_connections(self):
+        logger.debug(f"[database] get_tile_poi_connections")
+        result = self.fetch_all_rows_query("SELECT rowid, * FROM TilesForPOIs")
+        logger.debug(f"[database] get_tile_poi_connections result rows: {len(result)}")
+        return result         
         
     def add_tile_for_poi(self, poi_id, tile_id):
         logger.debug(f"[database] add_tile_for_poi poi:{poi_id} tile:{tile_id}")
@@ -716,6 +729,11 @@ class Database:
         logger.debug(f"[database] set_cancelled_tile_for_poi poi:{poi_id}, tile:{tile_id}")
         self.query("UPDATE TilesForPOIs SET cancelled = datetime('now', 'localtime') WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
         logger.info("[database] tile-poi updated in database (cancelled): poiId:%d tileId:%d" % (poi_id, tile_id))          
+
+    def reset_cancelled_tile_for_poi(self, poi_id, tile_id):
+        logger.debug(f"[database] reset_cancelled_tile_for_poi")
+        self.query("UPDATE TilesForPOIs SET cancelled = NULL WHERE poiId = %d AND tileId = %d" % (poi_id, tile_id))
+        logger.info("[database] tile-poi: cancelled crop reseted")
 
     def reset_cancelled_tiles_for_pois(self):
         logger.debug(f"[database] reset_cancelled_tiles_for_pois")
