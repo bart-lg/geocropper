@@ -1329,3 +1329,68 @@ def filter_certain_coordinates_from_csv(source_csv, reference_csv, target_csv, m
 
 def refresh_unzipped_big_tiles():
     utils.refresh_unzipped_big_tiles()
+
+
+def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pixel_size=50, shifting_limit=0.5):
+    """Creates randomly shifted crops around the center of the original image.
+
+    The source_dir is expected to contain images (Sentinel 1 or 2) with wind turbines in the center. Around that center of the
+    an image is cropped with the size of target_pixel_size and a random shift. The cropped image will be shifted at maximum by 
+    its half pixelsize and therefore will always contain the wind turbine. Note that for a shifting limit above 0.9 it is possible
+    that the random shift may cause the wind turbine to be cut off.
+    
+    Parameters
+    ----------
+    source_dir: String
+        Path of standardized_stacked_images which dimension shall be reduced
+    satellite_type: String
+        Set the satellite type of the images inside source dir:
+        "S1": Sentinel 1
+        "S2": Sentinel 2
+    target_dir: String, optional
+        Default is the parent of source_dir and the folder is named "source-dir_shifting-limit_target-pixel-size"
+    target_pixel_size: Int
+        Set the pixel size of the crops which shall be extracted from the original image in source_dir
+        (Default is 50)
+    shifting_limit: Float
+        Set the limit on how much the image shall be shifted (Choose a value between 0 and 1).
+        0: Image won't be shifted
+        1: Image is shifted up to 100% which may cause the wind turbine to be located at the outer edge of the cropped image
+    """
+
+    if not 0 <= shifting_limit <= 1:
+        print("Shifting limit has to be set between 0 and 1.")
+        return
+
+    if shifting_limit >= 0.9:
+        print(f"Warning! Shifting limit is set to {shifting_limit}. A shifting limit larger than 0.9 may cause wind turbines to be cut off.")
+    
+    
+
+    source_dir = pathlib.Path(source_dir)
+    if target_dir == None:
+        target_dir = source_dir.parent / (source_dir.name + f"_{int(shifting_limit*100)}%-shifted_" + str(target_pixel_size) + "px")
+    else:
+        target_dir = pathlib.Path(target_dir)
+    
+    if satellite_type == "S1":
+        
+        pass
+    
+    elif satellite_type == "S2":
+    
+        for crop_dir in tqdm(source_dir.glob("*"), desc="Creating randomly shifted crops: "):
+            
+            if crop_dir.is_dir() and not crop_dir.name.startswith("0_"):
+                crop = crop_dir.name
+                image_dir = crop_dir / "sensordata" / "R10m"
+                image_dict = {}
+                
+                # Create a dictionary where each key represents an image name (e.g. "T19TEK_20200718T153559_B02_10m.jp2") and
+                # points to the associated image opened with rasterio
+                for image in image_dir.glob("*_B*_10m.jp2"):
+                    with rasterio.open(image) as f:
+                        image_dict[image.name] = f.read(1)
+                
+                # Shift ever image in image_dict by the same randomly generated faktor and store them inside target_dir
+                utils.shift_images_randomly(image_dict, satellite_type, target_dir, crop, target_pixel_size, shifting_limit)
