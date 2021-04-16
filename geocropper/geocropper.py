@@ -1081,9 +1081,9 @@ def stack_trimmed_images(source_dir, postfix="", target_dir=None):
     else:
         target_dir = pathlib.Path(target_dir)
 
-    lat_lon_set = utils.get_unique_lat_lon_set(source_dir, postfix)
+    lon_lat_set = utils.get_unique_lon_lat_set(source_dir, postfix)
 
-    for location in tqdm(lat_lon_set, desc="Stacking images and writing tifs: "):
+    for location in tqdm(lon_lat_set, desc="Stacking images and writing tifs: "):
         image_path_list = utils.get_image_path_list(source_dir, location, postfix)
         utils.stack_trimmed_images(image_path_list, target_dir, location, postfix)
 
@@ -1140,7 +1140,7 @@ def compare_csv_locations(csv_dir, reference_csv_path=None, result_csv_path=None
         print("CSV directory does not exist!")
         return
 
-    lat_lon_set = None
+    lon_lat_set = None
 
     print("Creating unique coordinate list...")
 
@@ -1152,16 +1152,16 @@ def compare_csv_locations(csv_dir, reference_csv_path=None, result_csv_path=None
             reference_csv_path = None
 
         else:
-            lat_lon_set = utils.get_unique_lat_lon_set(csv_path=reference_csv_path)
+            lon_lat_set = utils.get_unique_lon_lat_set(csv_path=reference_csv_path)
 
-    if isinstance(lat_lon_set, type(None)):
+    if isinstance(lon_lat_set, type(None)):
         for csv_file in csv_dir.glob("*.csv"):
-            lat_lon_set = utils.get_unique_lat_lon_set(csv_path=csv_file)
+            lon_lat_set = utils.get_unique_lon_lat_set(csv_path=csv_file)
 
     print("Counting coordinates in csv files...")
 
     csv_list = list(csv_dir.glob("*.csv"))
-    lat_lon_list = numpy.array(list(lat_lon_set), str)
+    lat_lon_list = numpy.array(list(lon_lat_set), str)
     lat_lon_counter = numpy.zeros((len(lat_lon_list), len(csv_list)), int)
 
     print(f"Total number of csv files: {len(csv_list)}")
@@ -1287,7 +1287,7 @@ def filter_certain_coordinates_from_csv(source_csv, reference_csv, target_csv, m
 
     print("Filtering csv file...")
 
-    lat_lon_set = utils.get_unique_lat_lon_set(csv_path=reference_csv)
+    lon_lat_set = utils.get_unique_lon_lat_set(csv_path=reference_csv)
 
     with open(target_csv.absolute(), "w", newline="") as target_file:
         with open(source_csv.absolute(), newline="") as source_file:
@@ -1319,9 +1319,9 @@ def filter_certain_coordinates_from_csv(source_csv, reference_csv, target_csv, m
                     lat = row[lat_col]
                     lon, lat = utils.reduce_coordinate_digits(lon, lat)
 
-                    if mode == "remove" and not ( f"{lon}_{lat}" in lat_lon_set ):
+                    if mode == "remove" and not ( f"{lon}_{lat}" in lon_lat_set ):
                         spamwriter.writerow(row)
-                    elif mode == "filter" and ( f"{lon}_{lat}" in lat_lon_set ):
+                    elif mode == "filter" and ( f"{lon}_{lat}" in lon_lat_set ):
                         spamwriter.writerow(row)
 
     print("Done.")
@@ -1367,7 +1367,7 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
 
     source_dir = pathlib.Path(source_dir)
     if target_dir == None:
-        target_dir = source_dir.parent / ("_".join(source_dir.name.split("_")[:-1]) + f"_{target_pixel_size}px_" + f"{int(shifting_limit*100)}%-shifted")
+        target_dir = source_dir.parent / ("_".join(source_dir.name.split("_")[:-2]) + f"_{target_pixel_size}px_" + f"{int(shifting_limit*100)}%-shifted")
     else:
         target_dir = pathlib.Path(target_dir)
     
@@ -1393,8 +1393,16 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
             # Create a dictionary where each key represents an image name and
             # points to the associated image opened with rasterio
             for image in image_dir.glob(search_pattern):
+
                 with rasterio.open(image) as f:
-                    image_dict[image.name] = f.read(1)
+
+                    if satellite_type == "S1":
+                        # Rename tif file to from "s1_dim_reduced_VH.tif" to "s1_shifted_VH.tif"
+                        image_name = image.name.split("_")[0] + "_shifted_" + image.name.split("_")[3]
+                        image_dict[image_name] = f.read(1)
+                        
+                    else:
+                        image_dict[image.name] = f.read(1)
             
             # Shift ever image in image_dict by the same randomly generated faktor and store them inside target_dir
             utils.shift_images_randomly(image_dict, target_dir, crop, target_pixel_size, shifting_limit)

@@ -1900,9 +1900,9 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, based_on_f
                         break                     
 
 
-def get_unique_lat_lon_set(source_dir=None, postfix="", csv_path=None, lat_lon_set=None):
+def get_unique_lon_lat_set(source_dir=None, postfix="", csv_path=None, lon_lat_set=None):
     """Loops through every folder in source dir, optionally looks for matching postfix if defined and returns 
-    a set of strings with unique latitude and longitude positions.
+    a set of strings with unique longitude and latitude positions.
 
     Parameters
     ----------
@@ -1913,13 +1913,13 @@ def get_unique_lat_lon_set(source_dir=None, postfix="", csv_path=None, lat_lon_s
         Default is empty string and therefore every folder in source_dir is included.
     csv_path : path, optional
         Path to csv file containing lat lon coordinates.
-    lat_lon_set : set, optional
+    lon_lat_set : set, optional
         Set containing coordinates, which should be appended with new ones. 
     """
     
     # Set is an unordered list which allows no duplicated entries
-    if not isinstance(lat_lon_set, set):
-        lat_lon_set = set()
+    if not isinstance(lon_lat_set, set):
+        lon_lat_set = set()
 
     print(f"Reading unique positions...")
 
@@ -1933,7 +1933,7 @@ def get_unique_lat_lon_set(source_dir=None, postfix="", csv_path=None, lat_lon_s
                         lat = crop.name.split("_")[2]
                         # reduce digits to specified length
                         lon, lat = reduce_coordinate_digits(lon, lat)
-                        lat_lon_set.add(lon + "_" + lat)
+                        lon_lat_set.add((lon, lat))
 
     elif isinstance(csv_path, pathlib.PurePath):
 
@@ -1948,9 +1948,9 @@ def get_unique_lat_lon_set(source_dir=None, postfix="", csv_path=None, lat_lon_s
                 # reduce digits to specified length
                 lon, lat = reduce_coordinate_digits(lon, lat)
 
-                lat_lon_set.add(lon + "_" + lat)
+                lon_lat_set.add(lon + "_" + lat)
 
-    return lat_lon_set
+    return lon_lat_set
 
 
 def reduce_coordinate_digits(lon, lat):
@@ -1967,17 +1967,18 @@ def get_image_path_list(source_dir, location, postfix=""):
     ----------
     source_dir: Path
         Path of trimmed crops
-    location: String
-        Set the location of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    location: Tuple
+        Set the location of the image in longitude and latitude format as strings inside a tuple (e.g. ("-68.148781", "44.77383"))
     postfix: String, optional
         Set desired postfix for selecting specific folders containing a certain string 
         (by default is empty "" and therefore selects every folder in source_dir) 
     """
 
+    lon, lat = location
     image_path_list = []
     for folder in source_dir.glob(f"*{postfix}"):
         if folder.is_dir() and folder.name.split("_")[-1] != "stacked":
-            for crop in folder.glob(f"*{location}*"):
+            for crop in folder.glob(f"*{lon}*_{lat}*"):
                 if crop.is_dir():
                     image_path = crop / "sensordata" / "s1_cropped.tif"
                     if image_path.exists():
@@ -1996,8 +1997,8 @@ def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_
         List containing paths of images of the same location with different capture dates.
     target_dir: Path
         Path where the stacked image shall be stored
-    location: String
-        Set the location of the image in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
+    location: Tuple
+        Set the location of the image in longitude and latitude format as strings inside a tuple (e.g. ("-68.148781", "44.77383"))
     postfix: String, optional
         Set desired postfix for selecting specific folders containing a certain string 
         (by default is empty "" and therefore selects every folder in source_dir)
@@ -2010,7 +2011,7 @@ def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_
         rasterio_image_list.append(rasterio.open(image_path))
 
     # if a postfix exists the foldername for the stacked_images will be complemented with the postfix string
-    stacked_image_path = target_dir / ("_".join(filter(None, ["21_S1", postfix, "stacked"]))) / location
+    stacked_image_path = target_dir / ("_".join(filter(None, ["21_S1", postfix, "stacked"]))) / "_".join(location)
 
     try:
         stacked_image_path.mkdir(exist_ok=True, parents=True)
