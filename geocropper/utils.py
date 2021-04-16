@@ -1926,7 +1926,7 @@ def get_unique_lat_lon_set(source_dir=None, postfix="", csv_path=None, lat_lon_s
     if isinstance(source_dir, pathlib.PurePath):
 
         for folder in source_dir.glob(f"*{postfix}"):
-            if folder.is_dir() and folder.name.split("_")[0] != "stacked":
+            if folder.is_dir() and folder.name.split("_")[-1] != "stacked":
                 for crop in folder.glob("*"):
                     if crop.is_dir() and not crop.name.startswith("0_"):
                         lon = crop.name.split("_")[1]
@@ -1976,7 +1976,7 @@ def get_image_path_list(source_dir, location, postfix=""):
 
     image_path_list = []
     for folder in source_dir.glob(f"*{postfix}"):
-        if folder.is_dir() and folder.name.split("_")[0] != "stacked":
+        if folder.is_dir() and folder.name.split("_")[-1] != "stacked":
             for crop in folder.glob(f"*{location}*"):
                 if crop.is_dir():
                     image_path = crop / "sensordata" / "s1_cropped.tif"
@@ -2010,7 +2010,7 @@ def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_
         rasterio_image_list.append(rasterio.open(image_path))
 
     # if a postfix exists the foldername for the stacked_images will be complemented with the postfix string
-    stacked_image_path = target_dir / ("_".join(filter(None, ["stacked_images", postfix]))) / location
+    stacked_image_path = target_dir / ("_".join(filter(None, ["21_S1", postfix, "stacked"]))) / location
 
     try:
         stacked_image_path.mkdir(exist_ok=True, parents=True)
@@ -2219,21 +2219,20 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_red
         else:
 
             print("Please, choose a valid dim_reduction_method ('pca' or 'max_values')!")
+            return
 
 
-def shift_images_randomly(image_dict, satellite_type, target_dir, crop, target_pixel_size, shifting_limit):
+def shift_images_randomly(image_dict, target_dir, crop, target_pixel_size, shifting_limit):
     """Creates randomly shifted crops around the center of the original images in image_dict.
     
     Parameters
     ----------
     image_dict: Dictionary
         Contains image names as keys and the associated images opened with rasterio as values
-    satellite_type: String
-        Set the satellite type of the images inside source dir:
-        "S1": Sentinel 1
-        "S2": Sentinel 2
-    target_dir: String, optional
+    target_dir: String
         Default is the parent of source_dir and the folder is named "source-dir_shifting-limit_target-pixel-size"
+    crop: String
+        Location of the crop in latitude and longitude format as a string (e.g. "-68.148781_44.77383")
     target_pixel_size: Int
         Set the pixel size of the crops which shall be extracted from the original image in source_dir
         (Default is 50)
@@ -2242,38 +2241,33 @@ def shift_images_randomly(image_dict, satellite_type, target_dir, crop, target_p
         0: Image won't be shifted
         1: Image is shifted up to 100% which may cause the wind turbine to be located at the outer edge of the cropped image
     """
+
+    original_image_shape = image_dict[list(image_dict.keys())[0]].shape
+
+    # Calculate the center point of the original image
+    center_point_y, center_point_x = [int(round(index/2)) for index in original_image_shape]
+
+    # Define the maximum permitted shift and calculate a random number for the x- and y-axis inside the defined maximum.
+    max_shift = int(round((target_pixel_size/2)*shifting_limit))
+
+    if (target_pixel_size + max_shift) > original_image_shape[0]:
+        print(f"Your chosen target_pixel_size ({target_pixel_size}) combined with the shifting_limit ({shifting_limit}) would exceed the original image {original_image_shape}.")
+        print("Please choose a target_pixel_size and shifting_limit that won't exceed the original image size!")
+        return
+
+    random_shift_x = random.randint(-max_shift,max_shift)
+    random_shift_y = random.randint(-max_shift,max_shift)
     
-    if satellite_type == "S1":
-        
-        pass
-    
-    elif satellite_type == "S2":
+    # Calculate the x- and y-indices for the crop with the randomly generated shift in x- and y-direction
+    top_left_x = int((center_point_x - (target_pixel_size/2)) + random_shift_x)
+    top_left_y = int((center_point_y - (target_pixel_size/2)) + random_shift_y)
+    bottom_right_x = int((center_point_x + (target_pixel_size/2)) + random_shift_x)
+    bottom_right_y = int((center_point_y + (target_pixel_size/2)) + random_shift_y)
 
-        original_image_shape = image_dict[list(image_dict.keys())[0]].shape
-
-        # Calculate the center point of the original image
-        center_point_y, center_point_x = [int(round(index/2)) for index in original_image_shape]
-
-        # Define the maximum permitted shift and calculate a random number for the x- and y-axis inside the defined maximum.
-        max_shift = int(round((target_pixel_size/2)*shifting_limit))
-
-        if (target_pixel_size + max_shift) > original_image_shape[0]:
-            print(f"Your chosen target_pixel_size ({target_pixel_size}) combined with the shifting_limit ({shifting_limit}) would exceed the original image {original_image_shape}.")
-            print("Please choose a smaller target_pixel_size and/or shifting_limit!")
-            return
-
-        random_shift_x = random.randint(-max_shift,max_shift)
-        random_shift_y = random.randint(-max_shift,max_shift)
-        
-        top_left_x = int((center_point_x - (target_pixel_size/2)) + random_shift_x)
-        top_left_y = int((center_point_y - (target_pixel_size/2)) + random_shift_y)
-        bottom_right_x = int((center_point_x + (target_pixel_size/2)) + random_shift_x)
-        bottom_right_y = int((center_point_y + (target_pixel_size/2)) + random_shift_y)
-
-        cropped_image_dict = {}
-        # Crop the shifted image out of the original image and save it to cropped_image_dict
-        for image_name, image in image_dict.items():
-            cropped_image_dict[image_name] = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
+    cropped_image_dict = {}
+    # Crop the shifted image from the original image and save it to cropped_image_dict
+    for image_name, image in image_dict.items():
+        cropped_image_dict[image_name] = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
 
     # Add + in front of positive shifts for the folder name
     if random_shift_x >= 0:

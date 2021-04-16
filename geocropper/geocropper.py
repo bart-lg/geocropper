@@ -1109,7 +1109,7 @@ def standardize_stacked_images(source_dir, target_dir=None, standardization_proc
     
     source_dir = pathlib.Path(source_dir)
     if target_dir == None:
-        target_dir = source_dir.parent / ("standardized_" + source_dir.name)
+        target_dir = source_dir.parent / ("_".join(source_dir.name.split("_")[:-1]) + "_standardized")
     else:
         target_dir = pathlib.Path(target_dir)
     
@@ -1238,7 +1238,7 @@ def create_dimensionality_reduced_images(source_dir, target_dir=None, dim_reduct
 
     source_dir = pathlib.Path(source_dir)
     if target_dir == None:
-        target_dir = source_dir.parent / ("dim_reduced_" + source_dir.name)
+        target_dir = source_dir.parent / ("_".join(source_dir.name.split("_")[:-1]) + "_dim_reduced")
     else:
         target_dir = pathlib.Path(target_dir)
     
@@ -1342,7 +1342,7 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
     Parameters
     ----------
     source_dir: String
-        Path of standardized_stacked_images which dimension shall be reduced
+        Path of Sentinel 1 or 2 images from which a shifted crop shall be created
     satellite_type: String
         Set the satellite type of the images inside source dir:
         "S1": Sentinel 1
@@ -1359,38 +1359,42 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
     """
 
     if not 0 <= shifting_limit <= 1:
-        print("Shifting limit has to be set between 0 and 1.")
+        print(f"shifting_limit is set to '{shifting_limit}'. Please choose a value between 0 and 1.")
         return
 
     if shifting_limit >= 0.9:
         print(f"Warning! Shifting limit is set to {shifting_limit}. A shifting limit larger than 0.9 may cause wind turbines to be cut off.")
-    
-    
 
     source_dir = pathlib.Path(source_dir)
     if target_dir == None:
-        target_dir = source_dir.parent / (source_dir.name + f"_{int(shifting_limit*100)}%-shifted_" + str(target_pixel_size) + "px")
+        target_dir = source_dir.parent / ("_".join(source_dir.name.split("_")[:-1]) + f"_{target_pixel_size}px_" + f"{int(shifting_limit*100)}%-shifted")
     else:
         target_dir = pathlib.Path(target_dir)
     
-    if satellite_type == "S1":
+    for crop_dir in tqdm(source_dir.glob("*"), desc="Creating randomly shifted S2 crops: "):
         
-        pass
-    
-    elif satellite_type == "S2":
-    
-        for crop_dir in tqdm(source_dir.glob("*"), desc="Creating randomly shifted crops: "):
-            
-            if crop_dir.is_dir() and not crop_dir.name.startswith("0_"):
-                crop = crop_dir.name
+        if crop_dir.is_dir() and not crop_dir.name.startswith("0_"):
+            crop = crop_dir.name
+
+            if satellite_type == "S1":
+                image_dir = crop_dir
+                search_pattern = "*"
+
+            elif satellite_type == "S2":
                 image_dir = crop_dir / "sensordata" / "R10m"
-                image_dict = {}
-                
-                # Create a dictionary where each key represents an image name (e.g. "T19TEK_20200718T153559_B02_10m.jp2") and
-                # points to the associated image opened with rasterio
-                for image in image_dir.glob("*_B*_10m.jp2"):
-                    with rasterio.open(image) as f:
-                        image_dict[image.name] = f.read(1)
-                
-                # Shift ever image in image_dict by the same randomly generated faktor and store them inside target_dir
-                utils.shift_images_randomly(image_dict, satellite_type, target_dir, crop, target_pixel_size, shifting_limit)
+                search_pattern = "*_B*_10m.jp2"
+
+            else:
+                print(f"satellite_type is set to '{satellite_type}'. Please choose between 'S1' or 'S2'!")
+                return
+            
+            image_dict = {}
+            
+            # Create a dictionary where each key represents an image name and
+            # points to the associated image opened with rasterio
+            for image in image_dir.glob(search_pattern):
+                with rasterio.open(image) as f:
+                    image_dict[image.name] = f.read(1)
+            
+            # Shift ever image in image_dict by the same randomly generated faktor and store them inside target_dir
+            utils.shift_images_randomly(image_dict, target_dir, crop, target_pixel_size, shifting_limit)
