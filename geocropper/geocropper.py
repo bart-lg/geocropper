@@ -1061,7 +1061,7 @@ def move_crops_containing_locations(csv_path, source_dir, target_dir, outside_cr
                         utils.move_crops_containing_locations(csv_path, group, (target_dir / group.name), based_on_foldername)
 
 
-def stack_trimmed_images(source_dir, postfix="", target_dir=None):
+def stack_trimmed_images(source_dir, postfix="", target_dir=None, split_target_dir=False):
     """Stack images of the same location with different capture dates and write them to tifs.
     
     Parameters
@@ -1073,6 +1073,9 @@ def stack_trimmed_images(source_dir, postfix="", target_dir=None):
         (default is empty "" and therefore selects every folder in source_dir).
     target_dir: String, optional
         Path where the stacked image shall be stored (by default is equal to root_dir)
+    split_target_dir: Boolean, optional
+        Splits target dir into several dirs with different stack sizes.
+        Default is false.
     """
 
     source_dir = pathlib.Path(source_dir)
@@ -1085,7 +1088,7 @@ def stack_trimmed_images(source_dir, postfix="", target_dir=None):
 
     for location in tqdm(lon_lat_set, desc="Stacking images and writing tifs: "):
         image_path_list = utils.get_image_path_list(source_dir, location, postfix)
-        utils.stack_trimmed_images(image_path_list, target_dir, location, postfix)
+        utils.stack_trimmed_images(image_path_list, target_dir, location, postfix, split_target_dir)
 
 
 def standardize_stacked_images(source_dir, target_dir=None, standardization_procedure="layerwise", scaler_type="StandardScaler"):

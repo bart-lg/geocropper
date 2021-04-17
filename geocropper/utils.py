@@ -1987,7 +1987,8 @@ def get_image_path_list(source_dir, location, postfix=""):
     return image_path_list
 
 
-def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_band_name_list=["s1_stacked_VV.tif", "s1_stacked_VH.tif"]):
+def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_band_name_list=["s1_stacked_VV.tif", "s1_stacked_VH.tif"], \
+    split_target_dir=False):
     """Stacks trimmed images from provided image_path_list with rasterio in order to preserve the georeferencing
     and writes both bands to tif files ("s1_stacked_VV.tif", "s1_stacked_VH.tif").
 
@@ -2004,14 +2005,22 @@ def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_
         (by default is empty "" and therefore selects every folder in source_dir)
     tif_band_name_list: String, optional
         Set names for the bands of the tif tiles (by default the bands are called ["s1_stacked_VV.tif", "s1_stacked_VH.tif"])
+    split_target_dir: Boolean, optional
+        Splits target dir into several dirs with different stack sizes.
+        Default is false.        
     """
 
     rasterio_image_list = []
     for image_path in image_path_list:
         rasterio_image_list.append(rasterio.open(image_path))
 
+    if split_target_dir:
+        size_appendix = f"{len(rasterio_image_list)}-img"
+    else:
+        size_appendix = ""
+
     # if a postfix exists the foldername for the stacked_images will be complemented with the postfix string
-    stacked_image_path = target_dir / ("_".join(filter(None, ["21_S1", postfix, "stacked"]))) / "_".join(location)
+    stacked_image_path = target_dir / ("_".join(filter(None, ["21_S1", postfix, "stacked", size_appendix]))) / "_".join(location)
 
     try:
         stacked_image_path.mkdir(exist_ok=True, parents=True)
