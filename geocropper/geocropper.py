@@ -1334,10 +1334,10 @@ def refresh_unzipped_big_tiles():
 def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pixel_size=50, shifting_limit=0.5):
     """Creates randomly shifted crops around the center of the original image.
 
-    The source_dir is expected to contain images (Sentinel 1 or 2) with wind turbines in the center. Around that center of the
-    an image is cropped with the size of target_pixel_size and a random shift. The cropped image will be shifted at maximum by 
-    its half pixelsize and therefore will always contain the wind turbine. Note that for a shifting limit above 0.9 it is possible
-    that the random shift may cause the wind turbine to be cut off.
+    The source_dir is expected to contain Sentinel 1 or 2 images. The images will be cropped around the center with the size of 
+    target_pixel_size and a random shift. Note that shifting may cause the focused object to be cut off. Therefore, at shifting 
+    limits above 0.9 an appropriate warning message is displayed. Please note, that for Sentinel 2 only the bands 2, 3, 4, and 8
+    at 10x10 meter spatial resolution is taken into account.
     
     Parameters
     ----------
@@ -1355,7 +1355,7 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
     shifting_limit: Float
         Set the limit on how much the image shall be shifted (Choose a value between 0 and 1).
         0: Image won't be shifted
-        1: Image is shifted up to 100% which may cause the wind turbine to be located at the outer edge of the cropped image
+        1: Image is shifted up to 100%. Therefore, the initial center of the original image appears at the edge of the cropped image.
     """
 
     if not 0 <= shifting_limit <= 1:
@@ -1363,7 +1363,7 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
         return
 
     if shifting_limit >= 0.9:
-        print(f"Warning! Shifting limit is set to {shifting_limit}. A shifting limit larger than 0.9 may cause wind turbines to be cut off.")
+        print(f"Warning! Shifting limit is set to {shifting_limit}. A large shifting limit may cause focused objects to be cut off.")
 
     source_dir = pathlib.Path(source_dir)
     if target_dir == None:

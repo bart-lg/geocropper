@@ -2240,7 +2240,7 @@ def shift_images_randomly(image_dict, target_dir, crop, target_pixel_size, shift
     shifting_limit: Float
         Set the limit on how much the image shall be shifted (Choose a value between 0 and 1).
         0: Image won't be shifted
-        1: Image is shifted up to 100% which may cause the wind turbine to be located at the outer edge of the cropped image
+        1: Image is shifted up to 100%. Therefore, the initial center of the original image appears at the edge of the cropped image.
     """
 
     original_image_shape = image_dict[list(image_dict.keys())[0]].shape
