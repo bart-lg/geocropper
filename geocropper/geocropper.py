@@ -1084,11 +1084,11 @@ def stack_trimmed_images(source_dir, postfix="", target_dir=None, split_target_d
     else:
         target_dir = pathlib.Path(target_dir)
 
-    lon_lat_set = utils.get_unique_lon_lat_set(source_dir, postfix)
+    lon_lat_set = utils.get_unique_lon_lat_set(source_dir, postfix=postfix)
 
     for location in tqdm(lon_lat_set, desc="Stacking images and writing tifs: "):
-        image_path_list = utils.get_image_path_list(source_dir, location, postfix)
-        utils.stack_trimmed_images(image_path_list, target_dir, location, postfix, split_target_dir)
+        image_path_list = utils.get_image_path_list(source_dir, location, postfix=postfix)
+        utils.stack_trimmed_images(image_path_list, target_dir, location, postfix=postfix, split_target_dir=split_target_dir)
 
 
 def standardize_stacked_images(source_dir, target_dir=None, standardization_procedure="layerwise", scaler_type="StandardScaler"):
