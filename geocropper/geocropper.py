@@ -1358,7 +1358,7 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
     shifting_limit: Float
         Set the limit on how much the image shall be shifted (Choose a value between 0 and 1).
         0: Image won't be shifted
-        1: Image is shifted up to 100%. Therefore, the initial center of the original image appears at the edge of the cropped image.
+        1: Image is shifted up to 100%. Therefore, the initial center of the original image may appear at the edge of the cropped image.
     """
 
     if not 0 <= shifting_limit <= 1:
