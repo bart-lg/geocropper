@@ -1987,13 +1987,15 @@ def get_image_path_list(source_dir, location, postfix=""):
     return image_path_list
 
 
-def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_band_name_list=["s1_stacked_VV.tif", "s1_stacked_VH.tif"], \
+def stack_trimmed_images(source_dir, image_path_list, target_dir, location, postfix="", tif_band_name_list=["s1_stacked_VV.tif", "s1_stacked_VH.tif"], \
     split_target_dir=False):
     """Stacks trimmed images from provided image_path_list with rasterio in order to preserve the georeferencing
     and writes both bands to tif files ("s1_stacked_VV.tif", "s1_stacked_VH.tif").
 
     Parameters
     ----------
+    source_dir: String
+        Path of trimmed crops of various recording times which shall be stacked 
     image_path_list: List
         List containing paths of images of the same location with different capture dates.
     target_dir: Path
@@ -2020,7 +2022,7 @@ def stack_trimmed_images(image_path_list, target_dir, location, postfix="", tif_
         size_appendix = ""
 
     # if a postfix exists the foldername for the stacked_images will be complemented with the postfix string
-    stacked_image_path = target_dir / ("_".join(filter(None, ["21_S1", postfix, "stacked", size_appendix]))) / "_".join(location)
+    stacked_image_path = target_dir / ("_".join(filter(None, [source_dir.name, postfix, "stacked", size_appendix]))) / "_".join(location)
 
     try:
         stacked_image_path.mkdir(exist_ok=True, parents=True)
