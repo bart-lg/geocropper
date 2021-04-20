@@ -2013,9 +2013,18 @@ def stack_trimmed_images(source_dir, image_path_list, target_dir, location, post
     """
 
     rasterio_image_list = []
+    left_upper_corner_coordinates = None
     for image_path in image_path_list:
-        rasterio_image_list.append(rasterio.open(image_path))
-
+        image = rasterio.open(image_path)
+        if isinstance(left_upper_corner_coordinates, type(None)):
+            left_upper_corner_coordinates = image.transform * (0, 0)
+            rasterio_image_list.append(image)
+        else:
+            if left_upper_corner_coordinates == image.transform * (0, 0):
+                rasterio_image_list.append(image)
+            else:
+                print(f"WARNING - Image omitted due to different corner coordinates: {image_path}")   
+        
     if split_target_dir:
         size_appendix = f"{len(rasterio_image_list)}-img"
     else:
@@ -2041,7 +2050,7 @@ def stack_trimmed_images(source_dir, image_path_list, target_dir, location, post
                     dest.write(image.read(band), i)
 
     except IndexError as error:
-        print (f"No images for stacking were found.")
+        print (f"No images for stacking were found: {location}")
         print(error)
         return
 
