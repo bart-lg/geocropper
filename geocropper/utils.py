@@ -2029,7 +2029,7 @@ def stack_trimmed_images(source_dir, image_path_list, target_dir, location, post
             img_left_upper_corner_coordinates = image.transform * (0, 0)
 
             # check if distance of the two points is within a 10x10 meter square
-            if abs(ref_left_upper_corner_coordinates[0] - img_left_upper_corner_coordinates[0]) <= 10 and
+            if abs(ref_left_upper_corner_coordinates[0] - img_left_upper_corner_coordinates[0]) <= 10 and \
                abs(ref_left_upper_corner_coordinates[1] - img_left_upper_corner_coordinates[1]) <= 10:
                 rasterio_image_list.append(image)
             else:
