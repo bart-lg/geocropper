@@ -2034,7 +2034,7 @@ def stack_trimmed_images(source_dir, image_path_list, target_dir, location, post
                 rasterio_image_list.append(image)
             else:
                 print(f"WARNING - Image omitted due to different corner coordinates: {image_path} \
-                    [ref: {repr(left_upper_corner_coordinates)} img: {repr(image.transform * (0,0))}]")   
+                    [ref: {repr(ref_left_upper_corner_coordinates)} img: {repr(img_left_upper_corner_coordinates)}]")   
         
     if split_target_dir:
         size_appendix = f"{len(rasterio_image_list)}-img"
