@@ -2013,17 +2013,28 @@ def stack_trimmed_images(source_dir, image_path_list, target_dir, location, post
     """
 
     rasterio_image_list = []
-    left_upper_corner_coordinates = None
+    ref_left_upper_corner_coordinates = None
+
     for image_path in image_path_list:
+
         image = rasterio.open(image_path)
-        if isinstance(left_upper_corner_coordinates, type(None)):
-            left_upper_corner_coordinates = image.transform * (0, 0)
+
+        if isinstance(ref_left_upper_corner_coordinates, type(None)):
+
+            ref_left_upper_corner_coordinates = image.transform * (0, 0)
             rasterio_image_list.append(image)
+
         else:
-            if left_upper_corner_coordinates == image.transform * (0, 0):
+
+            img_left_upper_corner_coordinates = image.transform * (0, 0)
+
+            # check if distance of the two points is within a 10x10 meter square
+            if abs(ref_left_upper_corner_coordinates[0] - img_left_upper_corner_coordinates[0]) <= 10 and
+               abs(ref_left_upper_corner_coordinates[1] - img_left_upper_corner_coordinates[1]) <= 10:
                 rasterio_image_list.append(image)
             else:
-                print(f"WARNING - Image omitted due to different corner coordinates: {image_path}")   
+                print(f"WARNING - Image omitted due to different corner coordinates: {image_path} \
+                    [ref: {repr(left_upper_corner_coordinates)} img: {repr(image.transform * (0,0))}]")   
         
     if split_target_dir:
         size_appendix = f"{len(rasterio_image_list)}-img"
