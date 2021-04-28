@@ -1409,3 +1409,7 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
             
             # Shift ever image in image_dict by the same randomly generated faktor and store them inside target_dir
             utils.shift_images_randomly(image_dict, target_dir, crop, target_pixel_size, shifting_limit)
+
+
+def compare_stacked_and_reduced_images(target_dir, channels=("VV","VH"), rows_per_preview=15, source_dir_stacked=None, source_dir_pca=None, source_dir_max=None):
+    utils.compare_stacked_and_reduced_images(target_dir, rows_per_preview, source_dir_stacked, source_dir_pca, source_dir_max)

@@ -2319,3 +2319,305 @@ def shift_images_randomly(image_dict, target_dir, crop, target_pixel_size, shift
     
     for image_name, image in cropped_image_dict.items():
         imsave((output_dir / image_name), image)
+
+
+def compare_stacked_and_reduced_images(target_dir, channels, rows_per_preview, source_dir_stacked=None, source_dir_pca=None, source_dir_max=None):
+
+    target_dir = pathlib.Path(target_dir)
+    try:
+        target_dir.mkdir(exist_ok=True, parents=True)
+    except OSError as error:
+        print (f"Creation of the directory {target_dir} failed")
+        print(error)
+        return    
+
+    if not isinstance(source_dir_stacked, type(None)):
+        source_dir_stacked = pathlib.Path(source_dir_stacked)
+    if not isinstance(source_dir_pca, type(None)):
+        source_dir_pca = pathlib.Path(source_dir_pca)
+    if not isinstance(source_dir_max, type(None)):
+        source_dir_max = pathlib.Path(source_dir_max)
+
+    # determine max number of layers for stacked images
+    max_layers = 0
+    if not isinstance(source_dir_stacked, type(None)):
+        print("Determine max. number of layers for stacked images...")
+        for stack in folder.glob("*"):
+            stack_file = stack / "s1_stacked_VV.tif"
+            if stack_file.exists():
+                raster_array = gdal_array.LoadFile(str(stack_file.absolute()))
+                if raster_array.shape[0] > max_layers:
+                    max_layers = raster_array.shape[0]
+        print(f"Max. number of layers: {max_layers}")
+
+    # determine image size (read first image of every source dir and take the max size)
+    max_width = 0
+    max_height = 0
+    print("Determine max. image size...")
+    for folder in [source_dir_stacked, source_dir_pca, source_dir_max]:
+        if not isinstance(folder, type(None)):    
+            items = list(folder.glob("*"))
+            item = items[0]
+            for file in ["s1_stacked_VV.tif", "s1_dim_reduced_VV.tif"]:
+                image_file = item / file
+                if image_file.exists():
+                    raster_array = gdal_array.LoadFile(str(image_file.absolute()))
+                    if raster_array.shape[1] > max_width:
+                        max_width = raster_array.shape[1]        
+                    if raster_array.shape[2] > max_height:
+                        max_height = raster_array.shape[2]
+    print(f"Max width: {max_width}")
+    print(f"Max height: {max_height}")
+
+    combined_preview_width = config.previewBorder + ( max_width + config.previewBorder ) * max_layers
+    if not isinstance(source_dir_pca, type(None)):
+        combined_preview_width = combined_preview_width + max_width + config.previewBorder
+    if not isinstance(source_dir_max, type(None)):
+        combined_preview_width = combined_preview_width + max_width + config.previewBorder
+
+    combined_preview_height = config.previewBorder + ( max_height + config.previewBorder ) * rows_per_preview
+
+    # create unique lon lat set
+    lon_lat_set = set()
+    for folder in [source_dir_stacked, source_dir_pca, source_dir_max]:
+        if not isinstance(folder, type(None)):    
+            lon_lat_set = get_unique_lon_lat_set(source_dir=folder, lon_lat_set=lon_lat_set)
+
+    # create empty image
+    combined_image = numpy.full((combined_preview_height, combined_preview_width, 3), config.previewBackground)
+    combined_image_id = 1
+    written_images = 0
+
+    # loop through lon lat set
+    for location in tqdm(lon_lat_set, desc="Fetching previews and writing images: "):
+
+        lon, lat = location
+        left_upper_corner_h = config.previewBorder + written_images * ( max_height + config.previewBorder )
+
+        # write images into array
+
+        # write stack images
+        if not isinstance(source_dir_stacked, type(None)) and max_layers > 0:
+
+            image_path_list = list(source_dir_stacked.glob(f"*{lon}*_{lat}*"))
+
+            # should only be one path...
+            if len(image_path_list) > 0:
+            
+                image_path = image_path_list[0]
+                layer_values = None
+
+                for channel in channels:
+
+                    stack_file = stack / f"s1_stacked_{channel}.tif"
+                    if stack_file.exists():
+
+                        image = rasterio.open(stack_file)
+
+                        # loop through layers
+                        layers = image.profile["count"]
+                        for layer in range(1,layers+1):
+
+                            left_upper_corner_w = config.previewBorder + ( layer - 1 ) * ( max_width + config.previewBorder )
+
+                            layer_values = image.read(layer)
+
+                            # write array to preview image (RGB if channels len is 1, otherwise R for VV and G for VH)
+                            if len(channels) == 1:
+
+                                combined_image[left_upper_corner_h:left_upper_corner_h+layer_values.shape[0], \
+                                               left_upper_corner_w:left_upper_corner_w+layer_values.shape[1], \
+                                               0] = layer_values
+                                combined_image[left_upper_corner_h:left_upper_corner_h+layer_values.shape[0], \
+                                               left_upper_corner_w:left_upper_corner_w+layer_values.shape[1], \
+                                               1] = layer_values
+                                combined_image[left_upper_corner_h:left_upper_corner_h+layer_values.shape[0], \
+                                               left_upper_corner_w:left_upper_corner_w+layer_values.shape[1], \
+                                               2] = layer_values
+
+                            else:
+
+                                if channel == "VV":
+                                    combined_image[left_upper_corner_h:left_upper_corner_h+layer_values.shape[0], \
+                                                   left_upper_corner_w:left_upper_corner_w+layer_values.shape[1], \
+                                                   0] = layer_values
+                                elif channel == "VH":
+                                    combined_image[left_upper_corner_h:left_upper_corner_h+layer_values.shape[0], \
+                                                   left_upper_corner_w:left_upper_corner_w+layer_values.shape[1], \
+                                                   1] = layer_values
+
+                # stretch images to 8-bit linearly
+                for layer in range(1,max_layers+1):
+
+                    # use the shape of the last layer_values to get the appropriate image size
+                    if not isinstance(layer_values, type(None)):
+                        if len(channels) == 1:
+                            colors = 3
+                        else
+                            colors = 2
+                        left_upper_corner_w = config.previewBorder + ( layer - 1 ) * ( max_width + config.previewBorder )
+                        subimage = combined_image[left_upper_corner_h:left_upper_corner_h+layer_values.shape[0], \
+                                                  left_upper_corner_w:left_upper_corner_w+layer_values.shape[1], \
+                                                  :colors]
+                        stretched_subimage = stretch_image_values_linearly_8bit(subimage)
+                        combined_image[left_upper_corner_h:left_upper_corner_h+layer_values.shape[0], \
+                                       left_upper_corner_w:left_upper_corner_w+layer_values.shape[1], \
+                                       :colors] = stretched_subimage
+
+        # write pca image
+        if not isinstance(source_dir_pca, type(None)):
+
+            left_upper_corner_w = config.previewBorder + max_layers * ( max_width + config.previewBorder )
+            image_values = None
+
+            for channel in channels:
+
+                if (source_dir_pca / f"s1_dim_reduced_{channel}.tif").exists():
+
+                    image = rasterio.open((source_dir_pca / f"s1_dim_reduced_{channel}.tif").absolute())
+                    image_values = image.read(1)
+
+                    # write array to preview image (RGB if channels len is 1, otherwise R for VV and G for VH)
+                    if len(channels) == 1:
+
+                        combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                       left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                       0] = image_values
+                        combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                       left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                       1] = image_values
+                        combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                       left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                       2] = image_values
+
+                    else:
+
+                        if channel == "VV":
+                            combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                           left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                           0] = image_values
+                        elif channel == "VH":
+                            combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                           left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                           1] = image_values     
+
+            # stretch images to 8-bit linearly
+            # use the shape of the last image_values to get the appropriate image size
+            if not isinstance(image_values, type(None)):
+                if len(channels) == 1:
+                    colors = 3
+                else
+                    colors = 2                
+                subimage = combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                          left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                          :colors]
+                stretched_subimage = stretch_image_values_linearly_8bit(subimage)
+                combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                               left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                               :colors] = stretched_subimage               
+
+        # write max image        
+        if not isinstance(source_dir_max, type(None)):
+
+            left_upper_corner_w = config.previewBorder + ( max_layers + 1 ) * ( max_width + config.previewBorder )
+            image_values = None
+
+            for channel in channels:
+
+                if (source_dir_max / f"s1_dim_reduced_{channel}.tif").exists():
+
+                    image = rasterio.open((source_dir_max / f"s1_dim_reduced_{channel}.tif").absolute())
+                    image_values = image.read(1)
+
+                    # write array to preview image (RGB if channels len is 1, otherwise R for VV and G for VH)
+                    if len(channels) == 1:
+
+                        combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                       left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                       0] = image_values
+                        combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                       left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                       1] = image_values
+                        combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                       left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                       2] = image_values
+
+                    else:
+
+                        if channel == "VV":
+                            combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                           left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                           0] = image_values
+                        elif channel == "VH":
+                            combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                           left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                           1] = image_values   
+
+            # stretch images to 8-bit linearly
+            # use the shape of the last image_values to get the appropriate image size
+            if not isinstance(image_values, type(None)):
+                if len(channels) == 1:
+                    colors = 3
+                else
+                    colors = 2                
+                subimage = combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                                          left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                                          :colors]
+                stretched_subimage = stretch_image_values_linearly_8bit(subimage)
+                combined_image[left_upper_corner_h:left_upper_corner_h+image_values.shape[0], \
+                               left_upper_corner_w:left_upper_corner_w+image_values.shape[1], \
+                               :colors] = stretched_subimage                                               
+
+        written_images = written_images + 1
+
+        if written_images == rows_per_preview:
+            
+            # save image
+            target_file = target_dir / f"comparison_{combined_image_id}.tif"
+            image = Image.fromarray(numpy.uint8(combined_image))
+            image.save(target_file)
+
+            combined_image = numpy.full((combined_preview_height, combined_preview_width, 3), config.previewBackground)
+            combined_image_id = combined_image_id + 1
+            written_images = 0
+
+
+def stretch_image_values_linearly_8bit(arr):
+
+    if not (len(arr.shape) == 3):
+        return None
+
+    min_value = None
+    max_value = None
+
+    # determine min and max values
+    for i in range(arr.shape[0]):
+        for j in range(arr.shape[1]):
+            for k in range(arr.shape[2]):
+                value = arr[i][j][k]
+                if min_value == None and max_value == None:
+                    min_value = value
+                    max_value = value
+                else:
+                    if min_value > value:
+                        min_value = value
+                    if max_value < value:
+                        max_value = value
+
+    target_min = 0
+    target_max = 255
+    factor = target_max / ( max_value - min_value )
+
+    # stretch values
+    for i in range(arr.shape[0]):
+        for j in range(arr.shape[1]):
+            for k in range(arr.shape[2]):
+                value = arr[i][j][k]
+                new_value = round((value - min_value) * factor)
+                if new_value < target_min:
+                    new_value = target_min
+                if new_value > target_max:
+                    new_value = target_max
+                arr[i][j][k] = new_value
+
+    return arr
