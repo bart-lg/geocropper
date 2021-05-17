@@ -1334,7 +1334,7 @@ def refresh_unzipped_big_tiles():
     utils.refresh_unzipped_big_tiles()
 
 
-def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pixel_size=50, shifting_limit=0.5):
+def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pixel_size=50, shifting_limit=0.5, reference_dir=None):
     """Creates randomly shifted crops around the center of the original image.
 
     The source_dir is expected to contain Sentinel 1 or 2 images. The images will be cropped around the center with the size of 
@@ -1359,6 +1359,8 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
         Set the limit on how much the image shall be shifted (Choose a value between 0 and 1).
         0: Image won't be shifted
         1: Image is shifted up to 100%. Therefore, the initial center of the original image may appear at the edge of the cropped image.
+    reference_dir: String, optional
+        If reference directory is defined crops will not be shifted randomly but appropriate to crop shiftings in refernce directory.
     """
 
     if not 0 <= shifting_limit <= 1:
@@ -1369,12 +1371,18 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
         print(f"Warning! Shifting limit is set to {shifting_limit}. A large shifting limit may cause focused objects to be cut off.")
 
     source_dir = pathlib.Path(source_dir)
+    if not isinstance(reference_dir, type(None)):
+        reference_dir = pathlib.Path(reference_dir)
+
     if target_dir == None:
-        target_dir = source_dir.parent / ("_".join(source_dir.name.split("_")[:-2]) + f"_{target_pixel_size}px_" + f"{int(shifting_limit*100)}%-shifted")
+        if not isinstance(reference_dir, type(None)) and reference_dir.exists():
+            target_dir = source_dir.parent / ("_".join(source_dir.name.split("_")[:-2]) + f"_{target_pixel_size}px_" + "reference-shifted")
+        else:
+            target_dir = source_dir.parent / ("_".join(source_dir.name.split("_")[:-2]) + f"_{target_pixel_size}px_" + f"{int(shifting_limit*100)}%-shifted")
     else:
         target_dir = pathlib.Path(target_dir)
     
-    for crop_dir in tqdm(source_dir.glob("*"), desc="Creating randomly shifted S2 crops: "):
+    for crop_dir in tqdm(source_dir.glob("*"), desc="Creating randomly shifted crops: "):
         
         if crop_dir.is_dir() and not crop_dir.name.startswith("0_"):
             crop = crop_dir.name
@@ -1407,8 +1415,11 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
                     else:
                         image_dict[image.name] = f.read(1)
             
-            # Shift ever image in image_dict by the same randomly generated faktor and store them inside target_dir
-            utils.shift_images_randomly(image_dict, target_dir, crop, target_pixel_size, shifting_limit)
+            if not isinstance(reference_dir, type(None)) and reference_dir.exists():
+                utils.shift_images_reference_based(image_dict, target_dir, crop, target_pixel_size, reference_dir)
+            else:
+                # Shift every image in image_dict by the same randomly generated factor and store them inside target_dir
+                utils.shift_images_randomly(image_dict, target_dir, crop, target_pixel_size, shifting_limit)
 
 
 def compare_stacked_and_reduced_images(target_dir, channels=("VV","VH"), rows_per_preview=15, source_dir_stacked=None, source_dir_pca=None, source_dir_max=None, \

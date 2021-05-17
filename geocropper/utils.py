@@ -2272,6 +2272,56 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_red
             return
 
 
+def shift_images_reference_based(image_dict, target_dir, crop, target_pixel_size, reference_dir):
+
+    try:
+        reference_crop = list(reference_dir.glob(f"*_{crop.name}_*"))[0]
+        shift_info = reference_crop.name.rsplit("_")[1]
+    except:
+        print(f"Could not find reference crop. Skipping crop: {crop.name}!")
+        return
+
+    # example for shift_info: x+6y-4
+    shift_x = int(shift_info.split("y")[0][1:])
+    shift_y = int(shift_info.split("y")[1])
+
+    original_image_shape = image_dict[list(image_dict.keys())[0]].shape
+
+    # Calculate the center point of the original image
+    center_point_y, center_point_x = [int(round(index/2)) for index in original_image_shape]
+
+    # Calculate the x- and y-indices for the crop with the randomly generated shift in x- and y-direction
+    top_left_x = int((center_point_x - (target_pixel_size/2)) + shift_x)
+    top_left_y = int((center_point_y - (target_pixel_size/2)) + shift_y)
+    bottom_right_x = int((center_point_x + (target_pixel_size/2)) + shift_x)
+    bottom_right_y = int((center_point_y + (target_pixel_size/2)) + shift_y)
+
+    cropped_image_dict = {}
+    # Crop the shifted image from the original image and save it to cropped_image_dict
+    for image_name, image in image_dict.items():
+        cropped_image_dict[image_name] = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
+
+    # Add + in front of positive shifts for the folder name
+    if shift_x >= 0:
+        shift_x = "+" + str(shift_x)
+    if shift_y >= 0:
+        shift_y = "+" + str(shift_y)
+    
+    output_dir = target_dir / (crop + "_" + str(target_pixel_size) + f"_x{shift_x}y{shift_y}")
+
+    try:
+        output_dir.mkdir(exist_ok=True, parents=True)
+
+    except OSError as error:
+        print (f"Creation of the directory {output_dir} failed")
+        print(error)
+        return
+    
+    for image_name, image in cropped_image_dict.items():
+        imsave((output_dir / image_name), image)    
+
+
+
 def shift_images_randomly(image_dict, target_dir, crop, target_pixel_size, shifting_limit):
     """Creates randomly shifted crops around the center of the original images in image_dict.
     
