@@ -1382,7 +1382,7 @@ def create_shifted_crops(source_dir, satellite_type, target_dir=None, target_pix
     else:
         target_dir = pathlib.Path(target_dir)
     
-    for crop_dir in tqdm(source_dir.glob("*"), desc="Creating randomly shifted crops: "):
+    for crop_dir in tqdm(source_dir.glob("*"), desc="Creating shifted crops: "):
         
         if crop_dir.is_dir() and not crop_dir.name.startswith("0_"):
             crop = crop_dir.name
