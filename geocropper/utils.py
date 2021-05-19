@@ -2275,7 +2275,8 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_red
 def shift_images_reference_based(image_dict, target_dir, crop, target_pixel_size, reference_dir):
 
     try:
-        reference_crop = list(reference_dir.glob(f"*_{crop.name}_*"))[0]
+        lon, lat = crop.name.split("_")
+        reference_crop = list(reference_dir.glob(f"*_{lon}*_{lat}*"))[0]
         shift_info = reference_crop.name.rsplit("_")[1]
     except:
         print(f"Could not find reference crop. Skipping crop: {crop.name}!")
