@@ -159,6 +159,33 @@ def crop_image(path, item, top_left, bottom_right, target_dir, file_format, is_l
     ds = None
 
 
+def create_preview_images(source_dir, combine_preview_images=True):
+    """Creates preview images for Sentinel-2 crops. Bands must be either in crop root directory or in the subdirectory sensordata/R10m"""
+
+    source_dir = pathlib.Path(source_dir)
+
+    r_band_search_pattern = "*B04_10m.jp2"
+    g_band_search_pattern = "*B03_10m.jp2"
+    b_band_search_pattern = "*B02_10m.jp2"
+
+    for crop_dir in tqdm(source_dir.glob("*"), desc="Creating preview images for crops"):
+
+        if not crop_dir.name.startswith("0_"):
+
+            if ( crop_dir / "sensordata" / "R10m" ).exists():
+                input_dir = crop_dir / "sensordata" / "R10m"
+            else:
+                input_dir = crop_dir
+
+            create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, input_dir, crop_dir)
+
+    if combine_preview_images:
+        print("Create combined preview images...")
+        create_combined_images(source_dir)
+
+    print("Done.")
+
+
 def create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, source_dir,
                           target_dir, max_scale=4095, exponential_scale=0.5):
 

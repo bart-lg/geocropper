@@ -1427,3 +1427,7 @@ def compare_stacked_and_reduced_images(target_dir, channels=("VV","VH"), rows_pe
     utils.compare_stacked_and_reduced_images(target_dir, channels, rows_per_preview, source_dir_stacked=source_dir_stacked, \
                                              source_dir_pca=source_dir_pca, source_dir_max=source_dir_max, \
                                              image_height_limit=image_height_limit, image_width_limit=image_width_limit)
+
+
+def create_preview_images(source_dir, combine_preview_images=True):
+    utils.create_preview_images(source_dir, combine_preview_images)
