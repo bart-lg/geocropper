@@ -2304,7 +2304,7 @@ def shift_images_reference_based(image_dict, target_dir, crop, target_pixel_size
     try:
         lon, lat = crop.split("_")
         reference_crop = list(reference_dir.glob(f"*_{lon}*_{lat}*"))[0]
-        shift_info = reference_crop.rsplit("_")[1]
+        shift_info = reference_crop.name.rsplit("_", maxsplit=1)[1]
     except:
         print(f"Could not find reference crop. Skipping crop: {crop}!")
         return
