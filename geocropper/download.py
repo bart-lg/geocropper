@@ -331,6 +331,7 @@ def check_for_existing_big_tile(tile):
             if tile['downloadComplete'] != None:
             
                 db.clear_download_complete_for_tile(tile['rowid'])
+                db.clear_unpacked_for_tile(tile['rowid'])
 
             return False
 
@@ -339,6 +340,10 @@ def check_for_existing_big_tile(tile):
             if tile['downloadComplete'] == None:
 
                 db.set_download_complete_for_tile(tile['rowid'])
+
+            if tile['unzipped'] == None and check_for_existing_big_tile_folder(tile):
+
+                db.set_unpacked_for_tile(tile['rowid'])
 
             return True
         
