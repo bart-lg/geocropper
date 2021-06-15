@@ -1072,7 +1072,7 @@ def stack_trimmed_images(source_dir, postfix="", target_dir=None, split_target_d
         Set desired postfix for selecting specific folders containing a certain string 
         (default is empty "" and therefore selects every folder in source_dir).
     target_dir: String, optional
-        Path where the stacked image shall be stored (by default is equal to root_dir)
+        Path where the stacked image shall be stored (by default is equal to source_dir)
     split_target_dir: Boolean, optional
         Splits target dir into several dirs with different stack sizes.
         Default is false.
