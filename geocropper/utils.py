@@ -811,7 +811,7 @@ def trim_crops(source_dir, target_dir, width, height, has_subdir=True):
 
     if has_subdir:
         for request in source_dir.glob("*"):
-            create_trimmed_crops(request, target_dir, width, height)
+            create_trimmed_crops(request, ( target_dir / request.name ), width, height)
     else:
         create_trimmed_crops(source_dir, target_dir, width, height)
 
