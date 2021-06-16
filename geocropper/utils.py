@@ -2675,7 +2675,11 @@ def compare_stacked_and_reduced_images(target_dir, channels, rows_per_preview, s
             
                 image_path = image_path_list[0]
 
-                left_upper_corner_w = config.previewBorder + ( max_layers + 1 ) * ( max_width + config.previewBorder )
+                # TODO: this is not a nice solution... 
+                if not isinstance(source_dir_pca, type(None)):
+                    left_upper_corner_w = config.previewBorder + ( max_layers + 1 ) * ( max_width + config.previewBorder )
+                else:
+                    left_upper_corner_w = config.previewBorder + max_layers * ( max_width + config.previewBorder )
                 image_values = None
 
                 for channel in channels:
