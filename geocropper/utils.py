@@ -2291,8 +2291,12 @@ def reduce_image_dimensionality(image_dir, image_name, target_dir, crop, dim_red
             # nbcomp = Number of components, therefore it will be reduced to one component (from (x, 400, 400) to (1, 400, 400))
             app.SetParameterInt("nbcomp", 1)
 
-            app.ExecuteAndWriteOutput()
-        
+            try:
+                app.ExecuteAndWriteOutput()
+            except:
+                logger.error("Error while creating pca image.")
+                logger.error(sys.exc_info()[0])        
+
         else:
 
             print("Please, choose a valid dim_reduction_method ('pca' or 'max_values')!")
