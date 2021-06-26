@@ -2780,7 +2780,7 @@ def compare_stacked_and_reduced_images(target_dir, channels, rows_per_preview, s
 
 def stretch_image_values_linearly_8bit(arr):
 
-    if not (len(arr.shape) == 3):
+    if not (len(arr.shape) == 3) or arr.shape[0] == 0:
         return None
 
     min_value = numpy.amin(arr)
