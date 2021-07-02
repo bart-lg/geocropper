@@ -159,25 +159,55 @@ def crop_image(path, item, top_left, bottom_right, target_dir, file_format, is_l
     ds = None
 
 
-def create_preview_images(source_dir, combine_preview_images=True):
-    """Creates preview images for Sentinel-2 crops. Bands must be either in crop root directory or in the subdirectory sensordata/R10m"""
+def create_preview_images(source_dir, combine_preview_images=True, sentinel_type="S2", min_scale=-30, max_scale=30, exponential_scale=0.5):
+    """Creates preview images for Sentinel-1 or Sentinel-2 crops. 
+    Bands must be in crop root directory or in the subdirectory sensordata or in the subdirectory sensordata/R10m"""
 
     source_dir = pathlib.Path(source_dir)
 
-    r_band_search_pattern = "*B04_10m.jp2"
-    g_band_search_pattern = "*B03_10m.jp2"
-    b_band_search_pattern = "*B02_10m.jp2"
+    if sentinel_type == "S2":
 
-    for crop_dir in tqdm(source_dir.glob("*"), desc="Creating preview images for crops"):
+        r_band_search_pattern = "*B04_10m.jp2"
+        g_band_search_pattern = "*B03_10m.jp2"
+        b_band_search_pattern = "*B02_10m.jp2"
 
-        if not crop_dir.name.startswith("0_"):
+        for crop_dir in tqdm(source_dir.glob("*"), desc="Creating preview images for crops"):
 
-            if ( crop_dir / "sensordata" / "R10m" ).exists():
-                input_dir = crop_dir / "sensordata" / "R10m"
-            else:
-                input_dir = crop_dir
+            if not crop_dir.name.startswith("0_"):
 
-            create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, input_dir, crop_dir)
+                if ( crop_dir / "sensordata" / "R10m" ).exists():
+                    input_dir = crop_dir / "sensordata" / "R10m"
+                else:
+                    input_dir = crop_dir
+
+                create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_band_search_pattern, input_dir, crop_dir)
+
+    elif sentinel_type == "S1":
+
+        for crop_dir in tqdm(source_dir.glob("*"), desc="Creating preview images for crops"):
+
+            if not crop_dir.name.startswith("0_"):
+
+                if ( crop_dir / "sensordata" / "s1_cropped.tif" ).exists():
+
+                    create_preview_rg_image(( crop_dir / "sensordata" / "s1_cropped.tif" ), crop_dir, 
+                        min_scale=min_scale, max_scale=max_scale, exponential_scale=exponential_scale)
+
+                else:
+
+                    try:
+                        
+                        vv_image = list(crop_dir.glob("*VV.tif"))[0]
+                        vh_image = list(crop_dir.glob("*VH.tif"))[0]
+                        
+                        if vv_image.exists() and vh_image.exists():
+
+                            create_preview_rg_image(vv_image, crop_dir, min_scale=min_scale, max_scale=max_scale, 
+                                exponential_scale=exponential_scale, file2=vh_image)
+
+                    except:
+                        pass
+
 
     if combine_preview_images:
         print("Create combined preview images...")
@@ -257,8 +287,8 @@ def create_preview_rgb_image(r_band_search_pattern, g_band_search_pattern, b_ban
     return True
 
 
-def create_preview_rg_image(file, target_dir, min_scale=-30, max_scale=30, exponential_scale=0.5):
-    """Creates a RGB preview file out of an db scaled image with only 2 bands.
+def create_preview_rg_image(file1, target_dir, min_scale=-30, max_scale=30, exponential_scale=0.5, file2=None):
+    """Creates a RGB preview file out of an db scaled image with only 2 bands or two separate db scaled images.
     """
 
     preview_file = "preview.tif"
@@ -283,12 +313,17 @@ def create_preview_rg_image(file, target_dir, min_scale=-30, max_scale=30, expon
     # since the min scale for the source is negative we need to provide subprocess.call with a whole string and turn the argument shell to True
     # docs subprocess: "If passing a single string, either shell must be True [...]"
     command = f"gdal_translate -b 1 -q -ot Byte -scale {min_scale} {max_scale} 0 255 " + \
-              f"{str(exp_option)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'r-scaled.tif'))}"        
+              f"{str(exp_option)} {os.path.realpath(str(file1))} {os.path.realpath(str(target_dir / 'r-scaled.tif'))}"        
     subprocess.call(command, shell=True)    
 
-    command = f"gdal_translate -b 2 -q -ot Byte -scale {min_scale} {max_scale} 0 255 " + \
-              f"{str(exp_option)} {os.path.realpath(str(file))} {os.path.realpath(str(target_dir / 'g-scaled.tif'))}"            
-    subprocess.call(command, shell=True)    
+    if not isinstance(file2, type(None)):
+        command = f"gdal_translate -b 1 -q -ot Byte -scale {min_scale} {max_scale} 0 255 " + \
+                  f"{str(exp_option)} {os.path.realpath(str(file2))} {os.path.realpath(str(target_dir / 'g-scaled.tif'))}"        
+        subprocess.call(command, shell=True)    
+    else:
+        command = f"gdal_translate -b 2 -q -ot Byte -scale {min_scale} {max_scale} 0 255 " + \
+                  f"{str(exp_option)} {os.path.realpath(str(file1))} {os.path.realpath(str(target_dir / 'g-scaled.tif'))}"            
+        subprocess.call(command, shell=True)    
 
     # create empty blue band
     command = ["gdal_calc.py", "--quiet", "-A", os.path.realpath(str(target_dir / "r-scaled.tif")), 
