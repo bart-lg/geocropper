@@ -855,12 +855,18 @@ def create_csv_from_crops(csv_path, source_dir, outside_cropped_tiles_dir=False,
                                     # TODO: better exception handling... log if something went wrong
                                     try:
                                         crop_name = crop.name.split("_")
-                                        crop_id = int(crop_name[0])
-                                        crop_lon = float(crop_name[1])
-                                        crop_lat = float(crop_name[2])
-                                        if len(crop_name) > 3:
-                                            crop_datetime = crop_name[3]
-                                        else:
+                                        if len(crop_name) > 2:
+                                            crop_id = int(crop_name[0])
+                                            crop_lon = float(crop_name[1])
+                                            crop_lat = float(crop_name[2])
+                                            if len(crop_name) > 3:
+                                                crop_datetime = crop_name[3]
+                                            else:
+                                                crop_datetime = ""
+                                        elif len(crop_name) == 2:
+                                            crop_id = ""
+                                            crop_lon = float(crop_name[0])
+                                            crop_lat = float(crop_name[1])
                                             crop_datetime = ""
 
                                         spamwriter.writerow([request.name, crop_id, crop_lon, crop_lat, crop_datetime])
