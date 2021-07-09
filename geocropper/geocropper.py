@@ -717,10 +717,14 @@ def retrieve_scene_classes(groupname):
 
 
 def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_boundaries=None, use_database_scene_values=True, \
-                          move_crops_without_scene_classifications=False):
-    """Filters crops based on scene classification values (Sentinel-2) and moves them to new directory.
+                          move_crops_without_scene_classifications=False, \
+                          raster_path=None, shape_file=None, attribute_name=None, include_values=None, \
+                          exclude_values=None, include_distance=0):
+    """Filters crops based on scene classification values (Sentinel-2) or based on attribute values in shape file and moves them to new directory.
 
-    Filters crops based on scene classification values (Sentinel-2) and moves them to new directory.
+    If shape file is specified, crops are filtered by attribute values of intersecting polygons.
+
+    Otherwise crops are filtered based on scene classification values (Sentinel-2).
     Classifications (obtained from https://dragon3.esa.int/web/sentinel/technical-guides/sentinel-2-msi/level-2a/algorithm):
     0: NO_DATA
     1: SATURATED_OR_DEFECTIVE    
@@ -735,12 +739,17 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
     10: THIN_CIRRUS
     11: SNOW
 
-    Parameters
-    ----------
+    The filtered crops will be moved to the output path.
+
+    Main Parameters
+    ---------------
     crops_path : str
         Path of crops. Crops must match with database entries (especially crop id), if database should be used.
     output_path : str
         Path where the filtered crops should be moved to.
+
+    Parameters (filter by scene classification values of Sentinel-2)
+    ----------------------------------------------------------------
     lower_boundaries : dict, optional
         Dictionary with lower boundary ratios of scene classes.
     upper_boundaries : dict, optional
@@ -751,13 +760,31 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
         Default is true.
     move_crops_without_scene_classifications : boolean, optional
         Default is false.
+
+    Parameters (filter by shape file)
+    ---------------------------------
+    raster_path : str
+        Relative path to raster file of crops. Wildcards supported by the glob function of pathlib can be used.     
+    shape_file : str, optional
+        Path of the shapefile. Currently the shape file and the crops must use the same coordinate reference system (CRS).
+    attribute_name : str, optional
+        Name of the polygons' attribute that is used for filtering.
+    include_values : tuple, optional
+        Tuple of possible attribute values. If crop intersects with polygon having this attribute value, the crop will be moved.
+    exclude_values : tuple, optional
+        Tuple of possible attribute values. If crop intersects with polygon having this attribute value, the crop will not be moved.
+    include_distance : int, optional
+        By default the range of each crop will be compared to the polygons in the shape file. 
+        The parameter include_distance can be used to extend the range of each crop in meters.
+        Assumes that crops and shape file are using UTM as CRS.
     """
 
     crops_path = pathlib.Path(crops_path)
     output_path = pathlib.Path(output_path)
 
     utils.filter_and_move_crops(crops_path, output_path, lower_boundaries, upper_boundaries, use_database_scene_values, \
-                          move_crops_without_scene_classifications)
+                          move_crops_without_scene_classifications, raster_path, shape_file, attribute_name, include_values, \
+                          exclude_values, include_distance)
 
 
 def visual_selection(path, gap=config.previewBorder, image_start=1):

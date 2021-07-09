@@ -13,7 +13,10 @@ import pandas
 import random
 from shapely.geometry import Point
 from shapely.geometry import Polygon
+from shapely.geometry import shape
 from shapely.ops import transform as shapely_transform
+from rtree import index
+import fiona
 from dateutil.parser import *
 from functools import partial
 import zipfile
@@ -1703,10 +1706,14 @@ def copy_big_tiles(target_path, required_only=False):
 
 
 def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_boundaries=None, use_database_scene_values=True, \
-                          move_crops_without_scene_classifications=False):
-    """Filters crops based on scene classification values (Sentinel-2) and moves them to new directory.
+                          move_crops_without_scene_classifications=False, \
+                          raster_path=None, shape_file=None, attribute_name=None, include_values=None, \
+                          exclude_values=None, include_distance=0):
+    """Filters crops based on scene classification values (Sentinel-2) or based on attribute values in shape file and moves them to new directory.
 
-    Filters crops based on scene classification values (Sentinel-2) and moves them to new directory.
+    If shape file is specified, crops are filtered by attribute values of intersecting polygons.
+
+    Otherwise crops are filtered based on scene classification values (Sentinel-2).
     Classifications (obtained from https://dragon3.esa.int/web/sentinel/technical-guides/sentinel-2-msi/level-2a/algorithm):
     0: NO_DATA
     1: SATURATED_OR_DEFECTIVE    
@@ -1721,12 +1728,17 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
     10: THIN_CIRRUS
     11: SNOW
 
-    Parameters
-    ----------
+    The filtered crops will be moved to the output path.
+
+    Main Parameters
+    ---------------
     crops_path : Path
         Path of crops. Crops must match with database entries (especially crop id), if database should be used.
     output_path : Path
         Path where the filtered crops should be moved to.
+
+    Parameters (filter by scene classification values of Sentinel-2)
+    ----------------------------------------------------------------
     lower_boundaries : dict, optional
         Dictionary with lower boundary ratios of scene classes.
     upper_boundaries : dict, optional
@@ -1737,13 +1749,24 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
         Default is true.
     move_crops_without_scene_classifications : boolean, optional
         Default is false.
+
+    Parameters (filter by shape file)
+    ---------------------------------
+    raster_path : str
+        Relative path to raster file of crops. Wildcards supported by the glob function of pathlib can be used. 
+    shape_file : str, optional
+        Path of the shapefile. Currently the shape file and the crops must use the same coordinate reference system (CRS).
+    attribute_name : str, optional
+        Name of the polygons' attribute that is used for filtering.
+    include_values : tuple, optional
+        Tuple of possible attribute values. If crop intersects with polygon having this attribute value, the crop will be moved.
+    exclude_values : tuple, optional
+        Tuple of possible attribute values. If crop intersects with polygon having this attribute value, the crop will not be moved.
+    include_distance : int, optional
+        By default the range of each crop will be compared to the polygons in the shape file. 
+        The parameter include_distance can be used to extend the range of each crop in meters.
+        Assumes that crops and shape file are using UTM as CRS.
     """
-
-    if lower_boundaries == None and upper_boundaries == None:
-        return None
-
-    # file containing information (Sentinel-2 only)
-    filename_postfix = "_SCL_20m.jp2"        
 
     try:
         output_path.mkdir(exist_ok=True, parents=True)
@@ -1754,86 +1777,175 @@ def filter_and_move_crops(crops_path, output_path, lower_boundaries=None, upper_
 
     # counter for filtered out crops
     counter = 0
+    total_crops = 0
 
-    for crop in tqdm(crops_path.glob("*"), desc="Filtering and moving crops: "):
+    if not isinstance(include_values, type(None)):
+        include_values = tuple(str(x) for x in include_values)
 
-        if crop.is_dir() and crop.name != "0_combined-preview":
+    if not isinstance(exclude_values, type(None)):
+        exclude_values = tuple(str(x) for x in exclude_values)
 
-            move = False
-            ratios = None
+    if not isinstance(shape_file, type(None)):
 
-            crop_id = crop.name.split("_")[0]
+        # Filter by polygons in shape file
 
-            if use_database_scene_values:
+        shape_file = pathlib.Path(shape_file)
+        if not shape_file.exists():
+            return None
 
-                ratios = {}
+        with fiona.open(shape_file.absolute(), "r") as shape_feature_collection:
 
-                crop_meta_data = db.get_tile_poi_connection(int(crop_id))
-                for key in crop_meta_data.keys():
-                    if key.startswith("sceneClass"):
-                        if crop_meta_data[key] != None:
-                            ratios[int(key.replace("sceneClass", ""))] = crop_meta_data[key]
+            ## Instantiate index class (should be faster, but we probably lose further attribute infos)
+            # idx = index.Index()
+            # for i, feature in enumerate(shape_feature_collection):
+            #     idx.insert(i, shape(feature['geometry']).bounds)
 
-            else:
+            for crop in tqdm(crops_path.glob("*"), desc="Filtering and moving crops: "):
 
-                scl_folder = crop / "sensordata" / "R20m"
+                if crop.is_dir() and crop.name != "0_combined-preview":
 
-                if scl_folder.is_dir():
+                    total_crops = total_crops + 1
 
-                    for scl_image_path in scl_folder.glob(f"*{filename_postfix}"):
+                    if not isinstance(exclude_values, type(None)):
+                        move = True
+                    else:
+                        move = False
 
-                        if ratios == None:
+                    try:
+                        raster_file = list(crop.glob(raster_path))[0]
+                    except:
+                        print(f"Raster file not found for crop: {crop.name}")
+                        continue
 
-                            scl_image_obj = gdal.Open(str(scl_image_path))
-                            scl_image = numpy.array(scl_image_obj.GetRasterBand(1).ReadAsArray())
-                            pixels = scl_image.shape[0] * scl_image.shape[1]
+                    with rasterio.open(raster_file) as raster:
 
-                            ratios = {}
+                        left = raster.bounds.left - include_distance
+                        bottom = raster.bounds.bottom - include_distance
+                        right = raster.bounds.right + include_distance
+                        top = raster.bounds.top + include_distance
+                        
+                        p1 = Point(left,top)
+                        p2 = Point(left,bottom)
+                        p3 = Point(right,bottom)
+                        p4 = Point(right,top)
+                        
+                        pointList = [p1, p2, p3, p4, p1]
+                        poly = Polygon([[p.x, p.y] for p in pointList])
 
-                            unique, counts = numpy.unique(scl_image, return_counts=True)
-                            occurences = dict(zip(unique, counts))
+                        for feature in shape_feature_collection:
+                            if shape(feature['geometry']).intersects(shape(poly)):
+                                clc_code = str(feature['properties'][attribute_name])
 
-                            for key in occurences:
-                                ratios[key] = occurences[key] / pixels
+                                if not isinstance(exclude_values, type(None)):
+                                    if clc_code in exclude_values:
+                                        move = False
 
-                            scl_image_obj = None
+                                elif not isinstance(include_values, type(None)):
+                                    if clc_code in include_values:
+                                        move = True
+
+                    if move:
+
+                        shutil.move(str(crop.absolute()), str(output_path.absolute()))
+
+                    else:
+                        counter = counter + 1
+
+    else:
+
+        # Filter by scene classification values (Sentinel-2)
+
+        if lower_boundaries == None and upper_boundaries == None:
+            return None
+
+        # file containing information (Sentinel-2 only)
+        filename_postfix = "_SCL_20m.jp2"        
+
+        for crop in tqdm(crops_path.glob("*"), desc="Filtering and moving crops: "):
+
+            if crop.is_dir() and crop.name != "0_combined-preview":
+
+                total_crops = total_crops + 1
+
+                move = False
+                ratios = None
+
+                crop_id = crop.name.split("_")[0]
+
+                if use_database_scene_values:
+
+                    ratios = {}
+
+                    crop_meta_data = db.get_tile_poi_connection(int(crop_id))
+                    for key in crop_meta_data.keys():
+                        if key.startswith("sceneClass"):
+                            if crop_meta_data[key] != None:
+                                ratios[int(key.replace("sceneClass", ""))] = crop_meta_data[key]
+
+                else:
+
+                    scl_folder = crop / "sensordata" / "R20m"
+
+                    if scl_folder.is_dir():
+
+                        for scl_image_path in scl_folder.glob(f"*{filename_postfix}"):
+
+                            if ratios == None:
+
+                                scl_image_obj = gdal.Open(str(scl_image_path))
+                                scl_image = numpy.array(scl_image_obj.GetRasterBand(1).ReadAsArray())
+                                pixels = scl_image.shape[0] * scl_image.shape[1]
+
+                                ratios = {}
+
+                                unique, counts = numpy.unique(scl_image, return_counts=True)
+                                occurences = dict(zip(unique, counts))
+
+                                for key in occurences:
+                                    ratios[key] = occurences[key] / pixels
+
+                                scl_image_obj = None
 
 
-            if ratios == None or ( isinstance(ratios, dict) and len(ratios) == 0 ):
-                
-                if move_crops_without_scene_classifications:
+                if ratios == None or ( isinstance(ratios, dict) and len(ratios) == 0 ):
+                    
+                    if move_crops_without_scene_classifications:
+                        move = True
+
+                else:
+
                     move = True
 
-            else:
+                    if lower_boundaries != None and isinstance(lower_boundaries, dict) and len(lower_boundaries) > 0:
 
-                move = True
+                        for key in lower_boundaries:
 
-                if lower_boundaries != None and isinstance(lower_boundaries, dict) and len(lower_boundaries) > 0:
+                            if not ( key in ratios and ratios[key] >= lower_boundaries[key] ):
 
-                    for key in lower_boundaries:
+                                move = False
 
-                        if not ( key in ratios and ratios[key] >= lower_boundaries[key] ):
+                    if upper_boundaries != None and isinstance(upper_boundaries, dict) and len(upper_boundaries) > 0:
 
-                            move = False
+                        for key in ratios:
 
-                if upper_boundaries != None and isinstance(upper_boundaries, dict) and len(upper_boundaries) > 0:
+                            if key in upper_boundaries and ratios[key] > upper_boundaries[key]:
 
-                    for key in ratios:
+                                move = False
+                                print(f"### [{counter+1}] CROP: {crop.name}")
+                                print(f"prevent moving: key:{key} ratio:{ratios[key]} boundary:{upper_boundaries[key]}")
 
-                        if key in upper_boundaries and ratios[key] > upper_boundaries[key]:
+                if move:
 
-                            move = False
-                            print(f"### [{counter+1}] CROP: {crop.name}")
-                            print(f"prevent moving: key:{key} ratio:{ratios[key]} boundary:{upper_boundaries[key]}")
+                    # TODO: save new path to database (if crop exists in database)
 
-            if move:
+                    shutil.move(str(crop.absolute()), str(output_path.absolute()))
 
-                # TODO: save new path to database (if crop exists in database)
+                else:
+                    counter = counter + 1
 
-                shutil.move(str(crop.absolute()), str(output_path.absolute()))
-
-            else:
-                counter = counter + 1
+    print(f"Total crops: {total_crops}")
+    print(f"Moved crops: {str(total_crops - counter)}")
+    print(f"Filtered out crops: {counter}")
 
 
 def move_imperfect_S1_crops(source_dir, target_dir):
