@@ -35,6 +35,8 @@ try:
 	databaseRetryQueries = config["Misc"].getint("databaseRetryQueries")
 	coordinateDecimalsForComparison = config["Misc"].getint("coordinateDecimalsForComparison")
 	requestDelay = config["Misc"].getint("requestDelay")
+	serverFailureRequestRepeats = config["Misc"].getint("serverFailureRequestRepeats")
+	serverFailureRequestDelay = config["Misc"].getint("serverFailureRequestDelay")
 
 	# various data paths
 	dataDir = pathlib.Path(config["Paths"]["data"])
