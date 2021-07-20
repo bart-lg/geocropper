@@ -4,7 +4,7 @@ import logging
 from geojson import Point
 from datetime import datetime
 # from sentinelsat.sentinel import SentinelAPI, geojson_to_wkt, read_geojson
-from sentinelsat import SentinelAPI, geojson_to_wkt
+from sentinelsat import SentinelAPI, geojson_to_wkt, SentinelAPIError
 import time
 
 
