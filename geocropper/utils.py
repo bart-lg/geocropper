@@ -2949,6 +2949,7 @@ def copy_and_number_previews(source_dir, target_dir):
 
     source_dir = pathlib.Path(source_dir)
     target_dir = pathlib.Path(target_dir)
+    target_dir.mkdir(exist_ok=True)
 
     counter = 0
 
