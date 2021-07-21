@@ -1472,3 +1472,7 @@ def compare_stacked_and_reduced_images(target_dir, channels=("VV","VH"), rows_pe
 
 def create_preview_images(source_dir, combine_preview_images=True, sentinel_type="S2", min_scale=-30, max_scale=30, exponential_scale=0.5):
     utils.create_preview_images(source_dir, combine_preview_images, sentinel_type, min_scale, max_scale, exponential_scale)
+
+
+def copy_and_number_previews(source_dir, target_dir):
+    utils.copy_and_number_previews(source_dir, target_dir)

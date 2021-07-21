@@ -2943,3 +2943,24 @@ def stretch_image_values_linearly_8bit(arr):
     arr = numpy.fix(arr)
 
     return arr
+
+
+def copy_and_number_previews(source_dir, target_dir):
+
+    source_dir = pathlib.Path(source_dir)
+    target_dir = pathlib.Path(target_dir)
+
+    counter = 0
+
+    for crop in source_dir.glob("*"):
+
+        if not crop.name.startswith("0_") and ( crop / "preview.tif" ).exists():
+
+            counter = counter + 1
+
+            old_file = crop / "preview.tif"
+            new_file = target_dir / f"{counter}.tif"
+
+            shutil.copy(old_file, new_file)
+
+    print(f"{counter} previews copied.")
